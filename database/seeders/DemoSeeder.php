@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Application;
 use App\Models\Shift;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -11,25 +12,27 @@ class DemoSeeder extends Seeder
 {
     public function run(): void
     {
-        // Two businesses and a courier (profiles are auto-created by UserObserver).
+        // Businesses + couriers (profiles auto-created by UserObserver).
         $bella = $this->business('Pizzaria Bella', 'bella@demo.test', 'Centro', 'Rua Augusta, 1200');
         $sushi = $this->business('Sushi Yama', 'yama@demo.test', 'Pinheiros', 'Av. Faria Lima, 500');
         $burger = $this->business('Burger House', 'burger@demo.test', 'Zona Sul', 'Av. Santo Amaro, 900');
 
-        $carlos = User::create(['name' => 'Carlos Entregas', 'email' => 'carlos@demo.test', 'password' => 'secret123']);
-        $carlos->profile->update(['role' => 'courier', 'vehicle' => 'moto', 'city' => 'São Paulo']);
+        $carlos = $this->courier('Carlos Entregas', 'carlos@demo.test');
+        $ana = $this->courier('Ana Rápida', 'ana@demo.test');
 
         $today = Carbon::today();
 
+        // [owner, venue, region, type, volume, daily, [feeMin,feeMax], vehicles, benefits, bag, needed, date, [lat,lng]]
         $shifts = [
-            [$bella, 'Pizzaria Bella', 'Centro', 'pizzaria', 'pesado', 160, [12, 18], ['moto'], ['lanche', 'combustivel'], true, 2, $today],
-            [$sushi, 'Sushi Yama', 'Pinheiros', 'japones', 'moderado', 180, [10, 16], ['moto', 'bike-eletrica'], ['janta'], false, 1, $today],
-            [$burger, 'Burger House', 'Zona Sul', 'hamburguer', 'pesado', 150, [9, 14], ['moto'], ['lanche', 'almoco'], true, 3, $today->copy()->addDay()],
-            [$bella, 'Bella Express (Noturno)', 'Centro', 'pizzaria', 'moderado', 140, [8, 12], ['moto', 'bike-eletrica', 'bike'], ['lanche'], false, 1, $today->copy()->addDays(2)],
+            [$bella, 'Pizzaria Bella', 'Centro', 'pizzaria', 'pesado', 160, [12, 18], ['moto'], ['lanche', 'combustivel'], true, 2, $today, [-23.5505, -46.6420]],
+            [$sushi, 'Sushi Yama', 'Pinheiros', 'japones', 'moderado', 180, [10, 16], ['moto', 'bike-eletrica'], ['janta'], false, 1, $today, [-23.5670, -46.6920]],
+            [$burger, 'Burger House', 'Zona Sul', 'hamburguer', 'pesado', 150, [9, 14], ['moto'], ['lanche', 'almoco'], true, 3, $today->copy()->addDay(), [-23.6500, -46.7100]],
+            [$bella, 'Bella Express (Noturno)', 'Centro', 'pizzaria', 'moderado', 140, [8, 12], ['moto', 'bike-eletrica', 'bike'], ['lanche'], false, 1, $today->copy()->addDays(2), [-23.5480, -46.6390]],
         ];
 
-        foreach ($shifts as [$owner, $venue, $region, $type, $volume, $daily, $fee, $vehicles, $benefits, $bag, $needed, $date]) {
-            Shift::create([
+        $created = [];
+        foreach ($shifts as [$owner, $venue, $region, $type, $volume, $daily, $fee, $vehicles, $benefits, $bag, $needed, $date, $coords]) {
+            $created[] = Shift::create([
                 'creator_id' => $owner->id,
                 'creator_role' => 'business',
                 'venue' => $venue,
@@ -49,12 +52,12 @@ class DemoSeeder extends Seeder
                 'requires_own_bag' => $bag,
                 'couriers_needed' => $needed,
                 'status' => 'available',
-                'lat' => 0,
-                'lng' => 0,
+                'lat' => $coords[0],
+                'lng' => $coords[1],
             ]);
         }
 
-        // A courier-posted "shift coverage" request.
+        // A courier-posted "shift coverage" request (also geolocated).
         Shift::create([
             'creator_id' => $carlos->id,
             'creator_role' => 'courier',
@@ -75,15 +78,28 @@ class DemoSeeder extends Seeder
             'requires_own_bag' => false,
             'couriers_needed' => 1,
             'status' => 'available',
-            'lat' => 0,
-            'lng' => 0,
+            'lat' => -23.6480,
+            'lng' => -46.7080,
         ]);
+
+        // Some interest so the "Parcerias" tab and notifications have data.
+        Application::create(['shift_id' => $created[0]->id, 'user_id' => $carlos->id, 'status' => 'interested']);
+        Application::create(['shift_id' => $created[0]->id, 'user_id' => $ana->id, 'status' => 'interested']);
+        Application::create(['shift_id' => $created[1]->id, 'user_id' => $carlos->id, 'status' => 'interested']);
     }
 
     protected function business(string $name, string $email, string $city, string $street): User
     {
         $user = User::create(['name' => $name, 'email' => $email, 'password' => 'secret123']);
         $user->profile->update(['role' => 'business', 'city' => $city, 'street' => $street]);
+
+        return $user;
+    }
+
+    protected function courier(string $name, string $email): User
+    {
+        $user = User::create(['name' => $name, 'email' => $email, 'password' => 'secret123']);
+        $user->profile->update(['role' => 'courier', 'vehicle' => 'moto', 'city' => 'São Paulo', 'has_bag' => true]);
 
         return $user;
     }

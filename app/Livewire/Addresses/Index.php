@@ -107,6 +107,14 @@ class Index extends Component
             'reference' => trim($this->reference) ?: null,
         ];
 
+        $coords = app()->runningUnitTests()
+            ? null
+            : \App\Support\Geocoder::forAddress($data['street'], $data['number'], $data['district'], $data['city'], $data['postal_code']);
+        if ($coords) {
+            $data['lat'] = $coords['lat'];
+            $data['lng'] = $coords['lng'];
+        }
+
         if ($this->editingId) {
             UserAddress::where('user_id', Auth::id())->where('id', $this->editingId)->update($data);
             $this->dispatch('toast', message: 'Endereço atualizado.');

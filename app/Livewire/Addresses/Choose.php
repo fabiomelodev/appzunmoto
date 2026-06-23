@@ -104,6 +104,10 @@ class Choose extends Component
             return null;
         }
 
+        $coords = app()->runningUnitTests()
+            ? null
+            : \App\Support\Geocoder::forAddress(trim($this->street), trim($this->number), trim($this->district), trim($this->city), $digits);
+
         $address = UserAddress::create([
             'user_id' => Auth::id(),
             'label' => trim($this->label),
@@ -112,6 +116,8 @@ class Choose extends Component
             'number' => trim($this->number),
             'district' => trim($this->district),
             'city' => trim($this->city),
+            'lat' => $coords['lat'] ?? null,
+            'lng' => $coords['lng'] ?? null,
         ]);
 
         $this->dispatch('toast', message: 'Endereço salvo.');
