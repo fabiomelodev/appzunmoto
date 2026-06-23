@@ -2,6 +2,7 @@
 // routes/web.php
 
 use App\Livewire\Addresses\Choose as AddressesChoose;
+use App\Livewire\Addresses\Index as AddressesIndex;
 use App\Livewire\Auth\Login;
 use App\Livewire\Chats\Index as ChatsIndex;
 use App\Livewire\Chats\Show as ChatsShow;
@@ -9,6 +10,7 @@ use App\Livewire\Menu;
 use App\Livewire\Notifications\Page as NotificationsPage;
 use App\Livewire\ProfilePage;
 use App\Livewire\Settings;
+use App\Livewire\Vehicle;
 use App\Livewire\Shifts\Create as ShiftsCreate;
 use App\Livewire\Shifts\Index as ShiftsIndex;
 use App\Livewire\Shifts\Show as ShiftsShow;
@@ -51,11 +53,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', ProfilePage::class)->name('profile');
     Route::get('/settings', Settings::class)->name('settings');
 
+    // Vehicle & documents (same screen serves both routes)
+    Route::get('/vehicle', Vehicle::class)->name('vehicle');
+    Route::get('/documents', Vehicle::class)->name('documents');
+
+    // Addresses (management list)
+    Route::get('/addresses', AddressesIndex::class)->name('addresses');
+
     // Placeholders — rebuilt in later phases.
     Route::view('/map', 'placeholder', ['title' => 'Mapa'])->name('map');
-    Route::view('/vehicle', 'placeholder', ['title' => 'Veículo'])->name('vehicle');
     Route::view('/history', 'placeholder', ['title' => 'Histórico'])->name('history');
-    Route::view('/documents', 'placeholder', ['title' => 'Documentos'])->name('documents');
-    Route::view('/addresses', 'placeholder', ['title' => 'Endereços'])->name('addresses');
     Route::view('/help', 'placeholder', ['title' => 'Ajuda'])->name('help');
 });
