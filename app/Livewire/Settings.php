@@ -91,14 +91,40 @@ class Settings extends Component
         ], [
             'newPassword.same' => 'As senhas não coincidem.',
         ]);
-        if (! $this->currentPasswordValid()) {
+
+        // Google-only accounts have no local password yet — let them define one
+        // without re-authenticating; accounts that already have a password must
+        // confirm it.
+        $hasPassword = ! is_null(Auth::user()->password);
+        if ($hasPassword && ! $this->currentPasswordValid()) {
             return;
         }
 
         Auth::user()->update(['password' => $this->newPassword]);
         $this->passwordOpen = false;
         $this->reset('newPassword', 'passwordConfirmation', 'currentPassword');
-        $this->dispatch('toast', message: 'Senha alterada com sucesso!');
+        $this->dispatch('toast', message: $hasPassword ? 'Senha alterada com sucesso!' : 'Senha definida com sucesso!');
+    }
+
+    /** Disconnect the Google account, keeping email/password as the way back in. */
+    public function unlinkGoogle(): void
+    {
+        $user = Auth::user();
+        if (! $user->google_id) {
+            return;
+        }
+
+        // Never lock the user out: a Google-only account (no password) must set
+        // a password before disconnecting Google.
+        if (is_null($user->password)) {
+            $this->passwordOpen = true;
+            $this->dispatch('toast', message: 'Defina uma senha antes de desvincular o Google.', type: 'error');
+
+            return;
+        }
+
+        $user->update(['google_id' => null]);
+        $this->dispatch('toast', message: 'Conta Google desvinculada.');
     }
 
     /** Validates the re-authentication field against the user's current password. */
@@ -117,9 +143,13 @@ class Settings extends Component
 
     public function render()
     {
+        $user = Auth::user();
+
         return view('livewire.settings', [
-            'user' => Auth::user(),
-            'profile' => Auth::user()->profile,
+            'user' => $user,
+            'profile' => $user->profile,
+            'hasPassword' => ! is_null($user->password),
+            'linkedGoogle' => ! is_null($user->google_id),
         ]);
     }
 }

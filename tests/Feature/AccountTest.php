@@ -121,6 +121,56 @@ class AccountTest extends TestCase
         $this->assertSame($original, $user->fresh()->email);
     }
 
+    public function test_unlink_google_disconnects_when_password_is_set(): void
+    {
+        $user = $this->user();
+        $user->update(['google_id' => 'g-linked']);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)
+            ->call('unlinkGoogle')
+            ->assertDispatched('toast');
+
+        $this->assertNull($user->fresh()->google_id);
+    }
+
+    public function test_unlink_google_is_blocked_without_a_password(): void
+    {
+        // Google-only account: no local password to fall back on.
+        $user = User::create([
+            'name' => 'Goog',
+            'email' => 'goog'.uniqid().'@test.dev',
+            'google_id' => 'g-only',
+        ]);
+        $this->assertNull($user->password);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)
+            ->call('unlinkGoogle')
+            ->assertSet('passwordOpen', true)
+            ->assertDispatched('toast');
+
+        $this->assertSame('g-only', $user->fresh()->google_id, 'não desvincula sem senha');
+    }
+
+    public function test_google_only_user_can_define_a_password_without_the_current_one(): void
+    {
+        $user = User::create([
+            'name' => 'Goog',
+            'email' => 'goog'.uniqid().'@test.dev',
+            'google_id' => 'g-only',
+        ]);
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)
+            ->set('newPassword', 'firstpass1')
+            ->set('passwordConfirmation', 'firstpass1')
+            ->call('updatePassword')
+            ->assertHasNoErrors();
+
+        $this->assertTrue(Hash::check('firstpass1', $user->fresh()->password));
+    }
+
     public function test_account_pages_render(): void
     {
         $this->actingAs($this->user());
