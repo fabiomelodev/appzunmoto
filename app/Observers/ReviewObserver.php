@@ -16,6 +16,11 @@ class ReviewObserver
         $this->recalculate($review->target_id);
     }
 
+    public function updated(Review $review): void
+    {
+        $this->recalculate($review->target_id);
+    }
+
     public function deleted(Review $review): void
     {
         $this->recalculate($review->target_id);

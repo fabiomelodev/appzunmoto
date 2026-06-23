@@ -24,7 +24,9 @@
     </header>
 
     {{-- Messages --}}
-    <div class="flex-1 space-y-2 overflow-y-auto px-4 py-4" x-data x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)">
+    <div class="flex-1 space-y-2 overflow-y-auto px-4 py-4"
+        x-data="{ stick() { this.$el.scrollTop = this.$el.scrollHeight } }"
+        x-init="$nextTick(() => stick()); new MutationObserver(() => stick()).observe($el, { childList: true, subtree: true })">
         @if ($messages->isEmpty())
             <div class="mx-auto mt-10 max-w-xs rounded-2xl bg-surface px-4 py-3 text-center text-xs text-muted-foreground">
                 Diga olá para {{ $firstName }} 👋

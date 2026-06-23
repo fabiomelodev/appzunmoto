@@ -101,9 +101,20 @@ class Show extends Component
     {
         $chat = $this->chat();
         $shift = $chat->shift;
-        $courierId = $this->courierId($chat, $shift);
 
-        if (! $shift || ! $courierId || $this->rating < 1) {
+        // Only the creator reviews, only after the shift ended, only the other
+        // (confirmed) participant, and never self.
+        if (! $shift || $shift->creator_id !== Auth::id() || ! $this->expired($shift)) {
+            return;
+        }
+
+        $courierId = $chat->otherParticipant(Auth::id());
+        if (! $courierId || $courierId === Auth::id() || $this->rating < 1) {
+            return;
+        }
+
+        $courierApp = Application::where('shift_id', $shift->id)->where('user_id', $courierId)->first();
+        if (! $courierApp || ! $courierApp->confirmed) {
             return;
         }
 
@@ -139,8 +150,9 @@ class Show extends Component
         // Conflict: courier already has a confirmed partnership on an overlapping shift.
         $conflict = null;
         if ($shift && $courierId) {
+            // A confirmed partnership usually marks the shift as "filled", so we
+            // must NOT exclude filled shifts here (matches the React behaviour).
             $conflict = Shift::where('id', '!=', $shift->id)
-                ->where('status', '!=', Shift::STATUS_FILLED)
                 ->whereDate('date', $shift->date->toDateString())
                 ->whereHas('applications', fn ($q) => $q->where('user_id', $courierId)
                     ->where('status', Application::STATUS_ACCEPTED)->where('confirmed', true))

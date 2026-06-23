@@ -104,7 +104,11 @@ class ShiftFlowTest extends TestCase
     {
         $creator = $this->user('Dono');
         $courier = $this->user('Moto');
-        $shift = $this->shift($creator, ['status' => 'reserved', 'reserved_by' => $courier->id]);
+        // Review is only allowed after the shift has ended.
+        $shift = $this->shift($creator, [
+            'status' => 'reserved', 'reserved_by' => $courier->id,
+            'date' => now()->subDay()->toDateString(),
+        ]);
 
         $this->actingAs($creator);
         Livewire::test(Show::class, ['id' => $shift->id])
@@ -118,6 +122,39 @@ class ShiftFlowTest extends TestCase
         ]);
         $this->assertSame(5.0, (float) $courier->fresh()->profile->avg_rating);
         $this->assertSame(1, (int) $courier->fresh()->profile->total_reviews);
+    }
+
+    public function test_non_creator_cannot_review_or_self_review(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator, [
+            'status' => 'reserved', 'reserved_by' => $courier->id,
+            'date' => now()->subDay()->toDateString(),
+        ]);
+
+        // The reserved courier tries to review (would be a self-review) → blocked.
+        $this->actingAs($courier);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->set('rating', 5)
+            ->call('submitReview');
+
+        $this->assertDatabaseCount('reviews', 0);
+    }
+
+    public function test_review_blocked_before_shift_ends(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        // Future shift (not expired yet).
+        $shift = $this->shift($creator, ['status' => 'reserved', 'reserved_by' => $courier->id]);
+
+        $this->actingAs($creator);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->set('rating', 5)
+            ->call('submitReview');
+
+        $this->assertDatabaseCount('reviews', 0);
     }
 
     public function test_profile_modal_loads_public_profile(): void
@@ -296,6 +333,26 @@ class ShiftFlowTest extends TestCase
 
         $this->actingAs($other);
         Livewire::test(Index::class)->assertSee('Minha Vaga')->assertDontSee('Sua vaga');
+    }
+
+    public function test_open_chat_requires_accepted_application(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $courier->profile->update(['vehicle' => 'moto']);
+        $shift = $this->shift($creator);
+        $app = Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+
+        $this->actingAs($courier);
+
+        // Only interested → cannot open a chat with the creator.
+        Livewire::test(Show::class, ['id' => $shift->id])->call('openChat');
+        $this->assertDatabaseCount('chats', 0);
+
+        // Accepted → chat is created and the user is redirected.
+        $app->update(['status' => 'accepted']);
+        Livewire::test(Show::class, ['id' => $shift->id])->call('openChat')->assertRedirect();
+        $this->assertDatabaseCount('chats', 1);
     }
 
     public function test_pages_render(): void

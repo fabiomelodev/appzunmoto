@@ -68,7 +68,15 @@ class Show extends Component
     {
         $shift = $this->shift();
 
-        if (! $shift->reserved_by || $this->rating < 1) {
+        // Server-side gating (the UI gating is cosmetic): only the shift creator
+        // reviews the reserved courier, only after the shift ended, and never self.
+        if ($shift->creator_id !== Auth::id()) {
+            return;
+        }
+        if (! $shift->reserved_by || $shift->reserved_by === Auth::id()) {
+            return;
+        }
+        if (! $this->expired($shift) || $this->rating < 1) {
             return;
         }
 
@@ -86,7 +94,18 @@ class Show extends Component
     public function openChat()
     {
         $shift = $this->shift();
-        $chat = Chat::findOrCreateBetween($shift->id, $shift->creator_id, Auth::id());
+        $userId = Auth::id();
+
+        // Only a courier who was accepted on this shift may open the chat.
+        $accepted = $shift->applications()
+            ->where('user_id', $userId)
+            ->where('status', Application::STATUS_ACCEPTED)
+            ->exists();
+        if (! $accepted) {
+            return null;
+        }
+
+        $chat = Chat::findOrCreateBetween($shift->id, $shift->creator_id, $userId);
 
         return $this->redirect(route('chats.show', $chat->id), navigate: true);
     }
@@ -186,12 +205,14 @@ class Show extends Component
             ->pluck('user_id');
         $acceptedIds = $apps->where('status', Application::STATUS_ACCEPTED)->pluck('user_id')->all();
 
+        // Mirrors the React detail screen: list shows only couriers still
+        // "interested" (accepted ones move out of this list).
         $interested = $apps
-            ->whereIn('status', [Application::STATUS_INTERESTED, Application::STATUS_ACCEPTED])
+            ->where('status', Application::STATUS_INTERESTED)
             ->map(fn ($a) => [
                 'id' => $a->user_id,
                 'profile' => $a->user?->profile,
-                'accepted' => $a->status === Application::STATUS_ACCEPTED,
+                'accepted' => false,
             ])
             ->values();
 

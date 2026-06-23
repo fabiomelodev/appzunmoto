@@ -11,7 +11,7 @@
     $isOpen = $openShift === $shift->id;
     $badge = $needed > 1 ? $acceptedCount.'/'.$needed : $interested->count();
 @endphp
-<div class="overflow-hidden rounded-2xl border border-border bg-card {{ $expired ? 'opacity-70' : '' }}">
+<div wire:key="shiftrow-{{ $shift->id }}" class="overflow-hidden rounded-2xl border border-border bg-card {{ $expired ? 'opacity-70' : '' }}">
     <button type="button" wire:click="toggleShift('{{ $shift->id }}')"
         class="flex w-full items-center gap-3 p-3 text-left transition hover:bg-surface-elevated">
         <div class="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary"><x-ui.icon name="bike" class="h-4 w-4" /></div>

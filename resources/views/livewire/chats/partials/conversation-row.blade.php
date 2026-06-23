@@ -9,7 +9,7 @@
     $name = $other?->name ?: 'Usuário';
     $otherId = $chat->otherParticipant(auth()->id());
 @endphp
-<a href="{{ route('chats.show', $chat->id) }}" wire:navigate
+<a href="{{ route('chats.show', $chat->id) }}" wire:navigate wire:key="conv-{{ $chat->id }}"
     class="flex items-center gap-3 rounded-2xl border border-border bg-card p-3 transition hover:border-primary/40 {{ $expired ? 'opacity-70' : '' }}">
     <button type="button" @click.stop.prevent="$dispatch('open-profile', { userId: '{{ $otherId }}' })"
         class="shrink-0 rounded-full transition active:scale-95">
