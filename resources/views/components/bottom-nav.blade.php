@@ -1,61 +1,65 @@
-{{-- resources/views/components/bottom-nav.blade.php --}}
 @php
-    $route = request()->route()->getName() ?? '';
+    $items = [
+        ['route' => 'shifts.index', 'pattern' => 'shifts.index', 'icon' => 'bike', 'label' => 'Vagas'],
+        ['route' => 'map', 'pattern' => 'map', 'icon' => 'map', 'label' => 'Mapa'],
+        ['route' => 'chats.index', 'pattern' => 'chats.*', 'icon' => 'handshake', 'label' => 'Parcerias', 'class' => 'col-start-4'],
+        ['route' => 'menu', 'pattern' => 'menu', 'icon' => 'layout-grid', 'label' => 'Menu'],
+    ];
 @endphp
-<nav class="fixed bottom-0 left-0 right-0 z-50 border-t border-[#2a2a2a] bg-[#0d0d0d]/90 backdrop-blur-md">
-    <div class="mx-auto flex max-w-md items-center justify-around px-2 py-2">
 
-        {{-- Vagas --}}
-        <a href="{{ route('vagas.index') }}"
-           class="tap flex flex-col items-center gap-0.5 rounded-xl px-3 py-2 text-[10px] font-semibold transition
-                  {{ str_starts_with($route, 'vagas') ? 'text-[#f97316]' : 'text-[#737373]' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
-            </svg>
-            Vagas
-        </a>
+<div x-data="{ open: false }">
+    <nav
+        class="app-shell fixed bottom-0 left-1/2 z-40 -translate-x-1/2 border-t border-border bg-surface/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
+        <div class="relative grid grid-cols-5">
+            @foreach ($items as $item)
+                @php $active = request()->routeIs($item['pattern']); @endphp
+                <a href="{{ route($item['route']) }}" wire:navigate
+                    class="tap flex flex-col items-center justify-center gap-0.5 py-3 text-[10px] transition {{ $active ? 'text-primary' : 'text-muted-foreground hover:text-foreground' }} {{ $item['class'] ?? '' }}">
+                    <x-ui.icon :name="$item['icon']" :stroke="$active ? 2.4 : 1.8" class="h-5 w-5" />
+                    <span class="font-medium">{{ $item['label'] }}</span>
+                </a>
+            @endforeach
 
-        {{-- Chats --}}
-        <a href="{{ route('chats.index') }}"
-           class="tap flex flex-col items-center gap-0.5 rounded-xl px-3 py-2 text-[10px] font-semibold transition
-                  {{ str_starts_with($route, 'chats') ? 'text-[#f97316]' : 'text-[#737373]' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-            </svg>
-            Chats
-        </a>
+            <button type="button" @click="open = true"
+                class="tap glow-orange absolute left-1/2 top-0 grid h-14 w-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-primary text-primary-foreground"
+                aria-label="Publicar vaga">
+                <x-ui.icon name="plus" :stroke="2.8" class="h-7 w-7" />
+            </button>
+        </div>
+    </nav>
+    <div class="h-20"></div>
 
-        {{-- Nova Vaga (destaque central) --}}
-        <a href="{{ route('vagas.nova') }}"
-           class="tap flex flex-col items-center gap-0.5 rounded-xl px-3 py-2 text-[10px] font-semibold transition
-                  {{ $route === 'vagas.nova' ? 'text-[#f97316]' : 'text-[#737373]' }}">
-            <span class="flex h-9 w-9 items-center justify-center rounded-full bg-[#f97316] text-white shadow-lg glow-orange">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-            </span>
-            Nova
-        </a>
+    {{-- "Who is creating this shift?" dialog --}}
+    <div x-show="open" x-cloak x-transition.opacity
+        class="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center" @click.self="open = false">
+        <div x-show="open" x-transition
+            class="w-full max-w-[340px] rounded-2xl border border-border/60 bg-surface p-6">
+            <h2 class="font-display text-xl font-bold">Quem está criando esta vaga?</h2>
+            <p class="mt-1.5 text-xs text-muted-foreground">Escolha o seu perfil para adaptarmos o formulário.</p>
 
-        {{-- Mapa --}}
-        <a href="{{ route('mapa') }}"
-           class="tap flex flex-col items-center gap-0.5 rounded-xl px-3 py-2 text-[10px] font-semibold transition
-                  {{ $route === 'mapa' ? 'text-[#f97316]' : 'text-[#737373]' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" />
-            </svg>
-            Mapa
-        </a>
+            <div class="mt-4 space-y-2">
+                <a href="{{ route('shifts.create', ['as' => 'business']) }}" wire:navigate
+                    class="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card p-4 text-left transition hover:border-primary">
+                    <span class="grid h-11 w-11 place-items-center rounded-lg bg-primary/15 text-primary">
+                        <x-ui.icon name="store" class="h-5 w-5" />
+                    </span>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold">Sou um Restaurante</p>
+                        <p class="text-[11px] text-muted-foreground">Publicar vaga para meu estabelecimento</p>
+                    </div>
+                </a>
 
-        {{-- Menu --}}
-        <a href="{{ route('menu') }}"
-           class="tap flex flex-col items-center gap-0.5 rounded-xl px-3 py-2 text-[10px] font-semibold transition
-                  {{ $route === 'menu' ? 'text-[#f97316]' : 'text-[#737373]' }}">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
-            Menu
-        </a>
-
+                <a href="{{ route('shifts.create', ['as' => 'courier']) }}" wire:navigate
+                    class="flex w-full items-center gap-3 rounded-xl border border-border/60 bg-card p-4 text-left transition hover:border-primary">
+                    <span class="grid h-11 w-11 place-items-center rounded-lg bg-primary/15 text-primary">
+                        <x-ui.icon name="user" class="h-5 w-5" />
+                    </span>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold">Sou um Motoboy</p>
+                        <p class="text-[11px] text-muted-foreground">Pedir substituição de turno / folga</p>
+                    </div>
+                </a>
+            </div>
+        </div>
     </div>
-</nav>
+</div>

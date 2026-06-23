@@ -1,186 +1,168 @@
 <div class="flex min-h-dvh flex-col px-6 py-10">
     <div class="flex flex-1 flex-col justify-center">
-
-        {{-- Logo + título --}}
+        {{-- Branding --}}
         <div class="mb-8 flex flex-col items-center text-center">
-            <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-[#f97316]/15">
-                <svg class="h-10 w-10 text-[#f97316]" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="1.8">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-                </svg>
-            </div>
-            <h1 class="mt-4 text-3xl font-bold tracking-tight">
-                Moto<span class="text-[#f97316]">Reserva</span>
-            </h1>
-            <p class="mt-2 max-w-xs text-sm text-[#737373]">
+            <x-logo :size="80" :withText="false" />
+            <h1 class="mt-4 font-display text-3xl font-bold tracking-tight">Moto<span class="text-primary">Reserva</span></h1>
+            <p class="mt-2 max-w-xs text-sm text-muted-foreground">
                 Conectando motoboys e comércios para nenhuma entrega ficar para trás.
             </p>
         </div>
 
-        {{-- Tabs Entrar / Criar conta --}}
-        <div class="mb-4 flex rounded-full bg-[#262626] p-1 text-sm">
-            <button wire:click="setMode('signin')" class="flex-1 rounded-full py-2 font-medium transition tap
-                           {{ $mode === 'signin' ? 'bg-[#1a1a1a] text-[#f5f5f5] shadow' : 'text-[#737373]' }}">
+        {{-- Mode toggle --}}
+        <div class="mb-4 flex rounded-full bg-muted p-1 text-sm">
+            <button type="button" wire:click="setMode('signin')"
+                class="flex-1 rounded-full py-2 font-medium tap {{ $mode === 'signin' ? 'bg-background shadow' : 'text-muted-foreground' }}">
                 Entrar
             </button>
-            <button wire:click="setMode('signup')" class="flex-1 rounded-full py-2 font-medium transition tap
-                           {{ $mode === 'signup' ? 'bg-[#1a1a1a] text-[#f5f5f5] shadow' : 'text-[#737373]' }}">
+            <button type="button" wire:click="setMode('signup')"
+                class="flex-1 rounded-full py-2 font-medium tap {{ $mode === 'signup' ? 'bg-background shadow' : 'text-muted-foreground' }}">
                 Criar conta
             </button>
         </div>
 
-        {{-- Erro geral --}}
-        @if($erro)
-            <div class="mb-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-                {{ $erro }}
+        @if ($notice)
+            <div class="mb-4 rounded-xl border border-success/40 bg-success/10 p-3 text-xs font-medium text-success">
+                {{ $notice }}
             </div>
         @endif
 
-        {{-- Flash de sucesso --}}
-        @if(session('success'))
-            <div class="mb-3 rounded-xl border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-400">
-                {{ session('success') }}
-            </div>
-        @endif
+        {{-- Form --}}
+        <form wire:submit="submit" class="space-y-3 rounded-2xl border border-border bg-card p-5">
+            @if ($mode === 'signup')
+                <x-ui.field label="Nome completo">
+                    <x-ui.input wire:model="name" placeholder="João da Silva" />
+                    @error('name') <p class="mt-1 text-[11px] font-medium text-destructive">{{ $message }}</p> @enderror
+                </x-ui.field>
 
-        {{-- Formulário --}}
-        <form wire:submit="submit" class="space-y-3 rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+                <x-ui.field label="CPF">
+                    <x-ui.input wire:model="cpf" inputmode="numeric" placeholder="000.000.000-00"
+                        x-on:input="$el.value = window.maskCPF($el.value)" />
+                    @error('cpf') <p class="mt-1 text-[11px] font-medium text-destructive">{{ $message }}</p> @enderror
+                </x-ui.field>
 
-            @if($mode === 'signup')
-                {{-- Nome --}}
-                <div class="space-y-1.5">
-                    <label class="text-xs text-[#737373]">Nome completo</label>
-                    <input wire:model="nome" type="text" placeholder="João da Silva" />
-                    @error('nome') <p class="mt-1 text-[11px] text-red-400">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.field label="Data de nascimento">
+                    <x-ui.input wire:model="birthDate" inputmode="numeric" placeholder="DD/MM/AAAA"
+                        x-on:input="$el.value = window.maskDate($el.value)" />
+                    @error('birthDate') <p class="mt-1 text-[11px] font-medium text-destructive">{{ $message }}</p> @enderror
+                </x-ui.field>
 
-                {{-- CPF --}}
-                <div class="space-y-1.5">
-                    <label class="text-xs text-[#737373]">CPF</label>
-                    <input wire:model="cpf" type="text" inputmode="numeric" placeholder="000.000.000-00" maxlength="14" />
-                    @error('cpf') <p class="mt-1 text-[11px] text-red-400">{{ $message }}</p> @enderror
-                </div>
+                <x-ui.field label="Telefone / WhatsApp">
+                    <x-ui.input wire:model="phone" inputmode="tel" placeholder="(11) 9 9999-0000"
+                        x-on:input="$el.value = window.maskPhone($el.value)" />
+                    @error('phone') <p class="mt-1 text-[11px] font-medium text-destructive">{{ $message }}</p> @enderror
+                </x-ui.field>
 
-                {{-- Data de nascimento --}}
-                <div class="space-y-1.5">
-                    <label class="text-xs text-[#737373]">Data de nascimento</label>
-                    <input wire:model="nasc" type="text" inputmode="numeric" placeholder="DD/MM/AAAA" maxlength="10" />
-                    @error('nasc') <p class="mt-1 text-[11px] text-red-400">{{ $message }}</p> @enderror
-                </div>
-
-                {{-- Telefone --}}
-                <div class="space-y-1.5">
-                    <label class="text-xs text-[#737373]">Telefone / WhatsApp</label>
-                    <input wire:model="tel" type="tel" placeholder="(11) 9 9999-0000" />
-                    @error('tel') <p class="mt-1 text-[11px] text-red-400">{{ $message }}</p> @enderror
-                </div>
-
-                {{-- Endereço --}}
                 <div class="grid grid-cols-[1fr_90px] gap-2">
-                    <div class="space-y-1.5">
-                        <label class="text-xs text-[#737373]">Rua</label>
-                        <input wire:model="rua" type="text" placeholder="Av. Paulista" />
-                        @error('rua') <p class="mt-1 text-[11px] text-red-400">{{ $message }}</p> @enderror
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-xs text-[#737373]">Número</label>
-                        <input wire:model="numero" type="text" placeholder="100" />
-                    </div>
+                    <x-ui.field label="Rua">
+                        <x-ui.input wire:model="street" placeholder="Av. Paulista" />
+                    </x-ui.field>
+                    <x-ui.field label="Número">
+                        <x-ui.input wire:model="number" placeholder="100" />
+                    </x-ui.field>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
-                    <div class="space-y-1.5">
-                        <label class="text-xs text-[#737373]">Bairro</label>
-                        <input wire:model="bairro" type="text" placeholder="Centro" />
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-xs text-[#737373]">Cidade</label>
-                        <input wire:model="cidade" type="text" placeholder="São Paulo - SP" />
-                    </div>
+                    <x-ui.field label="Bairro">
+                        <x-ui.input wire:model="district" placeholder="Centro" />
+                    </x-ui.field>
+                    <x-ui.field label="Cidade">
+                        <x-ui.input wire:model="city" placeholder="São Paulo - SP" />
+                    </x-ui.field>
                 </div>
             @endif
 
-            {{-- E-mail --}}
-            <div class="space-y-1.5">
-                <label class="text-xs text-[#737373]">E-mail</label>
-                <input wire:model="email" type="email" placeholder="voce@email.com" />
-                @error('email') <p class="mt-1 text-[11px] text-red-400">{{ $message }}</p> @enderror
-            </div>
+            <x-ui.field label="E-mail">
+                <x-ui.input type="email" wire:model="email" placeholder="voce@email.com" />
+                @error('email') <p class="mt-1 text-[11px] font-medium text-destructive">{{ $message }}</p> @enderror
+            </x-ui.field>
 
-            {{-- Senha --}}
-            <div class="space-y-1.5">
-                <label class="text-xs text-[#737373]">Senha</label>
-                <div class="relative">
-                    <input wire:model="senha" type="{{ $showSenha ? 'text' : 'password' }}" placeholder="••••••"
-                        minlength="6" class="pr-10" />
-                    <button type="button" wire:click="$toggle('showSenha')"
-                        class="absolute right-2 top-1/2 -translate-y-1/2 grid h-7 w-7 place-items-center rounded-md text-[#737373] hover:text-[#f5f5f5]">
-                        @if($showSenha)
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                            </svg>
-                        @else
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                        @endif
+            <x-ui.field label="Senha">
+                <div class="relative" x-data="{ show: false }">
+                    <x-ui.input x-bind:type="show ? 'text' : 'password'" wire:model="password" placeholder="••••••" class="pr-10" />
+                    <button type="button" x-on:click="show = !show"
+                        class="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+                        :aria-label="show ? 'Ocultar senha' : 'Mostrar senha'">
+                        <x-ui.icon x-show="!show" name="eye" class="h-4 w-4" />
+                        <x-ui.icon x-show="show" x-cloak name="eye-off" class="h-4 w-4" />
                     </button>
                 </div>
-                @error('senha') <p class="mt-1 text-[11px] text-red-400">{{ $message }}</p> @enderror
-            </div>
+                @error('password') <p class="mt-1 text-[11px] font-medium text-destructive">{{ $message }}</p> @enderror
+            </x-ui.field>
 
-            @if($mode === 'signup')
-                {{-- Confirmar senha --}}
-                <div class="space-y-1.5">
-                    <label class="text-xs text-[#737373]">Confirmar senha</label>
-                    <div class="relative">
-                        <input wire:model="senha2" type="{{ $showSenha2 ? 'text' : 'password' }}" placeholder="••••••"
-                            minlength="6" class="pr-10 {{ ($senha2 && $senha !== $senha2) ? 'border-red-500' : '' }}" />
-                        <button type="button" wire:click="$toggle('showSenha2')"
-                            class="absolute right-2 top-1/2 -translate-y-1/2 grid h-7 w-7 place-items-center rounded-md text-[#737373] hover:text-[#f5f5f5]">
-                            @if($showSenha2)
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                </svg>
-                            @else
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                            @endif
+            @if ($mode === 'signup')
+                <x-ui.field label="Confirmar senha">
+                    <div class="relative" x-data="{ show: false }">
+                        <x-ui.input x-bind:type="show ? 'text' : 'password'" wire:model="passwordConfirmation"
+                            placeholder="••••••" class="pr-10" />
+                        <button type="button" x-on:click="show = !show"
+                            class="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+                            :aria-label="show ? 'Ocultar senha' : 'Mostrar senha'">
+                            <x-ui.icon x-show="!show" name="eye" class="h-4 w-4" />
+                            <x-ui.icon x-show="show" x-cloak name="eye-off" class="h-4 w-4" />
                         </button>
                     </div>
-                    @if($senha2 && $senha !== $senha2)
-                        <p class="mt-1 text-[11px] font-medium text-red-400">As senhas não coincidem.</p>
-                    @endif
-                </div>
+                    @error('passwordConfirmation') <p class="mt-1 text-[11px] font-medium text-destructive">{{ $message }}</p> @enderror
+                </x-ui.field>
             @endif
 
-            {{-- Botão submit --}}
-            <button type="submit" wire:loading.attr="disabled"
-                class="tap flex w-full items-center justify-center gap-2 rounded-xl bg-[#f97316] px-4 py-3 font-semibold text-white transition hover:bg-[#ea6c0a] disabled:opacity-50 glow-orange">
-                <span wire:loading wire:target="submit"
-                    class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                <svg wire:loading.remove wire:target="submit" class="h-4 w-4" fill="none" stroke="currentColor"
-                    stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                </svg>
-                {{ $mode === 'signup' ? 'Criar conta' : 'Entrar' }}
-            </button>
+            <x-ui.button type="submit" size="lg" class="w-full glow-orange" wire:loading.attr="disabled" wire:target="submit">
+                <span wire:loading.remove wire:target="submit" class="inline-flex items-center gap-2">
+                    <x-ui.icon name="mail" class="h-4 w-4" />
+                    {{ $mode === 'signup' ? 'Criar conta' : 'Entrar' }}
+                </span>
+                <span wire:loading wire:target="submit" class="inline-flex items-center gap-2">
+                    <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity="0.25" stroke-width="3" />
+                        <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+                    </svg>
+                    Aguarde…
+                </span>
+            </x-ui.button>
         </form>
 
-        @if($mode === 'signup')
-            <p class="mt-4 text-center text-[11px] text-[#737373]">
+        {{-- Divider --}}
+        <div class="my-5 flex items-center gap-3 text-xs text-muted-foreground">
+            <div class="h-px flex-1 bg-border"></div>
+            ou
+            <div class="h-px flex-1 bg-border"></div>
+        </div>
+
+        {{-- Google --}}
+        <x-ui.button variant="outline" size="lg" class="w-full" wire:click="google">
+            <svg class="mr-2 h-4 w-4" viewBox="0 0 48 48" aria-hidden="true">
+                <path fill="#FFC107"
+                    d="M43.6 20.5H42V20H24v8h11.3C33.7 32.4 29.3 35.5 24 35.5c-6.4 0-11.5-5.1-11.5-11.5S17.6 12.5 24 12.5c2.9 0 5.5 1.1 7.5 2.9l5.7-5.7C33.9 6.4 29.2 4.5 24 4.5 13.2 4.5 4.5 13.2 4.5 24S13.2 43.5 24 43.5 43.5 34.8 43.5 24c0-1.2-.1-2.3-.4-3.5z" />
+                <path fill="#FF3D00"
+                    d="M6.3 14.7l6.6 4.8C14.8 16 19 12.5 24 12.5c2.9 0 5.5 1.1 7.5 2.9l5.7-5.7C33.9 6.4 29.2 4.5 24 4.5 16.3 4.5 9.7 8.9 6.3 14.7z" />
+                <path fill="#4CAF50"
+                    d="M24 43.5c5.2 0 9.8-1.9 13.3-5l-6.1-5c-2 1.4-4.5 2.3-7.2 2.3-5.3 0-9.7-3.1-11.3-7.5l-6.5 5C9.6 39 16.2 43.5 24 43.5z" />
+                <path fill="#1976D2"
+                    d="M43.6 20.5H42V20H24v8h11.3c-.7 2-2 3.8-3.8 5.1l6.1 5c4.3-3.9 7-9.7 7-16.1 0-1.2-.1-2.3-.4-3.5z" />
+            </svg>
+            Continuar com Google
+        </x-ui.button>
+
+        {{-- Test mode --}}
+        <div class="mt-6 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-primary">Modo teste</p>
+            <p class="mt-1 text-xs text-muted-foreground">
+                Entre instantaneamente sem e-mail nem senha. Use apenas para testar o app.
+            </p>
+            <div class="mt-3 flex gap-2">
+                <x-ui.input wire:model="testName" placeholder="Nome de usuário" maxlength="40" />
+                <x-ui.button type="button" wire:click="testLogin" class="shrink-0" wire:loading.attr="disabled"
+                    wire:target="testLogin">
+                    <x-ui.icon name="zap" class="mr-1.5 h-4 w-4" />
+                    Entrar
+                </x-ui.button>
+            </div>
+        </div>
+
+        @if ($mode === 'signup')
+            <p class="mt-4 text-center text-[11px] text-muted-foreground">
                 Ao criar conta você concorda com os Termos e a Política de Privacidade.
             </p>
         @endif
-
     </div>
 </div>

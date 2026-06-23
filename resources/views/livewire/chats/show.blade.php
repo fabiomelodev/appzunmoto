@@ -1,71 +1,115 @@
-{{-- resources/views/livewire/chats/show.blade.php --}}
-{{-- Polling a cada 3s para simular tempo real (substituir por Echo/Pusher em produção) --}}
-<div class="flex flex-col h-dvh" wire:poll.3s>
+@php
+    use Illuminate\Support\Str;
+    use Illuminate\Support\Carbon;
+    $otherName = $other?->name ?: 'Usuário';
+    $firstName = Str::of($otherName)->explode(' ')->first();
+@endphp
 
+<div class="flex min-h-[calc(100dvh-5rem)] flex-col" wire:poll.6s>
     {{-- Header --}}
-    <header class="flex items-center gap-3 border-b border-[#2a2a2a] bg-[#0d0d0d]/90 px-4 py-3 backdrop-blur shrink-0">
-        <a href="{{ route('chats.index') }}"
-           class="grid h-9 w-9 place-items-center rounded-xl border border-[#2a2a2a] bg-[#161616]">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-            </svg>
-        </a>
-        <img src="{{ $outro?->foto_url ?? 'https://ui-avatars.com/api/?name='.urlencode($outro?->nome ?? '?').'&background=f97316&color=fff' }}"
-             alt="" class="h-9 w-9 rounded-full bg-[#1f1f1f] object-cover" />
-        <div class="min-w-0 flex-1">
-            <p class="truncate font-semibold text-sm">{{ $outro?->nome ?? '—' }}</p>
-            <p class="truncate text-[10px] text-[#737373]">{{ $chat->vaga?->local ?? '' }}</p>
-        </div>
+    <header class="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur">
+        <button type="button" x-on:click="window.history.back()" class="grid h-9 w-9 place-items-center rounded-lg">
+            <x-ui.icon name="arrow-left" class="h-4 w-4" />
+        </button>
+        <button type="button" wire:click="$dispatch('open-profile', { userId: '{{ $otherId }}' })" class="shrink-0 rounded-full transition active:scale-95">
+            @if ($other?->photo_url)
+                <img src="{{ $other->photo_url }}" alt="" class="h-10 w-10 rounded-full bg-secondary object-cover" />
+            @else
+                <span class="grid h-10 w-10 place-items-center rounded-full bg-secondary text-sm font-bold text-muted-foreground">{{ Str::upper(Str::substr($otherName, 0, 1)) }}</span>
+            @endif
+        </button>
+        <button type="button" wire:click="$dispatch('open-profile', { userId: '{{ $otherId }}' })" class="min-w-0 flex-1 text-left">
+            <div class="truncate text-sm font-semibold hover:text-primary">{{ $otherName }}</div>
+        </button>
     </header>
 
-    {{-- Mensagens --}}
-    <div class="flex-1 overflow-y-auto px-4 py-4 space-y-2" id="msgs">
-        @forelse($mensagens as $msg)
-            @php $minha = $msg->autor_id === $userId; @endphp
-            <div class="flex {{ $minha ? 'justify-end' : 'justify-start' }}">
-                <div class="max-w-[78%] rounded-2xl px-4 py-2.5 text-sm
-                            {{ $minha ? 'rounded-br-sm bg-[#f97316] text-white' : 'rounded-bl-sm bg-[#1e1e1e] text-[#f5f5f5]' }}">
-                    <p>{{ $msg->texto }}</p>
-                    <p class="mt-1 text-[10px] {{ $minha ? 'text-white/60' : 'text-[#737373]' }} text-right">
-                        {{ $msg->created_at?->format('H:i') }}
-                    </p>
+    {{-- Messages --}}
+    <div class="flex-1 space-y-2 overflow-y-auto px-4 py-4" x-data x-init="$nextTick(() => $el.scrollTop = $el.scrollHeight)">
+        @if ($messages->isEmpty())
+            <div class="mx-auto mt-10 max-w-xs rounded-2xl bg-surface px-4 py-3 text-center text-xs text-muted-foreground">
+                Diga olá para {{ $firstName }} 👋
+            </div>
+        @endif
+        @foreach ($messages as $m)
+            @php $mine = $m->author_id === $me; @endphp
+            <div class="flex {{ $mine ? 'justify-end' : 'justify-start' }}">
+                <div class="max-w-[78%] rounded-2xl px-3.5 py-2 text-sm {{ $mine ? 'rounded-br-md bg-primary text-primary-foreground' : 'rounded-bl-md bg-surface text-foreground' }}">
+                    <div class="whitespace-pre-wrap break-words">{{ $m->body }}</div>
+                    <div class="mt-0.5 text-right text-[9px] {{ $mine ? 'text-primary-foreground/70' : 'text-muted-foreground' }}">{{ Carbon::parse($m->created_at)->format('H:i') }}</div>
                 </div>
             </div>
-        @empty
-            <p class="text-center text-sm text-[#737373] py-8">Comece a conversa!</p>
-        @endforelse
+        @endforeach
     </div>
 
-    {{-- Input de mensagem --}}
-    <div class="shrink-0 border-t border-[#2a2a2a] bg-[#0d0d0d] px-4 py-3 pb-safe">
-        <div class="flex items-end gap-2">
-            <textarea wire:model="texto"
-                      wire:keydown.enter.prevent="enviar"
-                      placeholder="Digite uma mensagem…"
-                      rows="1"
-                      class="flex-1 resize-none rounded-2xl bg-[#1e1e1e] border border-[#2a2a2a] px-4 py-2.5 text-sm focus:border-[#f97316]/60 focus:ring-0"
-                      style="max-height:120px"></textarea>
-            <button wire:click="enviar"
-                    wire:loading.attr="disabled"
-                    class="tap grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f97316] text-white disabled:opacity-50 glow-orange">
-                <svg class="h-4 w-4 rotate-90" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                </svg>
-            </button>
+    {{-- Review panel --}}
+    @if ($canReview)
+        <div class="space-y-2 border-t border-border bg-surface/80 px-4 py-3">
+            <p class="text-xs font-semibold">Vaga concluída — avalie {{ $firstName }}:</p>
+            <div class="flex gap-1">
+                @for ($i = 1; $i <= 5; $i++)
+                    <button type="button" wire:click="setRating({{ $i }})">
+                        <x-ui.icon name="star" class="h-7 w-7 {{ $i <= $rating ? 'text-primary fill-current' : 'text-muted-foreground/40' }}" />
+                    </button>
+                @endfor
+            </div>
+            <x-ui.textarea wire:model="comment" placeholder="Comentário (opcional)" rows="2" />
+            <x-ui.button size="sm" class="w-full" wire:click="submitReview" :disabled="$rating === 0">Enviar avaliação</x-ui.button>
         </div>
-    </div>
+    @endif
 
+    {{-- Partnership panel --}}
+    @if ($shift)
+        <div class="space-y-2 border-t border-border bg-surface/80 px-4 py-2.5">
+            @if ($conflict && ! $confirmedHere)
+                <div class="flex items-start gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-[11px] font-medium text-amber-300">
+                    <x-ui.icon name="alert-triangle" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>
+                        @if (! $isCreator)
+                            Você já possui uma parceria confirmada neste mesmo horário com "{{ $conflict->venue }}".
+                        @else
+                            Este motoboy já confirmou parceria com outra vaga neste mesmo horário.
+                        @endif
+                    </span>
+                </div>
+            @endif
+
+            @if ($confirmedHere)
+                <div class="flex items-center justify-center gap-2 rounded-xl bg-success/15 px-3 py-2 text-xs font-semibold text-success">
+                    <x-ui.icon name="check-circle" class="h-4 w-4" /> Parceria confirmada
+                </div>
+            @elseif (! $courierAccepted)
+                <p class="text-center text-[11px] text-muted-foreground">Aguardando ser aceito na vaga: <span class="text-foreground">{{ $shift->venue }}</span></p>
+            @else
+                @php
+                    $statusMsg = $alreadyConfirmed
+                        ? ($otherConfirmed ? 'Aguardando processamento…' : ($isCreator ? 'Aguardando confirmação do motoboy' : 'Aguardando confirmação do contratante'))
+                        : $confirmCount.'/2 confirmações';
+                    $blocked = $conflict || $expired;
+                @endphp
+                <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="truncate text-[11px] font-semibold">{{ $shift->venue }}</p>
+                        <p class="text-[10px] text-muted-foreground">{{ $statusMsg }}</p>
+                    </div>
+                    <x-ui.button size="sm" class="shrink-0" wire:click="confirmPartnership" :disabled="$alreadyConfirmed || $blocked">
+                        <x-ui.icon name="handshake" class="mr-1.5 h-3.5 w-3.5" />
+                        {{ $alreadyConfirmed ? 'Aguardando' : 'Confirmar Parceria' }}
+                    </x-ui.button>
+                </div>
+            @endif
+        </div>
+    @endif
+
+    {{-- Composer --}}
+    <form wire:submit="send" class="flex items-center gap-2 border-t border-border bg-surface/95 p-3">
+        <input type="text" wire:model="body" @disabled($expired)
+            placeholder="{{ $expired ? 'Conversa encerrada (somente leitura)' : 'Mensagem' }}"
+            class="h-10 flex-1 rounded-md border border-input bg-transparent px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" />
+        <button type="submit" @disabled($expired)
+            class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-50">
+            <x-ui.icon name="send" class="h-4 w-4" />
+        </button>
+    </form>
+
+    <livewire:profile-modal />
 </div>
-
-@push('scripts')
-<script>
-    // Auto-scroll para o final das mensagens
-    function scrollToBottom() {
-        const el = document.getElementById('msgs');
-        if (el) el.scrollTop = el.scrollHeight;
-    }
-    document.addEventListener('livewire:navigated', scrollToBottom);
-    document.addEventListener('livewire:update', scrollToBottom);
-    scrollToBottom();
-</script>
-@endpush

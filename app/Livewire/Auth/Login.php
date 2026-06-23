@@ -1,143 +1,178 @@
 <?php
-// app/Livewire/Auth/Login.php
 
 namespace App\Livewire\Auth;
 
 use App\Models\User;
-use App\Models\Profile;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Livewire\Component;
 
+#[Layout('components.layouts.guest')]
+#[Title('Entrar — MotoReserva')]
 class Login extends Component
 {
-    // Modo: 'signin' ou 'signup'
+    /** 'signin' | 'signup' */
     public string $mode = 'signin';
 
-    // Campos comuns
     public string $email = '';
-    public string $senha = '';
-    public bool $showSenha = false;
+    public string $password = '';
+    public string $passwordConfirmation = '';
 
-    // Campos só do cadastro
-    public string $nome = '';
+    // signup-only
+    public string $name = '';
     public string $cpf = '';
-    public string $nasc = '';
-    public string $tel = '';
-    public string $rua = '';
-    public string $numero = '';
-    public string $bairro = '';
-    public string $cidade = '';
-    public string $senha2 = '';
-    public bool $showSenha2 = false;
+    public string $birthDate = '';
+    public string $phone = '';
+    public string $street = '';
+    public string $number = '';
+    public string $district = '';
+    public string $city = '';
 
-    public string $erro = '';
-    public bool $busy = false;
+    public string $testName = 'Usuário';
 
-    // Regras de validação dinâmicas
-    protected function rules(): array
+    /** Inline info/success message (not a validation error). */
+    public ?string $notice = null;
+
+    public function mount(): void
     {
-        if ($this->mode === 'signin') {
-            return [
-                'email' => 'required|email',
-                'senha' => 'required|min:6',
-            ];
-        }
-
-        return [
-            'nome' => 'required|min:2',
-            'cpf' => 'required',
-            'nasc' => 'required',
-            'tel' => 'required',
-            'rua' => 'required|min:2',
-            'numero' => 'required',
-            'bairro' => 'required|min:2',
-            'cidade' => 'required|min:2',
-            'email' => 'required|email|unique:users,email',
-            'senha' => 'required|min:6|same:senha2',
-            'senha2' => 'required|min:6',
-        ];
+        $this->email = (string) request('email', '');
     }
 
     public function setMode(string $mode): void
     {
-        $this->mode = $mode;
-        $this->erro = '';
-        $this->reset(['email', 'senha', 'senha2', 'nome', 'cpf', 'nasc', 'tel', 'rua', 'numero', 'bairro', 'cidade']);
+        $this->mode = $mode === 'signup' ? 'signup' : 'signin';
+        $this->notice = null;
+        $this->resetErrorBag();
+        $this->reset('password', 'passwordConfirmation', 'name', 'cpf', 'birthDate', 'phone', 'street', 'number', 'district', 'city');
     }
 
-    public function submit(): void
+    public function submit()
     {
-        $this->erro = '';
-        $this->validate();
+        $this->notice = null;
 
-        $this->busy = true;
-
-        if ($this->mode === 'signin') {
-            $this->entrar();
-        } else {
-            $this->cadastrar();
-        }
-
-        $this->busy = false;
+        return $this->mode === 'signup' ? $this->register() : $this->signIn();
     }
 
-    private function entrar()
+    protected function signIn()
     {
-        if (!Auth::attempt(['email' => $this->email, 'password' => $this->senha])) {
-            $this->erro = 'E-mail ou senha incorretos.';
-            return;
+        $this->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'min:6'],
+        ]);
+
+        if (! Auth::attempt(['email' => $this->email, 'password' => $this->password])) {
+            $this->addError('email', 'E-mail ou senha incorretos.');
+
+            return null;
         }
 
         session()->regenerate();
 
-        return redirect(route('vagas.index'));
+        return $this->redirect(route('shifts.index'), navigate: true);
     }
 
-    private function cadastrar(): void
+    protected function register()
     {
-        // Limpa CPF e telefone para salvar só dígitos
-        $cpfLimpo = preg_replace('/\D/', '', $this->cpf);
-        $telLimpo = preg_replace('/\D/', '', $this->tel);
+        $this->validate([
+            'name' => ['required', 'min:2'],
+            'cpf' => ['required'],
+            'birthDate' => ['required'],
+            'phone' => ['required'],
+            'street' => ['required', 'min:2'],
+            'number' => ['required'],
+            'district' => ['required', 'min:2'],
+            'city' => ['required', 'min:2'],
+            'email' => ['required', 'email', 'unique:users,email'],
+            'password' => ['required', 'min:6', 'same:passwordConfirmation'],
+            'passwordConfirmation' => ['required', 'min:6'],
+        ], [
+            'password.same' => 'As senhas não coincidem.',
+        ]);
 
-        // Converte data BR → ISO
-        $nascISO = null;
-        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $this->nasc, $m)) {
-            $nascISO = "{$m[3]}-{$m[2]}-{$m[1]}";
+        $cpfDigits = preg_replace('/\D/', '', $this->cpf);
+        $phoneDigits = preg_replace('/\D/', '', $this->phone);
+        $birth = $this->parseBrDate($this->birthDate);
+
+        if (strlen($cpfDigits) !== 11) {
+            $this->addError('cpf', 'CPF inválido.');
+
+            return null;
+        }
+        if (strlen($phoneDigits) < 10) {
+            $this->addError('phone', 'Telefone inválido.');
+
+            return null;
+        }
+        if (! $birth) {
+            $this->addError('birthDate', 'Data de nascimento inválida (use DD/MM/AAAA).');
+
+            return null;
         }
 
+        DB::transaction(function () use ($cpfDigits, $phoneDigits, $birth) {
+            $user = User::create([
+                'name' => trim($this->name),
+                'email' => $this->email,
+                'password' => $this->password,
+            ]);
+
+            // UserObserver already created a base profile + settings.
+            $user->profile()->update([
+                'role' => 'courier',
+                'name' => trim($this->name),
+                'cpf' => $cpfDigits,
+                'birth_date' => $birth,
+                'phone' => $phoneDigits,
+                'street' => trim($this->street),
+                'street_number' => trim($this->number),
+                'district' => trim($this->district),
+                'city' => trim($this->city),
+            ]);
+        });
+
+        // Mirror the original app: do not auto-login; switch to sign-in.
+        $this->mode = 'signin';
+        $this->reset('password', 'passwordConfirmation', 'name', 'cpf', 'birthDate', 'phone', 'street', 'number', 'district', 'city');
+        $this->notice = 'Cadastro realizado com sucesso! Faça login para entrar.';
+
+        return null;
+    }
+
+    public function testLogin()
+    {
+        $name = trim($this->testName) ?: 'Usuário';
+
         $user = User::create([
-            'name' => trim($this->nome),
-            'email' => $this->email,
-            'password' => Hash::make($this->senha),
+            'name' => $name,
+            'email' => 'guest_'.Str::lower(Str::random(16)).'@motoreserva.test',
+            'password' => Str::random(40),
         ]);
 
-        // Cria o perfil vinculado
-        Profile::create([
-            'id' => $user->id,
-            'tipo' => 'motoboy',
-            'nome' => trim($this->nome),
-            'cpf' => $cpfLimpo,
-            'data_nascimento' => $nascISO,
-            'telefone' => $telLimpo,
-            'endereco_rua' => trim($this->rua),
-            'endereco_numero' => trim($this->numero),
-            'endereco_bairro' => trim($this->bairro),
-            'cidade' => trim($this->cidade),
-        ]);
-
-        // Faz login direto após cadastro
         Auth::login($user);
         session()->regenerate();
 
-        session()->flash('success', 'Cadastro realizado com sucesso!');
-        $this->redirect(route('vagas.index'), navigate: true);
+        return $this->redirect(route('shifts.index'), navigate: true);
+    }
+
+    public function google(): void
+    {
+        $this->notice = 'Login com Google ainda não está configurado neste ambiente.';
+    }
+
+    protected function parseBrDate(string $value): ?string
+    {
+        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', trim($value), $m)) {
+            return "{$m[3]}-{$m[2]}-{$m[1]}";
+        }
+
+        return null;
     }
 
     public function render()
     {
-        return view('livewire.auth.login')
-            ->layout('layouts.guest');
-        // ->title('Entrar — MotoReserva');
+        return view('livewire.auth.login');
     }
 }

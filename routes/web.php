@@ -1,77 +1,56 @@
 <?php
 // routes/web.php
 
-use Illuminate\Support\Facades\Route;
+use App\Livewire\Addresses\Choose as AddressesChoose;
 use App\Livewire\Auth\Login;
-use App\Livewire\Vagas\Index as VagasIndex;
-use App\Livewire\Vagas\Show as VagasShow;
-use App\Livewire\Vagas\Nova as VagasNova;
 use App\Livewire\Chats\Index as ChatsIndex;
 use App\Livewire\Chats\Show as ChatsShow;
-use App\Livewire\Perfil;
+use App\Livewire\Notifications\Page as NotificationsPage;
+use App\Livewire\Shifts\Create as ShiftsCreate;
+use App\Livewire\Shifts\Index as ShiftsIndex;
+use App\Livewire\Shifts\Show as ShiftsShow;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
-// ──────────────────────────────────────────────
-// Rotas públicas (autenticação)
-// ──────────────────────────────────────────────
+// ── Public (guest) ───────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
     Route::get('/login', Login::class)->name('login');
 });
 
 Route::post('/logout', function () {
-    auth()->logout();
+    Auth::logout();
     request()->session()->invalidate();
     request()->session()->regenerateToken();
+
     return redirect()->route('login');
 })->middleware('auth')->name('logout');
 
-// ──────────────────────────────────────────────
-// Rotas protegidas
-// ──────────────────────────────────────────────
-// Route::middleware('auth')->group(function () {
+// ── Authenticated app ────────────────────────────────────────────
+Route::middleware('auth')->group(function () {
+    Route::redirect('/', '/shifts');
 
-// Redireciona / para /vagas
-Route::get('/', fn() => redirect()->route('vagas.index'));
+    // Shifts
+    Route::get('/shifts', ShiftsIndex::class)->name('shifts.index');
+    Route::get('/shifts/new', ShiftsCreate::class)->name('shifts.create');     // static before {id}
+    Route::get('/shifts/{id}/edit', ShiftsCreate::class)->name('shifts.edit');
+    Route::get('/shifts/{id}', ShiftsShow::class)->name('shifts.show');
 
-// Vagas
-Route::get('/vagas', VagasIndex::class)->name('vagas.index');
-Route::get('/vagas/nova', VagasNova::class)->name('vagas.nova');
-Route::get('/vagas/{id}', VagasShow::class)->name('vagas.show');
+    // Addresses
+    Route::get('/addresses/choose', AddressesChoose::class)->name('addresses.choose');
 
-// Chats
-Route::get('/chats', ChatsIndex::class)->name('chats.index');
-Route::get('/chats/{id}', ChatsShow::class)->name('chats.show');
+    // Partnerships (chats) + notifications
+    Route::get('/chats', ChatsIndex::class)->name('chats.index');
+    Route::get('/chats/{id}', ChatsShow::class)->name('chats.show');
+    Route::get('/notifications', NotificationsPage::class)->name('notifications');
 
-// Perfil
-Route::get('/perfil', Perfil::class)->name('perfil');
-
-// Mapa (placeholder — adicionar lógica de mapa depois)
-Route::get('/mapa', fn() => view('livewire.mapa'))->name('mapa');
-
-// Menu
-Route::get('/menu', fn() => view('livewire.menu'))->name('menu');
-
-// Histórico
-Route::get('/historico', fn() => view('livewire.historico'))->name('historico');
-
-// Favoritos
-Route::get('/favoritos', fn() => view('livewire.favoritos'))->name('favoritos');
-
-// Notificações
-Route::get('/notificacoes', fn() => view('livewire.notificacoes'))->name('notificacoes');
-
-// Documentos
-Route::get('/documentos', fn() => view('livewire.documentos'))->name('documentos');
-
-// Endereços
-Route::get('/enderecos', fn() => view('livewire.enderecos'))->name('enderecos');
-
-// Veículo
-Route::get('/veiculo', fn() => view('livewire.veiculo'))->name('veiculo');
-
-// Configurações
-Route::get('/configuracoes', fn() => view('livewire.configuracoes'))->name('configuracoes');
-
-// Ajuda
-Route::get('/ajuda', fn() => view('livewire.ajuda'))->name('ajuda');
-
-// });
+    // Placeholders — rebuilt in later phases.
+    Route::view('/map', 'placeholder', ['title' => 'Mapa'])->name('map');
+    Route::view('/menu', 'placeholder', ['title' => 'Menu'])->name('menu');
+    Route::view('/profile', 'placeholder', ['title' => 'Perfil'])->name('profile');
+    Route::view('/vehicle', 'placeholder', ['title' => 'Veículo'])->name('vehicle');
+    Route::view('/history', 'placeholder', ['title' => 'Histórico'])->name('history');
+    Route::view('/documents', 'placeholder', ['title' => 'Documentos'])->name('documents');
+    Route::view('/addresses', 'placeholder', ['title' => 'Endereços'])->name('addresses');
+    Route::view('/settings', 'placeholder', ['title' => 'Configurações'])->name('settings');
+    Route::view('/help', 'placeholder', ['title' => 'Ajuda'])->name('help');
+});

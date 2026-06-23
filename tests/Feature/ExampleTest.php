@@ -8,12 +8,18 @@ use Tests\TestCase;
 class ExampleTest extends TestCase
 {
     /**
-     * A basic test example.
+     * Guests hitting the app root are redirected to the login screen.
      */
-    public function test_the_application_returns_a_successful_response(): void
+    public function test_guest_root_redirects_to_login(): void
     {
-        $response = $this->get('/');
+        $this->get('/')->assertRedirect(route('login'));
+    }
 
-        $response->assertStatus(200);
+    /**
+     * The login screen renders for guests.
+     */
+    public function test_login_screen_is_reachable(): void
+    {
+        $this->get('/login')->assertOk()->assertSee('MotoReserva');
     }
 }

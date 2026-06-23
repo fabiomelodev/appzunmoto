@@ -1,21 +1,49 @@
 <?php
-// app/Models/Review.php
 
 namespace App\Models;
 
+use App\Observers\ReviewObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+#[ObservedBy([ReviewObserver::class])]
 class Review extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['vaga_id','autor_id','alvo_id','nota','comentario'];
+    public $timestamps = false;
 
-    protected $casts = ['nota' => 'integer'];
+    protected $fillable = [
+        'shift_id',
+        'author_id',
+        'target_id',
+        'rating',
+        'comment',
+    ];
 
-    public function vaga(): BelongsTo   { return $this->belongsTo(Vaga::class, 'vaga_id'); }
-    public function autor(): BelongsTo  { return $this->belongsTo(User::class, 'autor_id'); }
-    public function alvo(): BelongsTo   { return $this->belongsTo(User::class, 'alvo_id'); }
+    protected $attributes = [
+        'comment' => '',
+    ];
+
+    protected $casts = [
+        'rating' => 'integer',
+        'created_at' => 'datetime',
+    ];
+
+    public function shift(): BelongsTo
+    {
+        return $this->belongsTo(Shift::class, 'shift_id');
+    }
+
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'author_id');
+    }
+
+    public function target(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'target_id');
+    }
 }

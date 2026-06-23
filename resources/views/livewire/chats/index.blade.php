@@ -1,42 +1,89 @@
-{{-- resources/views/livewire/chats/index.blade.php --}}
-<div class="pb-nav">
-    <header class="sticky top-0 z-10 flex items-center gap-3 border-b border-[#2a2a2a] bg-[#0d0d0d]/90 px-4 py-4 backdrop-blur">
-        <h1 class="text-xl font-bold">Chats</h1>
-    </header>
+@php
+    $conversations = $this->conversations;
+    $myShifts = $this->myShifts;
+@endphp
 
-    <div class="px-4 pt-4 space-y-2">
-        @forelse($chats as $chat)
-            @php
-                $outroId  = $chat->outroParticipante($userId);
-                $outro    = $profiles[$outroId] ?? null;
-                $ultima   = $chat->mensagens->first();
-                $nomeOutro = $outro?->nome ?? '—';
-                $fotoOutro = $outro?->foto_url ?? 'https://ui-avatars.com/api/?name='.urlencode($nomeOutro).'&background=f97316&color=fff';
-            @endphp
-            <a href="{{ route('chats.show', $chat->id) }}"
-               class="tap flex items-center gap-3 rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-4 transition hover:border-[#f97316]/30">
-                <img src="{{ $fotoOutro }}" alt="" class="h-12 w-12 shrink-0 rounded-full bg-[#1f1f1f] object-cover" />
-                <div class="min-w-0 flex-1">
-                    <div class="flex items-center justify-between">
-                        <p class="truncate font-semibold text-sm">{{ $nomeOutro }}</p>
-                        @if($ultima)
-                            <span class="shrink-0 text-[10px] text-[#737373]">
-                                {{ $ultima->created_at?->diffForHumans(null, true) }}
-                            </span>
-                        @endif
-                    </div>
-                    <p class="mt-0.5 truncate text-xs text-[#737373]">
-                        {{ $ultima?->texto ?? 'Vaga: '.$chat->vaga?->local }}
-                    </p>
-                </div>
-            </a>
-        @empty
-            <div class="rounded-2xl border border-dashed border-[#2a2a2a] p-10 text-center text-sm text-[#737373]">
-                <svg class="mx-auto mb-2 h-6 w-6 opacity-60" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-                </svg>
-                Nenhuma conversa ainda.
-            </div>
-        @endforelse
+<div class="px-4 pb-6 pt-6">
+    {{-- Header --}}
+    <div class="flex items-center gap-2">
+        <span class="grid h-9 w-9 place-items-center rounded-xl bg-primary/15 text-primary">
+            <x-ui.icon name="handshake" class="h-4 w-4" />
+        </span>
+        <div>
+            <h1 class="font-display text-2xl font-bold leading-tight">Parcerias</h1>
+            <p class="text-xs text-muted-foreground">Negocie e confirme suas vagas.</p>
+        </div>
     </div>
+
+    {{-- Tabs --}}
+    <div class="mt-5 grid h-11 w-full grid-cols-2 gap-1 rounded-xl bg-surface p-1">
+        <button wire:click="setTab('conversas')"
+            class="rounded-lg text-sm font-semibold transition {{ $tab === 'conversas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Conversas</button>
+        <button wire:click="setTab('candidaturas')"
+            class="rounded-lg text-sm font-semibold transition {{ $tab === 'candidaturas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Candidaturas</button>
+    </div>
+
+    @if ($tab === 'conversas')
+        <div class="mt-4 space-y-4">
+            <section>
+                <x-section-title :count="$conversations['active']->count()">Conversas ativas</x-section-title>
+                <div class="mt-2 space-y-2">
+                    @forelse ($conversations['active'] as $item)
+                        @include('livewire.chats.partials.conversation-row', ['item' => $item])
+                    @empty
+                        <x-empty-state icon="message-circle" text="Nenhuma conversa ativa." />
+                    @endforelse
+                </div>
+            </section>
+
+            @if ($conversations['expired']->isNotEmpty())
+                <section>
+                    <x-section-title :count="$conversations['expired']->count()">Histórico / Encerradas</x-section-title>
+                    <div class="mt-2 space-y-2">
+                        @foreach ($conversations['expired'] as $item)
+                            @include('livewire.chats.partials.conversation-row', ['item' => $item])
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+        </div>
+    @else
+        <div class="mt-4 space-y-4">
+            <section>
+                <x-section-title :count="$myShifts['active']->count()">Vagas ativas</x-section-title>
+                <div class="mt-2 space-y-2">
+                    @forelse ($myShifts['active'] as $shift)
+                        @include('livewire.chats.partials.shift-row', ['shift' => $shift, 'expired' => false, 'openShift' => $openShift])
+                    @empty
+                        <x-empty-state icon="users" text="Sem vagas ativas no momento." />
+                    @endforelse
+                </div>
+            </section>
+
+            @if ($myShifts['expired']->isNotEmpty())
+                <section>
+                    <x-section-title :count="$myShifts['expired']->count()">Expiradas / Concluídas</x-section-title>
+                    <div class="mt-2 space-y-2">
+                        @foreach ($myShifts['expired'] as $shift)
+                            @include('livewire.chats.partials.shift-row', ['shift' => $shift, 'expired' => true, 'openShift' => $openShift])
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+        </div>
+    @endif
+
+    {{-- Decline confirmation --}}
+    @if ($declineTarget)
+        <x-ui.modal wire:click.self="$set('declineTarget', null)">
+            <h2 class="font-display text-lg font-bold">Recusar candidato</h2>
+            <p class="mt-2 text-sm text-muted-foreground">Tem certeza que quer recusar {{ $declineTarget['name'] }}?</p>
+            <div class="mt-4 flex justify-end gap-2">
+                <x-ui.button variant="outline" wire:click="$set('declineTarget', null)">Cancelar</x-ui.button>
+                <x-ui.button variant="destructive" wire:click="confirmDecline">Recusar</x-ui.button>
+            </div>
+        </x-ui.modal>
+    @endif
+
+    <livewire:profile-modal />
 </div>
