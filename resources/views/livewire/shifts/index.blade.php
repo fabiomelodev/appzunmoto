@@ -15,7 +15,7 @@
         toggleBenefit(b) { this.draft.benefits = this.draft.benefits.includes(b) ? this.draft.benefits.filter(x => x !== b) : [...this.draft.benefits, b]; },
         apply() { $wire.applyFilters(this.draft); this.filtersOpen = false; },
         clear() { this.draft = JSON.parse(JSON.stringify(this.initial)); $wire.clearFilters(); },
-    }">
+    }" x-init="window.mrRequestGeo && window.mrRequestGeo()">
     {{-- Header --}}
     <header class="flex items-center justify-between gap-2">
         <x-logo />

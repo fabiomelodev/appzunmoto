@@ -51,7 +51,7 @@
 
             <p class="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground">
                 <x-ui.icon name="map-pin" class="h-3 w-3" />
-                <span class="truncate">{{ $shift->region }}</span>
+                <span class="truncate"><span x-data x-text="(() => { const d = window.mrDistance($store.geo, {{ $shift->lat }}, {{ $shift->lng }}); return d ? d + ' · ' : ''; })()"></span>{{ $shift->region }}</span>
             </p>
         </div>
     </div>
