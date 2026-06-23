@@ -6,6 +6,7 @@ use App\Models\Shift;
 use App\Models\ShiftContact;
 use App\Models\UserAddress;
 use App\Support\Catalog;
+use App\Support\Geocoder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -207,6 +208,16 @@ class Create extends Component
             $this->dispatch('toast', message: 'Vaga atualizada!');
 
             return $this->redirect(route('shifts.show', $existing->id), navigate: true);
+        }
+
+        // Last-resort geocode if the chosen address/clone carried no coordinates,
+        // so the shift still lands on the map.
+        if ((! $this->lat || ! $this->lng) && ! app()->runningUnitTests()) {
+            $coords = Geocoder::forShift($this->addressLine, $this->region, null, $this->cep);
+            if ($coords) {
+                $this->lat = $coords['lat'];
+                $this->lng = $coords['lng'];
+            }
         }
 
         $shift = Shift::create($data + [

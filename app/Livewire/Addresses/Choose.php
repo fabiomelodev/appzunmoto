@@ -77,6 +77,17 @@ class Choose extends Component
             return null;
         }
 
+        // Self-heal addresses saved before geocoding worked, so the published
+        // shift inherits coordinates and shows up on the map.
+        if (! app()->runningUnitTests() && (! $address->lat || ! $address->lng)) {
+            $coords = \App\Support\Geocoder::forAddress(
+                $address->street, $address->number, $address->district, $address->city, $address->postal_code,
+            );
+            if ($coords) {
+                $address->update(['lat' => $coords['lat'], 'lng' => $coords['lng']]);
+            }
+        }
+
         return $this->redirect(route('shifts.create', ['as' => $this->as, 'address' => $address->id]), navigate: true);
     }
 
