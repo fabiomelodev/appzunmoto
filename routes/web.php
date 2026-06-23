@@ -5,7 +5,10 @@ use App\Livewire\Addresses\Choose as AddressesChoose;
 use App\Livewire\Auth\Login;
 use App\Livewire\Chats\Index as ChatsIndex;
 use App\Livewire\Chats\Show as ChatsShow;
+use App\Livewire\Menu;
 use App\Livewire\Notifications\Page as NotificationsPage;
+use App\Livewire\ProfilePage;
+use App\Livewire\Settings;
 use App\Livewire\Shifts\Create as ShiftsCreate;
 use App\Livewire\Shifts\Index as ShiftsIndex;
 use App\Livewire\Shifts\Show as ShiftsShow;
@@ -38,19 +41,21 @@ Route::middleware('auth')->group(function () {
     // Addresses
     Route::get('/addresses/choose', AddressesChoose::class)->name('addresses.choose');
 
-    // Partnerships (chats) + notifications
+    // Partnerships / chats & notifications
     Route::get('/chats', ChatsIndex::class)->name('chats.index');
     Route::get('/chats/{id}', ChatsShow::class)->name('chats.show');
     Route::get('/notifications', NotificationsPage::class)->name('notifications');
 
+    // Account
+    Route::get('/menu', Menu::class)->name('menu');
+    Route::get('/profile', ProfilePage::class)->name('profile');
+    Route::get('/settings', Settings::class)->name('settings');
+
     // Placeholders — rebuilt in later phases.
     Route::view('/map', 'placeholder', ['title' => 'Mapa'])->name('map');
-    Route::view('/menu', 'placeholder', ['title' => 'Menu'])->name('menu');
-    Route::view('/profile', 'placeholder', ['title' => 'Perfil'])->name('profile');
     Route::view('/vehicle', 'placeholder', ['title' => 'Veículo'])->name('vehicle');
     Route::view('/history', 'placeholder', ['title' => 'Histórico'])->name('history');
     Route::view('/documents', 'placeholder', ['title' => 'Documentos'])->name('documents');
     Route::view('/addresses', 'placeholder', ['title' => 'Endereços'])->name('addresses');
-    Route::view('/settings', 'placeholder', ['title' => 'Configurações'])->name('settings');
     Route::view('/help', 'placeholder', ['title' => 'Ajuda'])->name('help');
 });
