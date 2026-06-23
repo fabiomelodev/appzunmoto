@@ -59,6 +59,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/vehicle', Vehicle::class)->name('vehicle');
     Route::get('/documents', Vehicle::class)->name('documents');
 
+    // Serve a private document file to its owner only.
+    Route::get('/documents/{document}/file', function (\App\Models\Document $document) {
+        abort_unless($document->user_id === Auth::id(), 403);
+        abort_unless(
+            $document->file_path && \Illuminate\Support\Facades\Storage::disk('local')->exists($document->file_path),
+            404,
+        );
+
+        return \Illuminate\Support\Facades\Storage::disk('local')->response($document->file_path, $document->file_name);
+    })->name('documents.file');
+
     // Addresses (management list)
     Route::get('/addresses', AddressesIndex::class)->name('addresses');
 

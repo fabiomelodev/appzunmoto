@@ -58,13 +58,15 @@ class Vehicle extends Component
     protected function storeDocument($file, string $type): void
     {
         $ext = $file->getClientOriginalExtension() ?: 'dat';
-        $path = $file->storePubliclyAs('documents/'.Auth::id(), "{$type}.{$ext}", 'public');
+        // Identity/vehicle docs are PII → stored on the PRIVATE disk and served
+        // only to the owner via the authorized `documents.file` route.
+        $path = $file->storeAs('documents/'.Auth::id(), "{$type}.{$ext}", 'local');
 
         Document::updateOrCreate(
             ['user_id' => Auth::id(), 'type' => $type],
             [
                 'status' => 'review',
-                'file_path' => Storage::disk('public')->url($path),
+                'file_path' => $path,
                 'file_name' => $file->getClientOriginalName(),
                 'submitted_at' => now(),
             ],

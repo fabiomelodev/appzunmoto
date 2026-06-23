@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Addresses\Index as AddressesIndex;
 use App\Livewire\Vehicle;
+use App\Models\Document;
 use App\Models\UserAddress;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,7 +41,7 @@ class VehicleAddressTest extends TestCase
 
     public function test_document_upload_creates_record(): void
     {
-        Storage::fake('public');
+        Storage::fake('local');
         $user = $this->user();
         $this->actingAs($user);
 
@@ -51,6 +52,20 @@ class VehicleAddressTest extends TestCase
         $this->assertDatabaseHas('documents', [
             'user_id' => $user->id, 'type' => 'identity', 'status' => 'review',
         ]);
+    }
+
+    public function test_document_file_is_private_to_owner(): void
+    {
+        Storage::fake('local');
+        $owner = $this->user();
+        $other = $this->user();
+        $this->actingAs($owner);
+
+        Livewire::test(Vehicle::class)->set('identityFile', UploadedFile::fake()->image('cnh.jpg'));
+        $doc = Document::where('user_id', $owner->id)->firstOrFail();
+
+        $this->actingAs($owner)->get(route('documents.file', $doc))->assertOk();
+        $this->actingAs($other)->get(route('documents.file', $doc))->assertForbidden();
     }
 
     public function test_address_create_edit_delete(): void

@@ -92,16 +92,33 @@ class AccountTest extends TestCase
 
         Livewire::test(Settings::class)
             ->set('newEmail', 'novo'.uniqid().'@test.dev')
+            ->set('currentPassword', 'secret123')
             ->call('updateEmail')
             ->assertHasNoErrors();
 
         Livewire::test(Settings::class)
             ->set('newPassword', 'brandnew123')
             ->set('passwordConfirmation', 'brandnew123')
+            ->set('currentPassword', 'secret123')
             ->call('updatePassword')
             ->assertHasNoErrors();
 
         $this->assertTrue(Hash::check('brandnew123', $user->fresh()->password));
+    }
+
+    public function test_email_change_requires_correct_current_password(): void
+    {
+        $user = $this->user();
+        $original = $user->email;
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)
+            ->set('newEmail', 'hacker@test.dev')
+            ->set('currentPassword', 'wrong-password')
+            ->call('updateEmail')
+            ->assertHasErrors('currentPassword');
+
+        $this->assertSame($original, $user->fresh()->email);
     }
 
     public function test_account_pages_render(): void

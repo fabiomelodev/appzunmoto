@@ -18,7 +18,8 @@
             </div>
             <p class="mt-0.5 text-[11px] text-muted-foreground">{{ $hint }}</p>
             @if ($doc?->file_name)
-                <p class="mt-1 truncate text-[11px] text-muted-foreground">Arquivo: <span class="text-foreground">{{ $doc->file_name }}</span></p>
+                <a href="{{ route('documents.file', $doc) }}" target="_blank"
+                    class="mt-1 block truncate text-[11px] text-primary underline">Arquivo: {{ $doc->file_name }}</a>
             @endif
         </div>
         <span class="flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold {{ $statusBg }} {{ $statusColor }}">

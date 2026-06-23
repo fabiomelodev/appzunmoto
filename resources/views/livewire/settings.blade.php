@@ -93,6 +93,10 @@
                     <x-ui.input type="email" wire:model="newEmail" placeholder="novo@email.com" />
                     @error('newEmail') <p class="mt-1 text-xs font-medium text-destructive">{{ $message }}</p> @enderror
                 </x-ui.field>
+                <x-ui.field label="Senha atual">
+                    <x-ui.input type="password" wire:model="currentPassword" placeholder="••••••" />
+                    @error('currentPassword') <p class="mt-1 text-xs font-medium text-destructive">{{ $message }}</p> @enderror
+                </x-ui.field>
                 <div class="flex justify-end gap-2">
                     <x-ui.button type="button" variant="outline" wire:click="$set('emailOpen', false)">Cancelar</x-ui.button>
                     <x-ui.button type="submit">Salvar</x-ui.button>
@@ -113,6 +117,10 @@
                 </x-ui.field>
                 <x-ui.field label="Confirmar nova senha">
                     <x-ui.input type="password" wire:model="passwordConfirmation" placeholder="••••••" />
+                </x-ui.field>
+                <x-ui.field label="Senha atual">
+                    <x-ui.input type="password" wire:model="currentPassword" placeholder="••••••" />
+                    @error('currentPassword') <p class="mt-1 text-xs font-medium text-destructive">{{ $message }}</p> @enderror
                 </x-ui.field>
                 <div class="flex justify-end gap-2">
                     <x-ui.button type="button" variant="outline" wire:click="$set('passwordOpen', false)">Cancelar</x-ui.button>

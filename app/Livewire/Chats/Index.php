@@ -119,11 +119,19 @@ class Index extends Component
         $otherIds = $chats->map(fn ($c) => $c->otherParticipant($me))->unique()->values();
         $profiles = Profile::publicColumns()->whereIn('id', $otherIds)->get()->keyBy('id');
 
-        $lastByChat = Message::whereIn('chat_id', $chats->pluck('id'))
-            ->latest('created_at')
-            ->get()
+        // Fetch only the latest message per chat (avoids loading every message).
+        $latest = Message::whereIn('chat_id', $chats->pluck('id'))
+            ->selectRaw('chat_id, MAX(created_at) as last_at')
             ->groupBy('chat_id')
-            ->map(fn ($g) => $g->first());
+            ->get();
+
+        $lastByChat = $latest->isEmpty()
+            ? collect()
+            : Message::where(function ($q) use ($latest) {
+                foreach ($latest as $row) {
+                    $q->orWhere(fn ($w) => $w->where('chat_id', $row->chat_id)->where('created_at', $row->last_at));
+                }
+            })->get()->keyBy('chat_id');
 
         $items = $chats->map(fn ($c) => [
             'chat' => $c,

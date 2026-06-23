@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\UserSetting;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -24,6 +25,7 @@ class Settings extends Component
     public string $newEmail = '';
     public string $newPassword = '';
     public string $passwordConfirmation = '';
+    public string $currentPassword = '';
 
     public function mount(): void
     {
@@ -71,10 +73,13 @@ class Settings extends Component
             [],
             ['newEmail' => 'novo e-mail'],
         );
+        if (! $this->currentPasswordValid()) {
+            return;
+        }
 
         Auth::user()->update(['email' => $this->newEmail]);
         $this->emailOpen = false;
-        $this->newEmail = '';
+        $this->reset('newEmail', 'currentPassword');
         $this->dispatch('toast', message: 'E-mail atualizado com sucesso!');
     }
 
@@ -86,11 +91,28 @@ class Settings extends Component
         ], [
             'newPassword.same' => 'As senhas não coincidem.',
         ]);
+        if (! $this->currentPasswordValid()) {
+            return;
+        }
 
         Auth::user()->update(['password' => $this->newPassword]);
         $this->passwordOpen = false;
-        $this->reset('newPassword', 'passwordConfirmation');
+        $this->reset('newPassword', 'passwordConfirmation', 'currentPassword');
         $this->dispatch('toast', message: 'Senha alterada com sucesso!');
+    }
+
+    /** Validates the re-authentication field against the user's current password. */
+    protected function currentPasswordValid(): bool
+    {
+        $this->validate(['currentPassword' => ['required']], [], ['currentPassword' => 'senha atual']);
+
+        if (! Hash::check($this->currentPassword, Auth::user()->password)) {
+            $this->addError('currentPassword', 'Senha atual incorreta.');
+
+            return false;
+        }
+
+        return true;
     }
 
     public function render()
