@@ -239,7 +239,13 @@ class Create extends Component
             ]);
         }
 
-        $this->dispatch('toast', message: 'Vaga publicada com sucesso!');
+        $located = (float) $shift->lat !== 0.0 && (float) $shift->lng !== 0.0;
+        $this->dispatch('toast',
+            message: $located
+                ? 'Vaga publicada com sucesso!'
+                : 'Vaga publicada! Não conseguimos localizar o endereço no mapa agora — ela aparecerá no mapa assim que a localização for resolvida.',
+            type: $located ? 'success' : 'error',
+        );
 
         return $this->redirect(route('shifts.show', $shift->id), navigate: true);
     }

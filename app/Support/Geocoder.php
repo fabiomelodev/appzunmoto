@@ -38,12 +38,19 @@ class Geocoder
         try {
             $response = Http::withHeaders(['User-Agent' => 'MotoReserva/1.0 (contato@motoreserva.app)'])
                 ->timeout(8)
+                ->retry(2, 1000, throw: false) // ride out transient network blips
                 ->get('https://nominatim.openstreetmap.org/search', [
                     'format' => 'jsonv2',
                     'limit' => 1,
                     'countrycodes' => 'br',
                     'q' => $query,
                 ]);
+
+            // 429 (rate limited) / 5xx → treat as "no result" so the caller can
+            // pace itself and retry the next (looser) query instead of failing hard.
+            if (! $response->successful()) {
+                return null;
+            }
 
             $data = $response->json();
             if (is_array($data) && isset($data[0]['lat'], $data[0]['lon'])) {
@@ -99,14 +106,19 @@ class Geocoder
     /** Try each query in order, returning the first that resolves. */
     private static function firstMatch(array $queries): ?array
     {
-        foreach ($queries as $q) {
-            $q = trim((string) $q);
-            if ($q === '') {
-                continue;
-            }
+        $queries = array_values(array_filter(array_map(fn ($q) => trim((string) $q), $queries)));
+        $last = count($queries) - 1;
+
+        foreach ($queries as $i => $q) {
             $coords = self::coordinates($q);
             if ($coords) {
                 return $coords;
+            }
+            // Pace the fallbacks: Nominatim allows ~1 req/s and rate-limits
+            // bursts (the failure that silently produced 0,0 shifts). Only
+            // sleeps between *failed* attempts, never on the happy path.
+            if ($i < $last && ! app()->runningUnitTests()) {
+                usleep(1_100_000);
             }
         }
 
