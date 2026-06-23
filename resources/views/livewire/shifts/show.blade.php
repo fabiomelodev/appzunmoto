@@ -11,7 +11,7 @@
     $creatorName = $creatorProfile?->name ?: ($shift->creator?->name ?? 'Usuário');
 @endphp
 
-<div class="px-4 pb-6 pt-4">
+<div class="px-4 pb-6 pt-4" x-data x-init="window.mrRequestGeo && window.mrRequestGeo()">
     {{-- Top bar --}}
     <div class="flex items-center justify-between">
         <button type="button" x-on:click="window.history.back()"
@@ -40,6 +40,10 @@
         <p class="flex items-center gap-1 text-sm text-muted-foreground">
             <x-ui.icon name="map-pin" class="h-3.5 w-3.5" />
             {{ $shift->region }}@if ($shift->address) · {{ $shift->address }}@endif
+        </p>
+        <p class="mt-1 text-xs font-semibold text-primary" x-cloak
+            x-show="window.mrDistance($store.geo, {{ $shift->lat }}, {{ $shift->lng }})">
+            📍 ~<span x-text="window.mrDistance($store.geo, {{ $shift->lat }}, {{ $shift->lng }})"></span> de você
         </p>
         @if ($needed > 1)
             <div class="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
