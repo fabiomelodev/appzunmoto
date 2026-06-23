@@ -4,6 +4,8 @@
 use App\Livewire\Addresses\Choose as AddressesChoose;
 use App\Livewire\Addresses\Index as AddressesIndex;
 use App\Livewire\Auth\Login;
+use App\Livewire\History;
+use App\Livewire\MapPage;
 use App\Livewire\Chats\Index as ChatsIndex;
 use App\Livewire\Chats\Show as ChatsShow;
 use App\Livewire\Menu;
@@ -60,8 +62,8 @@ Route::middleware('auth')->group(function () {
     // Addresses (management list)
     Route::get('/addresses', AddressesIndex::class)->name('addresses');
 
-    // Placeholders — rebuilt in later phases.
-    Route::view('/map', 'placeholder', ['title' => 'Mapa'])->name('map');
-    Route::view('/history', 'placeholder', ['title' => 'Histórico'])->name('history');
-    Route::view('/help', 'placeholder', ['title' => 'Ajuda'])->name('help');
+    // Map, history & help
+    Route::get('/map', MapPage::class)->name('map');
+    Route::get('/history', History::class)->name('history');
+    Route::view('/help', 'help')->name('help');
 });
