@@ -3,6 +3,7 @@
     'size' => 'default',
     'type' => 'button',
     'loading' => false,
+    'href' => null,
 ])
 @php
     $base = 'tap inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0';
@@ -29,12 +30,18 @@
         . ' ' . ($sizes[$size] ?? $sizes['default'])
         . ($loading ? ' opacity-70' : '');
 @endphp
-<button type="{{ $type }}" {{ $attributes->class($classes) }} @if ($loading) disabled @endif>
-    @if ($loading)
-        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity="0.25" stroke-width="3" />
-            <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
-        </svg>
-    @endif
-    {{ $slot }}
-</button>
+@if ($href)
+    <a href="{{ $href }}" {{ $attributes->class($classes) }}>
+        {{ $slot }}
+    </a>
+@else
+    <button type="{{ $type }}" {{ $attributes->class($classes) }} @if ($loading) disabled @endif>
+        @if ($loading)
+            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-opacity="0.25" stroke-width="3" />
+                <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
+            </svg>
+        @endif
+        {{ $slot }}
+    </button>
+@endif

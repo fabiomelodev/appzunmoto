@@ -3,6 +3,7 @@
 
 use App\Livewire\Addresses\Choose as AddressesChoose;
 use App\Livewire\Addresses\Index as AddressesIndex;
+use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Livewire\Auth\Login;
 use App\Livewire\History;
 use App\Livewire\MapPage;
@@ -22,6 +23,10 @@ use Illuminate\Support\Facades\Route;
 // ── Public (guest) ───────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
     Route::get('/login', Login::class)->name('login');
+
+    // Google OAuth (Laravel Socialite) — full-page redirect + callback.
+    Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('google.redirect');
+    Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('google.callback');
 });
 
 Route::post('/logout', function () {

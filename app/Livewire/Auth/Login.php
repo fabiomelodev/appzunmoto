@@ -39,6 +39,11 @@ class Login extends Component
     public function mount(): void
     {
         $this->email = (string) request('email', '');
+
+        // Surface a message flashed by the Google OAuth callback (e.g. on error).
+        if (session()->has('notice')) {
+            $this->notice = (string) session('notice');
+        }
     }
 
     public function setMode(string $mode): void
@@ -155,11 +160,6 @@ class Login extends Component
         session()->regenerate();
 
         return $this->redirect(route('shifts.index'), navigate: true);
-    }
-
-    public function google(): void
-    {
-        $this->notice = 'Login com Google ainda não está configurado neste ambiente.';
     }
 
     protected function parseBrDate(string $value): ?string
