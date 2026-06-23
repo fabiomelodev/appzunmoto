@@ -68,7 +68,15 @@ class Show extends Component
     {
         $shift = $this->shift();
 
-        if (! $shift->reserved_by || $this->rating < 1) {
+        // Server-side gating (the UI gating is cosmetic): only the shift creator
+        // reviews the reserved courier, only after the shift ended, and never self.
+        if ($shift->creator_id !== Auth::id()) {
+            return;
+        }
+        if (! $shift->reserved_by || $shift->reserved_by === Auth::id()) {
+            return;
+        }
+        if (! $this->expired($shift) || $this->rating < 1) {
             return;
         }
 

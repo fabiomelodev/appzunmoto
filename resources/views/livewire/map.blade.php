@@ -74,8 +74,7 @@
                 this.userMarker = L.marker(ll, { icon: this.userDot() }).addTo(this.map);
             });
         },
-    }"
-    x-init="init()">
+    }">
     <style>
         .leaflet-bottom.leaflet-right, .leaflet-bottom.leaflet-left { margin-bottom: 96px; }
         .leaflet-control-attribution { font-size: 9px; }

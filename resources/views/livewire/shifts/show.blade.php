@@ -195,7 +195,7 @@
                 <div class="space-y-2">
                     @foreach ($interested as $cand)
                         @php $cp = $cand['profile']; $cn = $cp?->name ?: 'Usuário'; @endphp
-                        <button type="button" wire:click="$dispatch('open-profile', { userId: '{{ $cand['id'] }}' })"
+                        <button type="button" wire:key="cand-{{ $cand['id'] }}" wire:click="$dispatch('open-profile', { userId: '{{ $cand['id'] }}' })"
                             class="flex w-full items-center gap-3 rounded-xl border border-border bg-card p-3 text-left transition hover:border-primary/40 active:scale-[.99]">
                             @if ($cp?->photo_url)
                                 <img src="{{ $cp->photo_url }}" alt="" class="h-10 w-10 rounded-full bg-secondary object-cover" />
