@@ -117,6 +117,15 @@ class Index extends Component
         return \App\Models\Application::where('user_id', Auth::id())->pluck('shift_id');
     }
 
+    /** Shift ids the current user was ACCEPTED on (their card shows the success banner). */
+    #[Computed]
+    public function myAcceptedIds()
+    {
+        return \App\Models\Application::where('user_id', Auth::id())
+            ->where('status', \App\Models\Application::STATUS_ACCEPTED)
+            ->pluck('shift_id');
+    }
+
     #[Computed]
     public function shifts()
     {
@@ -178,16 +187,20 @@ class Index extends Component
         }
 
         $now = now();
+        $acceptedIds = $this->myAcceptedIds;
 
         return $query
             ->orderByRaw("CASE WHEN status = '".Shift::STATUS_AVAILABLE."' THEN 0 ELSE 1 END")
             ->orderByDesc('created_at')
             ->get()
-            ->filter(function ($s) use ($now) {
+            ->filter(function ($s) use ($now, $acceptedIds) {
+                // A full shift is hidden — except keep it visible to the courier
+                // who was accepted on it, so they still see their confirmation.
                 $hasRoom = $s->accepted_count < ($s->couriers_needed ?? 1);
+                $mineAccepted = $acceptedIds->contains($s->id);
                 $endsAt = \Illuminate\Support\Carbon::parse($s->date->toDateString().' '.$s->end_time);
 
-                return $hasRoom && $endsAt->gte($now);
+                return ($hasRoom || $mineAccepted) && $endsAt->gte($now);
             })
             ->values();
     }

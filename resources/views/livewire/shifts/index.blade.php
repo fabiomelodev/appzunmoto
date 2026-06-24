@@ -79,7 +79,7 @@
     {{-- List --}}
     <div class="mt-4 space-y-3">
         @forelse ($this->shifts as $shift)
-            <x-shift-card :shift="$shift" :interested="$this->myInterestIds->contains($shift->id)" wire:key="shift-{{ $shift->id }}" />
+            <x-shift-card :shift="$shift" :interested="$this->myInterestIds->contains($shift->id)" :accepted="$this->myAcceptedIds->contains($shift->id)" wire:key="shift-{{ $shift->id }}" />
         @empty
             <div class="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
                 Nenhuma vaga encontrada.

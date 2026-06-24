@@ -112,6 +112,28 @@ class ShiftsIndexTest extends TestCase
         $this->assertSame('bike', $user->fresh()->profile->vehicle);
     }
 
+    public function test_accepted_courier_sees_success_message_others_dont(): void
+    {
+        $courier = User::create(['name' => 'Moto', 'email' => 'moto'.uniqid().'@test.dev', 'password' => 'secret123']);
+        $other = User::create(['name' => 'Outro', 'email' => 'outro'.uniqid().'@test.dev', 'password' => 'secret123']);
+
+        // 1-courier shift where this courier was accepted (reserved + therefore full).
+        $shift = $this->makeShift(['venue' => 'VagaAceita', 'status' => 'reserved', 'reserved_by' => $courier->id]);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'accepted']);
+
+        // The accepted courier still sees the (full) shift + the confirmation banner.
+        $this->actingAs($courier);
+        Livewire::test(Index::class)
+            ->assertSee('VagaAceita')
+            ->assertSee('Interesse aceito com sucesso');
+
+        // Anyone else: the full shift is hidden, and no banner anywhere.
+        $this->actingAs($other);
+        Livewire::test(Index::class)
+            ->assertDontSee('VagaAceita')
+            ->assertDontSee('Interesse aceito com sucesso');
+    }
+
     public function test_full_page_renders_with_layout_and_card(): void
     {
         $user = $this->creator();

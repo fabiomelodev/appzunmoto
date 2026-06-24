@@ -1,4 +1,4 @@
-@props(['shift', 'interested' => false])
+@props(['shift', 'interested' => false, 'accepted' => false])
 @php
     use App\Support\Catalog;
 
@@ -145,4 +145,11 @@
             <span class="shrink-0 text-right text-[10px] text-muted-foreground/80">Atualizado em {{ $shift->edited_at->format('d/m/Y H:i') }}</span>
         @endif
     </div>
+
+    @if ($accepted)
+        <div class="mt-3 flex items-start gap-2 rounded-xl border border-success/40 bg-success/10 px-3 py-2.5 text-xs font-semibold text-success">
+            <x-ui.icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0" :stroke="2.4" />
+            <span>Interesse aceito com sucesso. Esteja no local no horário especificado! Bom trabalho 🎉</span>
+        </div>
+    @endif
 </a>
