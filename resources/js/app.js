@@ -1,28 +1,39 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
-// ── Realtime (Laravel Reverb) ────────────────────────────────────
-// Connection params come from the server at runtime (window.__REVERB__,
-// injected by <x-reverb-config>) so the pre-built bundle connects to the right
-// server in every environment — no rebuild on deploy. Falls back to the
-// build-time VITE_REVERB_* values for local dev. Guarded: no key → no Echo, so
-// the rest of the app keeps working (Livewire round-trips still update the UI).
+// ── Realtime (Reverb or Pusher) ──────────────────────────────────
+// Connection params come from the server at runtime (window.__BROADCAST__,
+// injected by <x-broadcast-config>) so the pre-built bundle connects to the
+// right service — Reverb (self-hosted) or Pusher (cloud) — driven only by the
+// server's .env, no rebuild on deploy. Falls back to build-time VITE_* for
+// local dev. Guarded: no key → no Echo, so the rest of the app keeps working.
 {
-    const rt = window.__REVERB__ || {};
-    const key = rt.key || import.meta.env.VITE_REVERB_APP_KEY;
+    const cfg = window.__BROADCAST__ || {};
+    const key = cfg.key || import.meta.env.VITE_REVERB_APP_KEY;
     if (key) {
-        const scheme = rt.scheme || import.meta.env.VITE_REVERB_SCHEME || 'http';
-        const port = Number(rt.port || import.meta.env.VITE_REVERB_PORT || 8080);
         window.Pusher = Pusher;
-        window.Echo = new Echo({
-            broadcaster: 'reverb',
-            key,
-            wsHost: rt.host || import.meta.env.VITE_REVERB_HOST,
-            wsPort: port,
-            wssPort: port,
-            forceTLS: scheme === 'https',
-            enabledTransports: ['ws', 'wss'],
-        });
+        if (cfg.broadcaster === 'pusher') {
+            // Pusher cloud: wss on 443, no host/port/proxy needed.
+            window.Echo = new Echo({
+                broadcaster: 'pusher',
+                key,
+                cluster: cfg.cluster,
+                forceTLS: (cfg.scheme || 'https') === 'https',
+            });
+        } else {
+            // Reverb (self-hosted) — local dev default.
+            const scheme = cfg.scheme || import.meta.env.VITE_REVERB_SCHEME || 'http';
+            const port = Number(cfg.port || import.meta.env.VITE_REVERB_PORT || 8080);
+            window.Echo = new Echo({
+                broadcaster: 'reverb',
+                key,
+                wsHost: cfg.host || import.meta.env.VITE_REVERB_HOST,
+                wsPort: port,
+                wssPort: port,
+                forceTLS: scheme === 'https',
+                enabledTransports: ['ws', 'wss'],
+            });
+        }
     }
 }
 
