@@ -2,20 +2,28 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
 // ── Realtime (Laravel Reverb) ────────────────────────────────────
-// Guarded: if the Reverb key isn't present at build time, we skip Echo so the
-// rest of the app keeps working (graceful degradation — Livewire round-trips
-// still update the UI, just without instant push).
-if (import.meta.env.VITE_REVERB_APP_KEY) {
-    window.Pusher = Pusher;
-    window.Echo = new Echo({
-        broadcaster: 'reverb',
-        key: import.meta.env.VITE_REVERB_APP_KEY,
-        wsHost: import.meta.env.VITE_REVERB_HOST,
-        wsPort: Number(import.meta.env.VITE_REVERB_PORT ?? 8080),
-        wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 8080),
-        forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
-        enabledTransports: ['ws', 'wss'],
-    });
+// Connection params come from the server at runtime (window.__REVERB__,
+// injected by <x-reverb-config>) so the pre-built bundle connects to the right
+// server in every environment — no rebuild on deploy. Falls back to the
+// build-time VITE_REVERB_* values for local dev. Guarded: no key → no Echo, so
+// the rest of the app keeps working (Livewire round-trips still update the UI).
+{
+    const rt = window.__REVERB__ || {};
+    const key = rt.key || import.meta.env.VITE_REVERB_APP_KEY;
+    if (key) {
+        const scheme = rt.scheme || import.meta.env.VITE_REVERB_SCHEME || 'http';
+        const port = Number(rt.port || import.meta.env.VITE_REVERB_PORT || 8080);
+        window.Pusher = Pusher;
+        window.Echo = new Echo({
+            broadcaster: 'reverb',
+            key,
+            wsHost: rt.host || import.meta.env.VITE_REVERB_HOST,
+            wsPort: port,
+            wssPort: port,
+            forceTLS: scheme === 'https',
+            enabledTransports: ['ws', 'wss'],
+        });
+    }
 }
 
 // Input masks (ported from the React app). Exposed globally for Alpine x-on:input.

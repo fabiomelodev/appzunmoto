@@ -12,6 +12,7 @@
             catch (e) { document.documentElement.className = 'dark'; }
         })();
     </script>
+    <x-reverb-config />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
