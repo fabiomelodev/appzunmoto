@@ -223,6 +223,32 @@ class ShiftFlowTest extends TestCase
         $this->assertDatabaseHas('shift_contacts', ['shift_id' => $shift->id, 'contact_name' => 'Maria']);
     }
 
+    public function test_shift_inherits_address_photo(): void
+    {
+        $user = $this->user('Dono');
+        $address = UserAddress::create([
+            'user_id' => $user->id, 'label' => 'Pizzaria', 'postal_code' => '01310100',
+            'street' => 'Av Paulista', 'number' => '1000', 'district' => 'Bela Vista', 'city' => 'São Paulo',
+            'photo_url' => 'http://localhost/storage/address-photos/abc.jpg',
+        ]);
+        $this->actingAs($user);
+
+        Livewire::withQueryParams(['as' => 'business', 'address' => $address->id])
+            ->test(Create::class)
+            ->call('save', [
+                'date' => now()->addDay()->toDateString(),
+                'startTime' => '18:00', 'endTime' => '23:00',
+                'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
+                'contactName' => '', 'contactPhone' => '', 'notes' => '',
+                'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
+                'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
+            ])
+            ->assertRedirect();
+
+        $shift = Shift::where('creator_id', $user->id)->firstOrFail();
+        $this->assertSame($address->photo_url, $shift->address_photo_url);
+    }
+
     public function test_create_shift_rejects_retroactive(): void
     {
         $user = $this->user('Dono');

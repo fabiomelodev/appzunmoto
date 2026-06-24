@@ -97,6 +97,29 @@ class VehicleAddressTest extends TestCase
         $this->assertDatabaseMissing('user_addresses', ['id' => $address->id]);
     }
 
+    public function test_address_photo_upload_stores_and_sets_url(): void
+    {
+        Storage::fake('public');
+        $user = $this->user();
+        $this->actingAs($user);
+
+        Livewire::test(AddressesIndex::class)
+            ->call('openNew')
+            ->set('label', 'Loja')
+            ->set('street', 'Av Paulista')
+            ->set('number', '1000')
+            ->set('district', 'Bela Vista')
+            ->set('city', 'SP')
+            ->set('cep', '01310-100')
+            ->set('photo', UploadedFile::fake()->image('loja.jpg'))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $address = UserAddress::where('user_id', $user->id)->firstOrFail();
+        $this->assertNotNull($address->photo_url, 'photo_url deve ser preenchido');
+        Storage::disk('public')->assertExists('address-photos/'.$address->id.'.jpg');
+    }
+
     public function test_pages_render(): void
     {
         $this->actingAs($this->user());

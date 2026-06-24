@@ -5,15 +5,19 @@ namespace App\Livewire\Addresses;
 use App\Models\UserAddress;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
 #[Title('Onde será o turno? — MotoReserva')]
 class Choose extends Component
 {
+    use WithFileUploads;
+
     /** 'business' | 'courier' — carried through the publish flow. */
     public string $as = 'business';
 
@@ -27,7 +31,20 @@ class Choose extends Component
     public string $district = '';
     public string $city = '';
 
+    /** Optional location photo for the new address. */
+    public $photo = null;
+
     public bool $cepBusy = false;
+
+    public function updatedPhoto(): void
+    {
+        $this->validate(['photo' => ['image', 'max:4096']]);
+    }
+
+    public function clearPhoto(): void
+    {
+        $this->photo = null;
+    }
 
     public function mount(): void
     {
@@ -130,6 +147,15 @@ class Choose extends Component
             'lat' => $coords['lat'] ?? null,
             'lng' => $coords['lng'] ?? null,
         ]);
+
+        if ($this->photo) {
+            $path = $this->photo->storePubliclyAs(
+                'address-photos',
+                $address->id.'.'.$this->photo->getClientOriginalExtension(),
+                'public',
+            );
+            $address->update(['photo_url' => Storage::disk('public')->url($path)]);
+        }
 
         $this->dispatch('toast', message: 'Endereço salvo.');
 

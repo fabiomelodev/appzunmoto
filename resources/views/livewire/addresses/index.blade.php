@@ -95,6 +95,9 @@
                 <x-ui.field label="Ponto de referência">
                     <x-ui.textarea wire:model="reference" rows="2" placeholder="Ao lado da padaria…"></x-ui.textarea>
                 </x-ui.field>
+
+                <x-photo-picker :photo="$photo" :existing="$existingPhotoUrl" :removed="$removePhoto" />
+
                 <div class="flex justify-end gap-2 pt-1">
                     <x-ui.button type="button" variant="outline" wire:click="$set('open', false)">Cancelar</x-ui.button>
                     <x-ui.button type="submit">{{ $editingId ? 'Salvar alterações' : 'Adicionar endereço' }}</x-ui.button>

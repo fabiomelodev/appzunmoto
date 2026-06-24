@@ -34,6 +34,7 @@ class Create extends Component
     public ?string $cep = null;
     public float $lat = 0;
     public float $lng = 0;
+    public ?string $addressPhotoUrl = null;
 
     /** Initial form values handed to Alpine. */
     public array $initial = [];
@@ -68,6 +69,7 @@ class Create extends Component
             $this->cep = $address->postal_code;
             $this->lat = (float) ($address->lat ?? 0);
             $this->lng = (float) ($address->lng ?? 0);
+            $this->addressPhotoUrl = $address->photo_url;
         }
 
         $this->initial = $this->initialFrom($clone);
@@ -98,6 +100,7 @@ class Create extends Component
         $this->cep = $shift->postal_code;
         $this->lat = (float) $shift->lat;
         $this->lng = (float) $shift->lng;
+        $this->addressPhotoUrl = $shift->address_photo_url;
     }
 
     protected function initialFrom(?Shift $source, bool $withContact = false): array
@@ -229,6 +232,7 @@ class Create extends Component
             'postal_code' => $this->cep,
             'lat' => $this->lat,
             'lng' => $this->lng,
+            'address_photo_url' => $this->addressPhotoUrl,
         ]);
 
         if ($contactName || $contactPhone) {

@@ -5,15 +5,19 @@ namespace App\Livewire\Addresses;
 use App\Models\UserAddress;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
 #[Title('Meus Endereços — MotoReserva')]
 class Index extends Component
 {
+    use WithFileUploads;
+
     public bool $open = false;
 
     public ?string $editingId = null;
@@ -26,6 +30,11 @@ class Index extends Component
     public string $city = '';
     public string $reference = '';
 
+    // Optional location photo.
+    public $photo = null;
+    public ?string $existingPhotoUrl = null;
+    public bool $removePhoto = false;
+
     public bool $cepBusy = false;
 
     #[Computed]
@@ -36,7 +45,7 @@ class Index extends Component
 
     public function openNew(): void
     {
-        $this->reset('editingId', 'label', 'cep', 'street', 'number', 'district', 'city', 'reference');
+        $this->reset('editingId', 'label', 'cep', 'street', 'number', 'district', 'city', 'reference', 'photo', 'existingPhotoUrl', 'removePhoto');
         $this->resetErrorBag();
         $this->open = true;
     }
@@ -55,8 +64,22 @@ class Index extends Component
         $this->district = $a->district;
         $this->city = $a->city;
         $this->reference = $a->reference ?? '';
+        $this->reset('photo', 'removePhoto');
+        $this->existingPhotoUrl = $a->photo_url;
         $this->resetErrorBag();
         $this->open = true;
+    }
+
+    public function updatedPhoto(): void
+    {
+        $this->validate(['photo' => ['image', 'max:4096']]);
+        $this->removePhoto = false;
+    }
+
+    public function clearPhoto(): void
+    {
+        $this->photo = null;
+        $this->removePhoto = true;
     }
 
     public function lookupCep(): void
@@ -116,14 +139,36 @@ class Index extends Component
         }
 
         if ($this->editingId) {
-            UserAddress::where('user_id', Auth::id())->where('id', $this->editingId)->update($data);
-            $this->dispatch('toast', message: 'Endereço atualizado.');
+            $address = UserAddress::where('user_id', Auth::id())->find($this->editingId);
+            if (! $address) {
+                return;
+            }
+            $address->update($data);
+            $msg = 'Endereço atualizado.';
         } else {
-            UserAddress::create($data + ['user_id' => Auth::id()]);
-            $this->dispatch('toast', message: 'Endereço adicionado.');
+            $address = UserAddress::create($data + ['user_id' => Auth::id()]);
+            $msg = 'Endereço adicionado.';
         }
 
+        $this->persistPhoto($address);
+
+        $this->dispatch('toast', message: $msg);
         $this->open = false;
+    }
+
+    /** Stores a newly uploaded location photo, or clears it when removed. */
+    protected function persistPhoto(UserAddress $address): void
+    {
+        if ($this->photo) {
+            $path = $this->photo->storePubliclyAs(
+                'address-photos',
+                $address->id.'.'.$this->photo->getClientOriginalExtension(),
+                'public',
+            );
+            $address->update(['photo_url' => Storage::disk('public')->url($path)]);
+        } elseif ($this->removePhoto) {
+            $address->update(['photo_url' => null]);
+        }
     }
 
     public function delete(string $id): void

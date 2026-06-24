@@ -95,6 +95,8 @@
                     </x-ui.field>
                 </div>
 
+                <x-photo-picker :photo="$photo" />
+
                 <x-ui.button type="submit" size="lg" class="w-full" wire:loading.attr="disabled" wire:target="saveNew">
                     Salvar e continuar
                 </x-ui.button>
