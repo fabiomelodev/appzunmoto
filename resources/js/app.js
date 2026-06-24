@@ -1,3 +1,23 @@
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
+
+// ── Realtime (Laravel Reverb) ────────────────────────────────────
+// Guarded: if the Reverb key isn't present at build time, we skip Echo so the
+// rest of the app keeps working (graceful degradation — Livewire round-trips
+// still update the UI, just without instant push).
+if (import.meta.env.VITE_REVERB_APP_KEY) {
+    window.Pusher = Pusher;
+    window.Echo = new Echo({
+        broadcaster: 'reverb',
+        key: import.meta.env.VITE_REVERB_APP_KEY,
+        wsHost: import.meta.env.VITE_REVERB_HOST,
+        wsPort: Number(import.meta.env.VITE_REVERB_PORT ?? 8080),
+        wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 8080),
+        forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
+        enabledTransports: ['ws', 'wss'],
+    });
+}
+
 // Input masks (ported from the React app). Exposed globally for Alpine x-on:input.
 window.maskCPF = function (v) {
     const d = String(v).replace(/\D/g, '').slice(0, 11);

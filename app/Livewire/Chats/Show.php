@@ -35,6 +35,17 @@ class Show extends Component
         $this->chatId = $id;
     }
 
+    /** Listen on this chat's private channel for new messages (replaces polling). */
+    public function getListeners(): array
+    {
+        return [
+            "echo-private:chat.{$this->chatId},.message.sent" => 'onMessage',
+        ];
+    }
+
+    /** A round-trip re-runs render(), which reloads messages + partnership state. */
+    public function onMessage(): void {}
+
     #[Computed]
     public function chat(): Chat
     {

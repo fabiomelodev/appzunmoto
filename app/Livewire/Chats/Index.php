@@ -35,6 +35,17 @@ class Index extends Component
         }
     }
 
+    public function getListeners(): array
+    {
+        return ['echo-private:user.'.Auth::id().',.notification.received' => 'onSignal'];
+    }
+
+    /** New message/application → recompute the lists (order depends on latest activity). */
+    public function onSignal(): void
+    {
+        unset($this->conversations, $this->myShifts);
+    }
+
     public function setTab(string $tab): void
     {
         $this->tab = $tab === 'candidaturas' ? 'candidaturas' : 'conversas';

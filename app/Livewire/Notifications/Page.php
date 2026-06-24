@@ -12,6 +12,16 @@ use Livewire\Component;
 #[Title('Notificações — MotoReserva')]
 class Page extends Component
 {
+    public function getListeners(): array
+    {
+        return ['echo-private:user.'.Auth::id().',.notification.received' => 'onNotification'];
+    }
+
+    public function onNotification(): void
+    {
+        unset($this->notifications);
+    }
+
     #[Computed]
     public function notifications()
     {

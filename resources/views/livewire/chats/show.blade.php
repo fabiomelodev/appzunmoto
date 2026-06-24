@@ -5,7 +5,7 @@
     $firstName = Str::of($otherName)->explode(' ')->first();
 @endphp
 
-<div class="flex min-h-[calc(100dvh-5rem)] flex-col" wire:poll.6s>
+<div class="flex min-h-[calc(100dvh-5rem)] flex-col" wire:poll.30s>
     {{-- Header --}}
     <header class="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur">
         <button type="button" x-on:click="window.history.back()" class="grid h-9 w-9 place-items-center rounded-lg">

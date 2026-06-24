@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Observers\NotificationObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Custom in-app notification (not Laravel's framework notifications).
  */
+#[ObservedBy([NotificationObserver::class])]
 class Notification extends Model
 {
     use HasUuids;

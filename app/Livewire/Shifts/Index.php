@@ -29,6 +29,17 @@ class Index extends Component
         'onlyInterested' => false,
     ];
 
+    public function getListeners(): array
+    {
+        return ['echo-private:user.'.Auth::id().',.notification.received' => 'onNotification'];
+    }
+
+    /** Refresh the unread badge live when a notification arrives. */
+    public function onNotification(): void
+    {
+        unset($this->unreadCount);
+    }
+
     public function setRegion(?string $region): void
     {
         $this->region = $region;

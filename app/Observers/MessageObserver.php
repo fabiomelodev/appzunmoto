@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Events\MessageSent;
 use App\Models\Message;
 use App\Models\Notification;
 use App\Models\UserSetting;
@@ -18,6 +19,15 @@ class MessageObserver
         $chat = $message->chat;
         if (! $chat) {
             return;
+        }
+
+        // Push the message to the chat's private channel for both open
+        // conversations (->toOthers() skips the sender, who already sees it
+        // via the Livewire round-trip). Best-effort: never break on a down Reverb.
+        try {
+            broadcast(new MessageSent($message))->toOthers();
+        } catch (\Throwable $e) {
+            report($e);
         }
 
         $recipientId = $chat->otherParticipant($message->author_id);
