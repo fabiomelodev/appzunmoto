@@ -247,6 +247,9 @@ class Create extends Component
             type: $located ? 'success' : 'error',
         );
 
+        // The shift was created — drop the saved form draft (see create.blade.php).
+        $this->dispatch('clear-shift-draft');
+
         return $this->redirect(route('shifts.show', $shift->id), navigate: true);
     }
 

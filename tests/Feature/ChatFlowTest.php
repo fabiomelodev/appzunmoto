@@ -61,8 +61,32 @@ class ChatFlowTest extends TestCase
         $this->assertSame('reserved', $fresh->status);
         $this->assertSame($courier->id, $fresh->reserved_by);
         $this->assertDatabaseHas('chats', ['shift_id' => $shift->id]);
-        // ShiftObserver notifies the accepted courier.
+        // Partnerships::accept notifies the accepted courier.
         $this->assertTrue(Notification::where('user_id', $courier->id)->where('type', 'turno')->exists());
+    }
+
+    public function test_each_accepted_courier_is_notified_in_multi_courier_shift(): void
+    {
+        $creator = $this->user('Dono');
+        $c1 = $this->user('Moto1');
+        $c2 = $this->user('Moto2');
+        $shift = $this->shift($creator, ['couriers_needed' => 2]);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $c1->id, 'status' => 'interested']);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $c2->id, 'status' => 'interested']);
+
+        Partnerships::accept($shift->load('applications'), $c1->id);
+        Partnerships::accept($shift->refresh()->load('applications'), $c2->id);
+
+        // BOTH accepted couriers — not just the first — get the "accepted" notification.
+        foreach ([$c1, $c2] as $courier) {
+            $this->assertTrue(
+                Notification::where('user_id', $courier->id)
+                    ->where('type', 'turno')
+                    ->where('title', 'Você foi aceito em uma vaga!')
+                    ->exists(),
+                "courier {$courier->name} deveria ser notificado",
+            );
+        }
     }
 
     public function test_decline_removes_application(): void

@@ -38,12 +38,24 @@ class Partnerships
             $patch['status'] = Shift::STATUS_RESERVED;
         }
         if ($patch) {
-            $shift->update($patch); // ShiftObserver notifies the reserved courier
+            $shift->update($patch);
         }
 
         Application::where('shift_id', $shift->id)
             ->where('user_id', $courierId)
             ->update(['status' => Application::STATUS_ACCEPTED]);
+
+        // Notify the courier we just accepted. Done here (not in an observer)
+        // so it fires for EVERY accepted courier — including the 2nd+ on a
+        // multi-courier shift, where status/reserved_by no longer change.
+        // Mirrors the Supabase `notify_candidatura_aceita` trigger.
+        Notification::create([
+            'user_id' => $courierId,
+            'type' => 'turno',
+            'title' => 'Você foi aceito em uma vaga!',
+            'description' => 'Sua candidatura em "'.$shift->venue.'" foi aceita. Confirme sua presença.',
+            'payload' => ['shift_id' => $shift->id],
+        ]);
 
         return Chat::findOrCreateBetween($shift->id, $shift->creator_id, $courierId);
     }

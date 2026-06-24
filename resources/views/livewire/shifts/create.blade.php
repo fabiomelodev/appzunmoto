@@ -2,10 +2,17 @@
     use App\Support\Catalog;
     $isBusiness = $as === 'business';
     $editing = $editId !== null;
+    // Persist a draft only when starting a brand-new shift (not editing/cloning).
+    $persistDraft = $editId === null && empty($cloneId);
     $volumeShort = ['tranquilo' => "😌 Tranquilo\n(até 20)", 'moderado' => "⚡ Moderado\n(20–40)", 'pesado' => "🔥 Pesado\n(40+)"];
 @endphp
 
-<div class="px-4 pb-10 pt-4" x-data="{
+<div class="px-4 pb-10 pt-4"
+    @if ($persistDraft)
+        x-init="loadDraft()"
+        x-on:clear-shift-draft.window="clearDraft()"
+    @endif
+    x-data="{
     f: @js($initial),
     get retroactive() {
         if (!this.f.date || !this.f.startTime) return false;
@@ -17,6 +24,11 @@
     toggleBenefit(b) { this.f.benefits = this.f.benefits.includes(b) ? this.f.benefits.filter(x => x !== b) : [...this.f.benefits, b]; },
     inc() { this.f.couriersNeeded = Math.min(10, this.f.couriersNeeded + 1); },
     dec() { this.f.couriersNeeded = Math.max(1, this.f.couriersNeeded - 1); },
+    loadDraft() {
+        try { const d = JSON.parse(localStorage.getItem('mr-new-shift-draft') || 'null'); if (d && typeof d === 'object') Object.assign(this.f, d); } catch (e) {}
+        this.$watch('JSON.stringify(f)', (json) => { try { localStorage.setItem('mr-new-shift-draft', json); } catch (e) {} });
+    },
+    clearDraft() { try { localStorage.removeItem('mr-new-shift-draft'); } catch (e) {} },
 }">
     {{-- Header --}}
     <div class="flex items-center gap-3">
