@@ -252,6 +252,36 @@ class ShiftFlowTest extends TestCase
         $this->assertSame($address->photo_url, $shift->address_photo_url);
     }
 
+    public function test_cannot_reduce_couriers_when_shift_has_interest(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator, ['couriers_needed' => 2]);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+        $this->actingAs($creator);
+
+        $form = [
+            'date' => $shift->date->toDateString(),
+            'startTime' => '18:00', 'endTime' => '23:00',
+            'dailyRate' => '150', 'fee' => '8',
+            'contactName' => '', 'contactPhone' => '', 'notes' => '',
+            'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
+            'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
+        ];
+
+        // Reduzir abaixo de 2 é rejeitado — segue 2.
+        Livewire::test(Create::class, ['id' => $shift->id])
+            ->call('save', $form)
+            ->assertDispatched('toast');
+        $this->assertSame(2, $shift->fresh()->couriers_needed);
+
+        // Aumentar é permitido.
+        Livewire::test(Create::class, ['id' => $shift->id])
+            ->call('save', ['couriersNeeded' => 3] + $form)
+            ->assertRedirect();
+        $this->assertSame(3, $shift->fresh()->couriers_needed);
+    }
+
     public function test_create_shift_rejects_retroactive(): void
     {
         $user = $this->user('Dono');

@@ -14,6 +14,7 @@
     @endif
     x-data="{
     f: @js($initial),
+    minCouriers: @js($minCouriers),
     get retroactive() {
         if (!this.f.date || !this.f.startTime) return false;
         return new Date(this.f.date + 'T' + this.f.startTime + ':00').getTime() < Date.now();
@@ -23,7 +24,7 @@
     toggleVehicle(v) { this.f.vehicles = this.f.vehicles.includes(v) ? this.f.vehicles.filter(x => x !== v) : [...this.f.vehicles, v]; },
     toggleBenefit(b) { this.f.benefits = this.f.benefits.includes(b) ? this.f.benefits.filter(x => x !== b) : [...this.f.benefits, b]; },
     inc() { this.f.couriersNeeded = Math.min(10, this.f.couriersNeeded + 1); },
-    dec() { this.f.couriersNeeded = Math.max(1, this.f.couriersNeeded - 1); },
+    dec() { this.f.couriersNeeded = Math.max(this.minCouriers, this.f.couriersNeeded - 1); },
     loadDraft() {
         try { const d = JSON.parse(localStorage.getItem('mr-new-shift-draft') || 'null'); if (d && typeof d === 'object') Object.assign(this.f, d); } catch (e) {}
         this.$watch('JSON.stringify(f)', (json) => { try { localStorage.setItem('mr-new-shift-draft', json); } catch (e) {} });
@@ -77,13 +78,19 @@
 
         <x-ui.field label="Quantos motoboys você precisa?">
             <div class="flex items-center gap-3">
-                <button type="button" @click="dec()" x-bind:disabled="f.couriersNeeded <= 1"
+                <button type="button" @click="dec()" x-bind:disabled="f.couriersNeeded <= minCouriers"
                     class="grid h-10 w-10 place-items-center rounded-xl border border-border bg-surface text-lg font-bold transition hover:border-primary/40 hover:text-primary disabled:opacity-40">−</button>
                 <div class="min-w-[3rem] text-center font-display text-2xl font-bold text-primary" x-text="f.couriersNeeded"></div>
                 <button type="button" @click="inc()" x-bind:disabled="f.couriersNeeded >= 10"
                     class="grid h-10 w-10 place-items-center rounded-xl border border-border bg-surface text-lg font-bold transition hover:border-primary/40 hover:text-primary disabled:opacity-40">+</button>
                 <span class="text-[11px] text-muted-foreground" x-text="f.couriersNeeded === 1 ? '1 motoboy' : f.couriersNeeded + ' motoboys'"></span>
             </div>
+            @if ($minCouriers > 1)
+                <p class="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-primary">
+                    <x-ui.icon name="info" class="mt-0.5 h-3 w-3 shrink-0" />
+                    Esta vaga já tem motoboys interessados — só é possível aumentar a quantidade.
+                </p>
+            @endif
         </x-ui.field>
 
         <x-ui.field label="Valor da diária (R$)">

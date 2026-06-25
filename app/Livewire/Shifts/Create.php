@@ -27,6 +27,10 @@ class Create extends Component
     /** When set, the form edits an existing shift instead of creating one. */
     public ?string $editId = null;
 
+    /** Floor for couriers_needed when editing: a shift with interested couriers
+     *  can only have its quantity increased, never reduced. */
+    public int $minCouriers = 1;
+
     // Resolved location (from the chosen address or the existing/cloned shift).
     public string $venue = '';
     public string $addressLine = '';
@@ -86,6 +90,8 @@ class Create extends Component
 
         $this->editId = $shift->id;
         $this->as = $shift->creator_role;
+        // Once a courier has shown interest, the quantity can only grow.
+        $this->minCouriers = $shift->applications()->exists() ? (int) $shift->couriers_needed : 1;
         $this->fillLocationFromShift($shift);
         $this->initial = $this->initialFrom($shift, withContact: true);
 
@@ -163,6 +169,10 @@ class Create extends Component
         }
         if (Carbon::parse("{$date} {$startTime}")->isPast()) {
             return $toast('A data/horário já passou. Ajuste para um momento futuro.');
+        }
+        // A shift that already has interested couriers can only grow.
+        if ($existing && $existing->applications()->exists() && $couriers < (int) $existing->couriers_needed) {
+            return $toast('Esta vaga já tem motoboys interessados — só é possível aumentar a quantidade.');
         }
 
         $conflict = Shift::where('creator_id', Auth::id())
