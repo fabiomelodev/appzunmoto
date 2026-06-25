@@ -10,7 +10,7 @@
         vehicleOpen: false,
         draft: @js($filters),
         initial: { vehicles: [], dailyMin: '', feeMin: '', startTime: '', benefits: [], ownBag: 'any', date: '', onlyInterested: false },
-        openFilters() { this.draft = JSON.parse(JSON.stringify($wire.get('filters'))); this.filtersOpen = true; },
+        openFilters() { this.filtersOpen = true; },
         toggleVehicle(v) { this.draft.vehicles = this.draft.vehicles.includes(v) ? this.draft.vehicles.filter(x => x !== v) : [...this.draft.vehicles, v]; },
         toggleBenefit(b) { this.draft.benefits = this.draft.benefits.includes(b) ? this.draft.benefits.filter(x => x !== b) : [...this.draft.benefits, b]; },
         apply() { $wire.applyFilters(this.draft); this.filtersOpen = false; },
@@ -88,7 +88,7 @@
     </div>
 
     {{-- ── Filters sheet ─────────────────────────────────────────── --}}
-    <div x-show="filtersOpen" x-cloak class="fixed inset-0 z-50">
+    <div x-show="filtersOpen" x-cloak wire:ignore class="fixed inset-0 z-50">
         <div x-show="filtersOpen" x-transition.opacity class="absolute inset-0 bg-black/60" @click="filtersOpen = false"></div>
         <div x-show="filtersOpen"
             x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0"
