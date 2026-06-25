@@ -44,7 +44,8 @@
                         <button wire:click="openEdit('{{ $a->id }}')" class="grid h-8 w-8 place-items-center rounded-lg bg-surface text-muted-foreground hover:text-primary" aria-label="Editar">
                             <x-ui.icon name="pencil" class="h-3.5 w-3.5" />
                         </button>
-                        <button x-on:click="if (confirm('Excluir endereço "{{ $a->label }}"?')) $wire.delete('{{ $a->id }}')"
+                        <button wire:click="delete('{{ $a->id }}')"
+                            wire:confirm="Excluir o endereço {{ $a->label }}?"
                             class="grid h-8 w-8 place-items-center rounded-lg bg-surface text-muted-foreground hover:text-destructive" aria-label="Excluir">
                             <x-ui.icon name="trash" class="h-3.5 w-3.5" />
                         </button>
