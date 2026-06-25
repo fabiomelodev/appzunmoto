@@ -121,7 +121,8 @@
             <x-ui.label class="mb-2 block">Contato no local (opcional)</x-ui.label>
             <div class="grid grid-cols-2 gap-3">
                 <x-ui.input maxlength="100" x-model="f.contactName" placeholder="Nome do responsável" />
-                <x-ui.input type="tel" maxlength="30" x-model="f.contactPhone" placeholder="Telefone/WhatsApp" />
+                <x-ui.input type="tel" inputmode="tel" maxlength="16" x-model="f.contactPhone"
+                    x-on:input="f.contactPhone = window.maskPhone($event.target.value)" placeholder="(11) 99999-9999" />
             </div>
             <p class="mt-1.5 text-[11px] text-muted-foreground">Visível apenas para o motoboy aceito na vaga.</p>
         </div>
