@@ -63,9 +63,15 @@
                 <x-ui.icon name="user" class="h-3 w-3" :stroke="2.6" /> Sua vaga
             </span>
         @endif
-        <span class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide {{ $unavailable ? 'bg-muted text-muted-foreground' : 'bg-success/15 text-success' }}">
-            {{ $statusLabel }}
-        </span>
+        @if (! $shift->active)
+            <span class="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-500">
+                <x-ui.icon name="pause" class="h-3 w-3" :stroke="2.6" /> Pausada
+            </span>
+        @else
+            <span class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide {{ $unavailable ? 'bg-muted text-muted-foreground' : 'bg-success/15 text-success' }}">
+                {{ $statusLabel }}
+            </span>
+        @endif
 
         @if ($shift->couriers_needed > 1)
             <span class="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/15 px-2.5 py-0.5 text-[10px] font-semibold text-primary">

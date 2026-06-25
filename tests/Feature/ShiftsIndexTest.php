@@ -134,6 +134,24 @@ class ShiftsIndexTest extends TestCase
             ->assertDontSee('Interesse aceito com sucesso');
     }
 
+    public function test_owner_sees_own_paused_shift_with_badge_others_dont(): void
+    {
+        $owner = $this->creator();
+        $other = $this->creator();
+        $this->makeShift(['venue' => 'VagaPausada', 'creator_id' => $owner->id, 'active' => false]);
+
+        // Owner sees the paused shift with the "Pausada" badge.
+        $this->actingAs($owner);
+        Livewire::test(Index::class)
+            ->assertSee('VagaPausada')
+            ->assertSee('Pausada');
+
+        // Other users don't see paused shifts.
+        $this->actingAs($other);
+        Livewire::test(Index::class)
+            ->assertDontSee('VagaPausada');
+    }
+
     public function test_full_page_renders_with_layout_and_card(): void
     {
         $user = $this->creator();

@@ -135,7 +135,9 @@ class Index extends Component
             ->with('creator.profile')
             ->withCount(['applications as accepted_count' => fn ($q) => $q->where('status', 'accepted')])
             ->where('status', '!=', Shift::STATUS_FILLED)
-            ->where('active', true)
+            // Paused shifts leave the marketplace, but the owner still sees their
+            // own (with a "Pausada" badge) so they can manage/resume them.
+            ->where(fn ($q) => $q->where('active', true)->orWhere('creator_id', Auth::id()))
             // Coarse prune of past dates (portable); exact end_time expiry is refined in PHP below.
             ->whereDate('date', '>=', now()->toDateString());
 
