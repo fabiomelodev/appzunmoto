@@ -204,7 +204,7 @@ class ShiftFlowTest extends TestCase
         $form = [
             'date' => now()->addDay()->toDateString(),
             'startTime' => '18:00', 'endTime' => '23:00',
-            'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
+            'dailyRate' => '150', 'fee' => '8',
             'contactName' => 'Maria', 'contactPhone' => '11999990000',
             'notes' => 'Chegar 10min antes', 'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
             'couriersNeeded' => 2, 'benefits' => ['lanche'], 'vehicles' => ['moto'], 'requiresOwnBag' => true,
@@ -220,6 +220,9 @@ class ShiftFlowTest extends TestCase
         $this->assertSame('Pizzaria', $shift->venue);
         $this->assertSame(2, $shift->couriers_needed);
         $this->assertSame(['moto'], $shift->accepted_vehicles);
+        // A taxa única por entrega é gravada igual em min e max.
+        $this->assertEquals(8, $shift->delivery_fee_min);
+        $this->assertEquals(8, $shift->delivery_fee_max);
         $this->assertDatabaseHas('shift_contacts', ['shift_id' => $shift->id, 'contact_name' => 'Maria']);
     }
 
@@ -238,7 +241,7 @@ class ShiftFlowTest extends TestCase
             ->call('save', [
                 'date' => now()->addDay()->toDateString(),
                 'startTime' => '18:00', 'endTime' => '23:00',
-                'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
+                'dailyRate' => '150', 'fee' => '8',
                 'contactName' => '', 'contactPhone' => '', 'notes' => '',
                 'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
                 'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
@@ -263,7 +266,7 @@ class ShiftFlowTest extends TestCase
             ->call('save', [
                 'date' => now()->subDay()->toDateString(),
                 'startTime' => '18:00', 'endTime' => '23:00',
-                'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
+                'dailyRate' => '150', 'fee' => '8',
                 'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
                 'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
             ]);
@@ -303,7 +306,7 @@ class ShiftFlowTest extends TestCase
             ->call('save', [
                 'date' => $shift->date->toDateString(),
                 'startTime' => '18:00', 'endTime' => '23:00',
-                'dailyRate' => '200', 'feeMin' => '8', 'feeMax' => '12',
+                'dailyRate' => '200', 'fee' => '8',
                 'contactName' => '', 'contactPhone' => '',
                 'notes' => 'editado', 'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
                 'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,

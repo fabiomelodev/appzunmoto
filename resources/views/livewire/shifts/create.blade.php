@@ -91,11 +91,8 @@
         </x-ui.field>
 
         <div>
-            <div class="grid grid-cols-2 gap-3">
-                <x-ui.field label="Taxa Mínima (R$)"><x-ui.input type="number" inputmode="decimal" min="0" step="0.5" x-model="f.feeMin" /></x-ui.field>
-                <x-ui.field label="Taxa Máxima (R$)"><x-ui.input type="number" inputmode="decimal" min="0" step="0.5" x-model="f.feeMax" /></x-ui.field>
-            </div>
-            <p class="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">Informe a variação da taxa média das entregas do local (ex.: de R$ 3 até R$ 15).</p>
+            <x-ui.field label="Taxa por entrega (R$)"><x-ui.input type="number" inputmode="decimal" min="0" step="0.5" x-model="f.fee" /></x-ui.field>
+            <p class="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">Valor médio pago por entrega no local (ex.: R$ 8).</p>
         </div>
 
         <div>

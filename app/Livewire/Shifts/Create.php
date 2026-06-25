@@ -110,8 +110,7 @@ class Create extends Component
             'startTime' => $source->start_time ?? '18:00',
             'endTime' => $source->end_time ?? '23:00',
             'dailyRate' => $source ? (string) ($source->daily_rate + 0) : '',
-            'feeMin' => $source ? (string) ($source->delivery_fee_min + 0) : '',
-            'feeMax' => $source ? (string) ($source->delivery_fee_max + 0) : '',
+            'fee' => $source ? (string) ($source->delivery_fee_min + 0) : '',
             'contactName' => $withContact ? ($source->contact?->contact_name ?? '') : '',
             'contactPhone' => $withContact ? ($source->contact?->whatsapp_phone ?? '') : '',
             'notes' => $source->notes ?? '',
@@ -134,8 +133,7 @@ class Create extends Component
         $toast = fn (string $m) => $this->dispatch('toast', message: $m);
 
         $dailyRate = trim((string) ($form['dailyRate'] ?? ''));
-        $feeMin = trim((string) ($form['feeMin'] ?? ''));
-        $feeMax = trim((string) ($form['feeMax'] ?? ''));
+        $fee = trim((string) ($form['fee'] ?? ''));
         $date = (string) ($form['date'] ?? '');
         $startTime = (string) ($form['startTime'] ?? '');
         $endTime = (string) ($form['endTime'] ?? '');
@@ -148,11 +146,8 @@ class Create extends Component
         if ($dailyRate === '') {
             return $toast('O valor da diária é obrigatório.');
         }
-        if ($feeMin === '' || $feeMax === '') {
-            return $toast('Informe a taxa mínima e a máxima.');
-        }
-        if ((float) $feeMin > (float) $feeMax) {
-            return $toast('A taxa mínima não pode ser maior que a máxima.');
+        if ($fee === '') {
+            return $toast('Informe a taxa por entrega.');
         }
         if (! array_key_exists($venueType, Catalog::VENUE_TYPE_LABEL)) {
             return $toast('Selecione o tipo do local.');
@@ -187,9 +182,9 @@ class Create extends Component
             'start_time' => $startTime,
             'end_time' => $endTime,
             'daily_rate' => (float) $dailyRate,
-            'delivery_fee' => (float) $feeMin,
-            'delivery_fee_min' => (float) $feeMin,
-            'delivery_fee_max' => (float) $feeMax,
+            'delivery_fee' => (float) $fee,
+            'delivery_fee_min' => (float) $fee,
+            'delivery_fee_max' => (float) $fee,
             'venue_type' => $venueType,
             'expected_volume' => $expectedVolume,
             'benefits' => $benefits,

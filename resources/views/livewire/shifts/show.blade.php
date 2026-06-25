@@ -125,7 +125,9 @@
     {{-- Key info --}}
     <div class="mt-5 grid grid-cols-2 gap-3">
         <x-shift-info label="Diária" :value="'R$ ' . ($shift->daily_rate + 0)" highlight />
-        <x-shift-info label="Taxa por entrega" :value="'R$ ' . number_format($shift->delivery_fee_min, 2, ',', '.') . ' a R$ ' . number_format($shift->delivery_fee_max, 2, ',', '.')" />
+        <x-shift-info label="Taxa por entrega" :value="$shift->delivery_fee_min == $shift->delivery_fee_max
+            ? 'R$ ' . number_format($shift->delivery_fee_min, 2, ',', '.')
+            : 'R$ ' . number_format($shift->delivery_fee_min, 2, ',', '.') . ' a R$ ' . number_format($shift->delivery_fee_max, 2, ',', '.')" />
         <x-shift-info label="Data" :value="$shift->date->isoFormat('DD [de] MMM')" />
         <x-shift-info label="Horário" :value="$shift->start_time . ' – ' . $shift->end_time" icon="clock" />
     </div>

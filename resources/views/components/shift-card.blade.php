@@ -98,7 +98,11 @@
     <p class="mt-2 text-xs text-muted-foreground">
         Taxa:
         <span class="font-semibold text-foreground/85">
-            R$ {{ number_format($shift->delivery_fee_min, 2, ',', '.') }} – R$ {{ number_format($shift->delivery_fee_max, 2, ',', '.') }}
+            @if ($shift->delivery_fee_min == $shift->delivery_fee_max)
+                R$ {{ number_format($shift->delivery_fee_min, 2, ',', '.') }}
+            @else
+                R$ {{ number_format($shift->delivery_fee_min, 2, ',', '.') }} – R$ {{ number_format($shift->delivery_fee_max, 2, ',', '.') }}
+            @endif
         </span>
         por entrega
     </p>
