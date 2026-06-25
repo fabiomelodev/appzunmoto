@@ -34,7 +34,6 @@ class AuthTest extends TestCase
         Livewire::test(Login::class)
             ->set('mode', 'signup')
             ->set('name', 'João Silva')
-            ->set('cpf', '529.982.247-25')
             ->set('birthDate', '10/05/1990')
             ->set('phone', '(11) 99999-0000')
             ->set('street', 'Av Paulista')
@@ -51,7 +50,6 @@ class AuthTest extends TestCase
         $this->assertGuest();
         $user = User::where('email', 'joao@test.dev')->first();
         $this->assertNotNull($user);
-        $this->assertSame('52998224725', $user->profile->cpf);
         $this->assertSame('11999990000', $user->profile->phone);
         $this->assertSame('1990-05-10', $user->profile->birth_date->toDateString());
         $this->assertSame('Centro', $user->profile->district);
@@ -62,7 +60,6 @@ class AuthTest extends TestCase
         Livewire::test(Login::class)
             ->set('mode', 'signup')
             ->set('name', 'João Silva')
-            ->set('cpf', '529.982.247-25')
             ->set('birthDate', '10/05/1990')
             ->set('phone', '(11) 99999-0000')
             ->set('street', 'Av Paulista')
@@ -76,6 +73,26 @@ class AuthTest extends TestCase
             ->assertHasErrors('password');
 
         $this->assertNull(User::where('email', 'joao2@test.dev')->first());
+    }
+
+    public function test_signup_rejects_users_under_18(): void
+    {
+        Livewire::test(Login::class)
+            ->set('mode', 'signup')
+            ->set('name', 'Jovem Demais')
+            ->set('birthDate', now()->subYears(17)->format('d/m/Y'))
+            ->set('phone', '(11) 99999-0000')
+            ->set('street', 'Av Paulista')
+            ->set('number', '100')
+            ->set('district', 'Centro')
+            ->set('city', 'São Paulo')
+            ->set('email', 'jovem@test.dev')
+            ->set('password', 'secret123')
+            ->set('passwordConfirmation', 'secret123')
+            ->call('submit')
+            ->assertHasErrors('birthDate');
+
+        $this->assertNull(User::where('email', 'jovem@test.dev')->first(), 'menor de 18 não deve criar conta');
     }
 
     public function test_signin_authenticates_existing_user(): void

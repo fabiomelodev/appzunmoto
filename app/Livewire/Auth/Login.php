@@ -3,8 +3,10 @@
 namespace App\Livewire\Auth;
 
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -23,13 +25,15 @@ class Login extends Component
 
     // signup-only
     public string $name = '';
-    public string $cpf = '';
     public string $birthDate = '';
     public string $phone = '';
+    public string $cep = '';
     public string $street = '';
     public string $number = '';
     public string $district = '';
     public string $city = '';
+
+    public bool $cepBusy = false;
 
     public string $testName = 'Usuário';
 
@@ -51,7 +55,34 @@ class Login extends Component
         $this->mode = $mode === 'signup' ? 'signup' : 'signin';
         $this->notice = null;
         $this->resetErrorBag();
-        $this->reset('password', 'passwordConfirmation', 'name', 'cpf', 'birthDate', 'phone', 'street', 'number', 'district', 'city');
+        $this->reset('password', 'passwordConfirmation', 'name', 'birthDate', 'phone', 'cep', 'street', 'number', 'district', 'city');
+    }
+
+    /** Fills street / district / city from the CEP (ViaCEP), like the address forms. */
+    public function lookupCep(): void
+    {
+        $digits = preg_replace('/\D/', '', $this->cep);
+        if (strlen($digits) !== 8) {
+            return;
+        }
+
+        $this->cepBusy = true;
+        try {
+            $data = Http::timeout(6)->get("https://viacep.com.br/ws/{$digits}/json/")->json();
+            if (is_array($data) && empty($data['erro'])) {
+                $this->street = $data['logradouro'] ?: $this->street;
+                $this->district = $data['bairro'] ?: $this->district;
+                $this->city = ($data['localidade'] ?? '')
+                    ? trim(($data['localidade'] ?? '').(isset($data['uf']) ? ' - '.$data['uf'] : ''))
+                    : $this->city;
+            } else {
+                $this->dispatch('toast', message: 'CEP não encontrado.');
+            }
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', message: 'Falha ao consultar o CEP.');
+        } finally {
+            $this->cepBusy = false;
+        }
     }
 
     public function submit()
@@ -83,7 +114,6 @@ class Login extends Component
     {
         $this->validate([
             'name' => ['required', 'min:2'],
-            'cpf' => ['required'],
             'birthDate' => ['required'],
             'phone' => ['required'],
             'street' => ['required', 'min:2'],
@@ -97,15 +127,9 @@ class Login extends Component
             'password.same' => 'As senhas não coincidem.',
         ]);
 
-        $cpfDigits = preg_replace('/\D/', '', $this->cpf);
         $phoneDigits = preg_replace('/\D/', '', $this->phone);
         $birth = $this->parseBrDate($this->birthDate);
 
-        if (strlen($cpfDigits) !== 11) {
-            $this->addError('cpf', 'CPF inválido.');
-
-            return null;
-        }
         if (strlen($phoneDigits) < 10) {
             $this->addError('phone', 'Telefone inválido.');
 
@@ -116,8 +140,13 @@ class Login extends Component
 
             return null;
         }
+        if (Carbon::parse($birth)->isAfter(now()->subYears(18))) {
+            $this->addError('birthDate', 'Você precisa ter pelo menos 18 anos para criar uma conta.');
 
-        DB::transaction(function () use ($cpfDigits, $phoneDigits, $birth) {
+            return null;
+        }
+
+        DB::transaction(function () use ($phoneDigits, $birth) {
             $user = User::create([
                 'name' => trim($this->name),
                 'email' => $this->email,
@@ -128,7 +157,6 @@ class Login extends Component
             $user->profile()->update([
                 'role' => 'courier',
                 'name' => trim($this->name),
-                'cpf' => $cpfDigits,
                 'birth_date' => $birth,
                 'phone' => $phoneDigits,
                 'street' => trim($this->street),
@@ -140,7 +168,7 @@ class Login extends Component
 
         // Mirror the original app: do not auto-login; switch to sign-in.
         $this->mode = 'signin';
-        $this->reset('password', 'passwordConfirmation', 'name', 'cpf', 'birthDate', 'phone', 'street', 'number', 'district', 'city');
+        $this->reset('password', 'passwordConfirmation', 'name', 'birthDate', 'phone', 'cep', 'street', 'number', 'district', 'city');
         $this->notice = 'Cadastro realizado com sucesso! Faça login para entrar.';
 
         return null;
