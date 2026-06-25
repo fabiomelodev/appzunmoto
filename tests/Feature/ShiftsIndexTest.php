@@ -102,6 +102,21 @@ class ShiftsIndexTest extends TestCase
             ->assertDontSee('SoMoto');
     }
 
+    public function test_min_delivery_fee_filter(): void
+    {
+        $this->actingAs($this->creator());
+        $this->makeShift(['venue' => 'TaxaBaixa', 'delivery_fee_min' => 5, 'delivery_fee_max' => 5]);
+        $this->makeShift(['venue' => 'TaxaAlta', 'delivery_fee_min' => 10, 'delivery_fee_max' => 10]);
+
+        Livewire::test(Index::class)
+            ->call('applyFilters', [
+                'vehicles' => [], 'dailyMin' => '', 'feeMin' => '8',
+                'startTime' => '', 'benefits' => [], 'ownBag' => 'any', 'date' => '',
+            ])
+            ->assertSee('TaxaAlta')
+            ->assertDontSee('TaxaBaixa');
+    }
+
     public function test_set_vehicle_updates_profile(): void
     {
         $user = $this->creator();

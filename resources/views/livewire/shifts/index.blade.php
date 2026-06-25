@@ -144,8 +144,8 @@
                         <x-ui.input type="number" inputmode="numeric" x-model="draft.dailyMin" placeholder="40" />
                     </div>
                     <div>
-                        <label class="text-[11px] uppercase tracking-wider text-muted-foreground">Taxa média mín. (R$)</label>
-                        <x-ui.input type="number" inputmode="decimal" step="0.5" x-model="draft.feeMin" placeholder="7" />
+                        <label class="text-[11px] uppercase tracking-wider text-muted-foreground">Taxa de entrega mínima</label>
+                        <x-ui.input type="number" inputmode="numeric" x-model="draft.feeMin" placeholder="7" />
                     </div>
                 </div>
 
