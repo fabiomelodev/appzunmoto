@@ -130,11 +130,15 @@ class Index extends Component
     public function shifts()
     {
         $f = $this->filters;
+        $acceptedIds = $this->myAcceptedIds;
 
         $query = Shift::query()
             ->with('creator.profile')
             ->withCount(['applications as accepted_count' => fn ($q) => $q->where('status', 'accepted')])
-            ->where('status', '!=', Shift::STATUS_FILLED)
+            // Filled shifts leave the marketplace, but the accepted courier keeps
+            // seeing the one they're committed to (until its date passes).
+            ->where(fn ($q) => $q->where('status', '!=', Shift::STATUS_FILLED)
+                ->orWhereIn('id', $acceptedIds->all()))
             // Paused shifts leave the marketplace, but the owner still sees their
             // own (with a "Pausada" badge) so they can manage/resume them.
             ->where(fn ($q) => $q->where('active', true)->orWhere('creator_id', Auth::id()))
@@ -189,7 +193,6 @@ class Index extends Component
         }
 
         $now = now();
-        $acceptedIds = $this->myAcceptedIds;
 
         return $query
             ->orderByRaw("CASE WHEN status = '".Shift::STATUS_AVAILABLE."' THEN 0 ELSE 1 END")

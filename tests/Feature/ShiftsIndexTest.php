@@ -134,6 +134,27 @@ class ShiftsIndexTest extends TestCase
             ->assertDontSee('Interesse aceito com sucesso');
     }
 
+    public function test_accepted_courier_still_sees_filled_shift_they_belong_to(): void
+    {
+        $courier = User::create(['name' => 'Moto', 'email' => 'moto'.uniqid().'@test.dev', 'password' => 'secret123']);
+        $other = User::create(['name' => 'Outro', 'email' => 'outro'.uniqid().'@test.dev', 'password' => 'secret123']);
+
+        // A shift that became filled (partnership confirmed) with this courier accepted.
+        $shift = $this->makeShift(['venue' => 'VagaPreenchidaMinha', 'status' => 'filled', 'reserved_by' => $courier->id]);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'accepted']);
+
+        // The committed courier keeps seeing it (with the confirmation banner).
+        $this->actingAs($courier);
+        Livewire::test(Index::class)
+            ->assertSee('VagaPreenchidaMinha')
+            ->assertSee('Interesse aceito com sucesso');
+
+        // Filled shifts stay off-market for everyone else.
+        $this->actingAs($other);
+        Livewire::test(Index::class)
+            ->assertDontSee('VagaPreenchidaMinha');
+    }
+
     public function test_owner_sees_own_paused_shift_with_badge_others_dont(): void
     {
         $owner = $this->creator();
