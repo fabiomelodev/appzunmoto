@@ -1,58 +1,73 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# MotoReserva
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Plataforma de **reserva de vagas (turnos/diárias) para motoboys e entregadores**: restaurantes e comércios publicam turnos, entregadores demonstram interesse, as duas partes confirmam a parceria e conversam pelo chat.
 
-## About Laravel
+Reimplementação fiel do app original (React + TanStack + Supabase) em **Laravel + Livewire + AlpineJS + Tailwind**. Todo o código (variáveis, métodos, colunas) está em **inglês**; a interface permanece em **português**.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Stack
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- **Laravel 13** · **Livewire 4** · **AlpineJS** · **Tailwind v4** (Vite; fontes Inter/Sora servidas localmente)
+- **MySQL** · **Leaflet** (mapa de vagas) · autenticação nativa do Laravel
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Requisitos
 
-## Learning Laravel
+- PHP 8.3+ · Composer · Node 18+ · MySQL 8+
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Instalação
 
 ```bash
-composer require laravel/boost --dev
+composer install
+npm install
 
-php artisan boost:install
+cp .env.example .env
+php artisan key:generate
+
+# configure DB_* no .env (MySQL), depois:
+php artisan migrate
+php artisan storage:link      # avatares/uploads públicos
+php artisan db:seed           # dados de demonstração (opcional)
+
+npm run build                 # ou: npm run dev
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Servir: `php artisan serve` (ou via Laragon em `http://motoreserva.test`).
 
-## Contributing
+## Contas de demonstração
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Após `php artisan db:seed` (senha de todas: `secret123`):
 
-## Code of Conduct
+| Papel | E-mail |
+|------|--------|
+| Restaurante | `bella@demo.test`, `yama@demo.test`, `burger@demo.test` |
+| Motoboy | `carlos@demo.test`, `ana@demo.test` |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Ou use o **Modo teste** na tela de login para entrar instantaneamente.
 
-## Security Vulnerabilities
+## Funcionalidades
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- **Vagas**: listagem com busca, filtros avançados, chips de região, filtro/selo "meu interesse" e destaque das vagas próprias.
+- **Publicar vaga**: escolher/cadastrar endereço (CEP via ViaCEP + geocoding), formulário completo, clonar, **editar/pausar/excluir** (com marca "Atualizado em").
+- **Detalhe**: candidatar-se, ver perfil do entregador, avaliar, compartilhar no WhatsApp.
+- **Parcerias**: aceitar/recusar candidatos, confirmar parceria (dos dois lados) → vaga "preenchida"; chat por conversa.
+- **Notificações** in-app (nova candidatura, mensagem, parceria/turno).
+- **Conta**: perfil (avatar, dados, avaliações), veículo + documentos (privados), endereços, configurações (tema dark/light/urbano, notificações, e-mail/senha), histórico e **mapa** das vagas.
 
-## License
+## Arquitetura
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- **Models/Migrations** (inglês): `profiles`, `shifts`, `applications`, `chats`, `messages`, `reviews`, `notifications`, `user_addresses`, `user_settings`, `shift_contacts`, `documents`.
+- **Observers** substituem os triggers do Postgres original: provisionar perfil no cadastro, recalcular média de avaliações, e notificações (candidatura, mensagem, aceite).
+- **Regras de negócio** centralizadas em `App\Support\Partnerships` (interesse → aceite → confirmação → preenchida).
+- **Componentes Blade** reutilizáveis em `resources/views/components` (`ui.*`, cards, modais, etc.); telas em `resources/views/livewire`.
+
+## Testes
+
+```bash
+php artisan test
+```
+
+Suíte de feature (PHPUnit) cobrindo autenticação, vagas (CRUD/filtros/candidatura/avaliação/edição/pausa), parcerias/chat, notificações, conta, veículo/documentos, endereços, histórico, mapa e as regras de autorização.
+
+## Notas
+
+- Documentos (RG/CNH) ficam em disco **privado**, servidos apenas ao dono via rota autorizada.
+- O mapa exibe vagas **geolocalizadas**; novos endereços são geocodificados (Nominatim/OpenStreetMap) ao salvar.
