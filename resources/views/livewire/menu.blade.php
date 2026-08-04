@@ -1,7 +1,14 @@
 @php
     use Illuminate\Support\Str;
     $name = $profile?->name ?: auth()->user()->name;
+    $items = [];
+
+    if (auth()->user()->is_admin) {
+        $items[] = ['route' => 'filament.admin.pages.dashboard', 'icon' => 'shield-check', 'label' => 'Painel Administrativo', 'hint' => 'Gestão de conteúdos e permissões', 'navigate' => false];
+    }
+
     $items = [
+        ...$items,
         ['route' => 'profile', 'icon' => 'user', 'label' => 'Meu Perfil', 'hint' => 'Dados pessoais, avaliações e histórico'],
         ['route' => 'vehicle', 'icon' => 'bike', 'label' => 'Veículo e Documentação', 'hint' => $profile?->vehicle ? (App\Support\Catalog::VEHICLE_LABEL[$profile->vehicle] ?? $profile->vehicle) : 'Defina seu veículo e envie documentos'],
         ['route' => 'addresses', 'icon' => 'map-pin', 'label' => 'Meus Endereços', 'hint' => 'Salve endereços para acelerar suas vagas'],
@@ -31,7 +38,7 @@
 
     <div class="mt-2 space-y-2 px-4">
         @foreach ($items as $it)
-            <a href="{{ route($it['route']) }}" wire:navigate
+            <a href="{{ route($it['route']) }}" @if($it['navigate'] ?? true) wire:navigate @endif
                 class="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-4 transition hover:border-primary/40 hover:bg-surface-elevated">
                 <span class="grid h-11 w-11 place-items-center rounded-xl bg-primary/15 text-primary">
                     <x-ui.icon :name="$it['icon']" class="h-5 w-5" />
