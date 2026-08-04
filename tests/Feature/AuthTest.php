@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Livewire\Auth\Login;
-use App\Models\Profile;
 use App\Models\User;
 use App\Models\UserSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,6 +26,17 @@ class AuthTest extends TestCase
         $this->assertSame('courier', $user->profile->role);
         $this->assertSame('Maria', $user->name);
         $this->assertInstanceOf(UserSetting::class, $user->settings);
+    }
+
+    public function test_test_mode_is_blocked_in_production(): void
+    {
+        app()['env'] = 'production';
+
+        Livewire::test(Login::class)
+            ->call('testLogin')
+            ->assertStatus(404);
+
+        $this->assertGuest();
     }
 
     public function test_signup_creates_user_and_profile_without_auto_login(): void

@@ -176,6 +176,8 @@ class Login extends Component
 
     public function testLogin()
     {
+        abort_if(app()->environment('production'), 404);
+
         $name = trim($this->testName) ?: 'Usuário';
 
         $user = User::create([
