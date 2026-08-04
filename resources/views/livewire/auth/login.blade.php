@@ -148,21 +148,23 @@
             Continuar com Google
         </x-ui.button>
 
-        {{-- Test mode --}}
-        <div class="mt-6 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4">
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-primary">Modo teste</p>
-            <p class="mt-1 text-xs text-muted-foreground">
-                Entre instantaneamente sem e-mail nem senha. Use apenas para testar o app.
-            </p>
-            <div class="mt-3 flex gap-2">
-                <x-ui.input wire:model="testName" placeholder="Nome de usuário" maxlength="40" />
-                <x-ui.button type="button" wire:click="testLogin" class="shrink-0" wire:loading.attr="disabled"
-                    wire:target="testLogin">
-                    <x-ui.icon name="zap" class="mr-1.5 h-4 w-4" />
-                    Entrar
-                </x-ui.button>
+        {{-- Test mode (hidden in production) --}}
+        @unless (app()->environment('production'))
+            <div class="mt-6 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-4">
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-primary">Modo teste</p>
+                <p class="mt-1 text-xs text-muted-foreground">
+                    Entre instantaneamente sem e-mail nem senha. Use apenas para testar o app.
+                </p>
+                <div class="mt-3 flex gap-2">
+                    <x-ui.input wire:model="testName" placeholder="Nome de usuário" maxlength="40" />
+                    <x-ui.button type="button" wire:click="testLogin" class="shrink-0" wire:loading.attr="disabled"
+                        wire:target="testLogin">
+                        <x-ui.icon name="zap" class="mr-1.5 h-4 w-4" />
+                        Entrar
+                    </x-ui.button>
+                </div>
             </div>
-        </div>
+        @endunless
 
         @if ($mode === 'signup')
             <p class="mt-4 text-center text-[11px] text-muted-foreground">
