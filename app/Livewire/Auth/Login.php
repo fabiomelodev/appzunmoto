@@ -20,26 +20,17 @@ class Login extends Component
     public string $mode = 'signin';
 
     public string $email = '';
-
     public string $password = '';
-
     public string $passwordConfirmation = '';
 
     // signup-only
     public string $name = '';
-
     public string $birthDate = '';
-
     public string $phone = '';
-
     public string $cep = '';
-
     public string $street = '';
-
     public string $number = '';
-
     public string $district = '';
-
     public string $city = '';
 
     public bool $cepBusy = false;
