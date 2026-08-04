@@ -37,6 +37,22 @@ class AccountTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_menu_shows_admin_panel_link_only_to_admins(): void
+    {
+        $this->actingAs($this->user());
+
+        Livewire::test(Menu::class)
+            ->assertDontSee('Painel Administrativo');
+
+        $admin = $this->user();
+        $admin->forceFill(['is_admin' => true])->save();
+        $this->actingAs($admin);
+
+        Livewire::test(Menu::class)
+            ->assertSee('Painel Administrativo')
+            ->assertSee(route('filament.admin.pages.dashboard'));
+    }
+
     public function test_profile_save_updates_profile_and_user_name(): void
     {
         $user = $this->user();
