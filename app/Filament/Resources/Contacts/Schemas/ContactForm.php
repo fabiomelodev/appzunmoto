@@ -14,7 +14,10 @@ class ContactForm
             ->components([
                 TextInput::make('name')
                     ->required(),
-                TextInput::make('link'),
+                TextInput::make('link')
+                    ->label('Link')
+                    ->helperText('URL de destino ao tocar no item. Ex.: mailto:suporte@giromoto.com.br, tel:+551140004000 ou https://wa.me/55...')
+                    ->required(),
                 Select::make('type')
                     ->options(['email' => 'Email', 'phone' => 'Phone', 'chat' => 'Chat'])
                     ->default('email')
