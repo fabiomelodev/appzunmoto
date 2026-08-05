@@ -15,12 +15,15 @@
     </script>
     <x-broadcast-config />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 </head>
 
 <body class="antialiased">
     <div class="app-shell min-h-dvh">
         {{ $slot }}
     </div>
+
+    @livewireScripts
 </body>
 
 </html>

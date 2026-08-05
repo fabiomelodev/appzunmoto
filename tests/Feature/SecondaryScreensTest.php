@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Livewire\History;
 use App\Livewire\MapPage;
 use App\Models\Application;
+use App\Models\Contact;
+use App\Models\Faq;
 use App\Models\Shift;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -77,10 +79,52 @@ class SecondaryScreensTest extends TestCase
 
     public function test_pages_render(): void
     {
+        Faq::create(['name' => 'Como aceito uma vaga?', 'description' => 'Toque no card da vaga.', 'status' => 'active']);
+
         $this->actingAs($this->user('Dono'));
 
         $this->get(route('history'))->assertOk()->assertSee('Histórico de Turnos');
         $this->get(route('help'))->assertOk()->assertSee('Perguntas frequentes');
         $this->get(route('map'))->assertOk()->assertSee('vagas no mapa');
+    }
+
+    public function test_help_loads_livewire_assets_so_the_faq_accordion_works(): void
+    {
+        // /help é uma view "solta" (sem componente Livewire); sem @livewireScripts no
+        // layout, Alpine (empacotado dentro do livewire.js) nunca carrega e os
+        // @click do acordeão de FAQ ficam mortos até o usuário navegar por uma
+        // página que É um componente Livewire (ex.: o Menu) e voltar via wire:navigate.
+        $this->actingAs($this->user('Dono'));
+
+        $this->get(route('help'))
+            ->assertOk()
+            ->assertSee('livewire.js', false);
+    }
+
+    public function test_help_lists_only_active_faqs_from_database(): void
+    {
+        Faq::create(['name' => 'Pergunta ativa', 'description' => 'Resposta <strong>rica</strong>.', 'status' => 'active']);
+        Faq::create(['name' => 'Pergunta inativa', 'description' => 'Não deve aparecer.', 'status' => 'inactive']);
+
+        $this->actingAs($this->user('Dono'));
+
+        $response = $this->get(route('help'))->assertOk();
+        $response->assertSee('Pergunta ativa');
+        $response->assertSee('Resposta <strong>rica</strong>.', false);
+        $response->assertDontSee('Pergunta inativa');
+    }
+
+    public function test_help_lists_active_contacts_from_database_in_order(): void
+    {
+        Contact::create(['name' => 'suporte@giromoto.com.br', 'link' => 'mailto:suporte@giromoto.com.br', 'type' => 'email', 'status' => 'active', 'order' => 2]);
+        Contact::create(['name' => 'Contato desativado', 'link' => 'mailto:antigo@giromoto.com.br', 'type' => 'email', 'status' => 'inactive', 'order' => 1]);
+        Contact::create(['name' => '(11) 4000-4000', 'link' => 'tel:+551140004000', 'type' => 'phone', 'status' => 'active', 'order' => 1]);
+
+        $this->actingAs($this->user('Dono'));
+
+        $response = $this->get(route('help'))->assertOk();
+        $response->assertSeeInOrder(['(11) 4000-4000', 'suporte@giromoto.com.br']);
+        $response->assertSee('tel:+551140004000', false);
+        $response->assertDontSee('Contato desativado');
     }
 }
