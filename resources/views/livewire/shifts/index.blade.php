@@ -2,6 +2,11 @@
     use App\Support\Catalog;
     $activeVehicle = $this->activeVehicle;
     $vehicleIcon = Catalog::VEHICLE_ICON[$activeVehicle] ?? 'bike';
+    // Fetched once here (not per card) to avoid N+1 taxonomy queries in the list below.
+    $venueTypeLabels = Catalog::allVenueTypeLabels();
+    $expectedVolumeLabels = Catalog::allExpectedVolumeLabels();
+    $benefitMeta = Catalog::allBenefitMeta();
+    $benefits = Catalog::benefits();
 @endphp
 
 <div class="px-4 pt-6"
@@ -79,7 +84,9 @@
     {{-- List --}}
     <div class="mt-4 space-y-3">
         @forelse ($this->shifts as $shift)
-            <x-shift-card :shift="$shift" :interested="$this->myInterestIds->contains($shift->id)" :accepted="$this->myAcceptedIds->contains($shift->id)" wire:key="shift-{{ $shift->id }}" />
+            <x-shift-card :shift="$shift" :interested="$this->myInterestIds->contains($shift->id)" :accepted="$this->myAcceptedIds->contains($shift->id)"
+                :venueTypeLabels="$venueTypeLabels" :expectedVolumeLabels="$expectedVolumeLabels" :benefitMeta="$benefitMeta"
+                wire:key="shift-{{ $shift->id }}" />
         @empty
             <div class="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
                 Nenhuma vaga encontrada.
@@ -159,12 +166,12 @@
                 <div>
                     <label class="text-[11px] uppercase tracking-wider text-muted-foreground">Benefícios desejados</label>
                     <div class="mt-2 grid grid-cols-2 gap-2">
-                        @foreach (Catalog::BENEFIT_OPTIONS as $b)
+                        @foreach ($benefits as $benefit)
                             <label class="flex cursor-pointer items-center gap-2 rounded-xl border p-2.5 text-xs"
-                                :class="draft.benefits.includes('{{ $b }}') ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 bg-surface'">
+                                :class="draft.benefits.includes('{{ $benefit['slug'] }}') ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 bg-surface'">
                                 <input type="checkbox" class="h-4 w-4 accent-[var(--color-primary)]"
-                                    :checked="draft.benefits.includes('{{ $b }}')" @change="toggleBenefit('{{ $b }}')" />
-                                {{ Catalog::BENEFIT_LABEL[$b] }}
+                                    :checked="draft.benefits.includes('{{ $benefit['slug'] }}')" @change="toggleBenefit('{{ $benefit['slug'] }}')" />
+                                {{ $benefit['name'] }}
                             </label>
                         @endforeach
                     </div>

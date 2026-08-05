@@ -2,9 +2,17 @@
 
 namespace App\Support;
 
+use App\Models\Benefit;
+use App\Models\ExpectedVolume;
+use App\Models\VenueType;
+
 /**
  * Domain taxonomy and Portuguese labels (ported from the React `lib/types.ts`).
  * Data slugs are kept identical to the original app; only code is in English.
+ *
+ * Vehicle and contact-type taxonomy stay static (fixed by the domain). Venue
+ * type, expected volume and benefits are admin-managed (see the matching
+ * models/Filament resources) — their accessors below query the database.
  */
 class Catalog
 {
@@ -35,37 +43,6 @@ class Catalog
         'bike' => 'bike',
     ];
 
-    public const BENEFIT_OPTIONS = ['lanche', 'almoco', 'janta', 'combustivel'];
-
-    public const BENEFIT_LABEL = [
-        'lanche' => 'Lanche',
-        'almoco' => 'Almoço',
-        'janta' => 'Janta',
-        'combustivel' => 'Combustível',
-    ];
-
-    public const BENEFIT_ICON = [
-        'lanche' => 'sandwich',
-        'almoco' => 'utensils',
-        'janta' => 'drumstick',
-        'combustivel' => 'fuel',
-    ];
-
-    public const VENUE_TYPE_LABEL = [
-        'pizzaria' => 'Pizzaria',
-        'hamburguer' => 'Hambúrguer',
-        'japones' => 'Japonês',
-        'mercado' => 'Mercado',
-        'farmacia' => 'Farmácia',
-        'outro' => 'Outro',
-    ];
-
-    public const VOLUME_LABEL = [
-        'tranquilo' => '😌 Tranquilo (até 20 pedidos)',
-        'moderado' => '⚡ Moderado (20–40 pedidos)',
-        'pesado' => '🔥 Pesado (40+ pedidos)',
-    ];
-
     /** Maps a contact type (`contacts.type`) to a Lucide icon name (see <x-ui.icon>). */
     public const CONTACT_TYPE_ICON = [
         'email' => 'mail',
@@ -86,5 +63,76 @@ class Catalog
         }
 
         return implode(' + ', array_map(fn ($v) => self::VEHICLE_LABEL[$v] ?? $v, $vehicles));
+    }
+
+    /** Active venue types (slug => name), ordered — the selectable options in the shift form. */
+    public static function venueTypes(): array
+    {
+        return VenueType::active()->orderBy('order')->pluck('name', 'slug')->all();
+    }
+
+    /** All venue type labels (slug => name), regardless of status — so old shifts keep displaying correctly. */
+    public static function allVenueTypeLabels(): array
+    {
+        return VenueType::pluck('name', 'slug')->all();
+    }
+
+    /** Label for a venue type slug, regardless of its current active status. */
+    public static function venueTypeLabel(?string $slug): ?string
+    {
+        return $slug ? (self::allVenueTypeLabels()[$slug] ?? $slug) : null;
+    }
+
+    /** Active expected-volume options (slug => name), ordered — the selectable options in the shift form. */
+    public static function expectedVolumes(): array
+    {
+        return ExpectedVolume::active()->orderBy('order')->pluck('name', 'slug')->all();
+    }
+
+    /** All expected-volume labels (slug => name), regardless of status. */
+    public static function allExpectedVolumeLabels(): array
+    {
+        return ExpectedVolume::pluck('name', 'slug')->all();
+    }
+
+    /** Label for an expected-volume slug, regardless of its current active status. */
+    public static function volumeLabel(?string $slug): ?string
+    {
+        return $slug ? (self::allExpectedVolumeLabels()[$slug] ?? $slug) : null;
+    }
+
+    /** Active benefits, ordered — each as ['slug' => ..., 'name' => ..., 'icon' => ...]. */
+    public static function benefits(): array
+    {
+        return Benefit::active()->orderBy('order')->get(['slug', 'name', 'icon'])
+            ->map(fn (Benefit $b) => ['slug' => $b->slug, 'name' => $b->name, 'icon' => $b->icon])
+            ->all();
+    }
+
+    /** Active benefit slugs only — used to sanitize form/filter submissions. */
+    public static function benefitOptions(): array
+    {
+        return Benefit::active()->pluck('slug')->all();
+    }
+
+    /** All benefits (slug => ['name' => ..., 'icon' => ...]), regardless of status. */
+    public static function allBenefitMeta(): array
+    {
+        return Benefit::get(['slug', 'name', 'icon'])
+            ->keyBy('slug')
+            ->map(fn (Benefit $b) => ['name' => $b->name, 'icon' => $b->icon])
+            ->all();
+    }
+
+    /** Label for a benefit slug, regardless of its current active status. */
+    public static function benefitLabel(string $slug): string
+    {
+        return self::allBenefitMeta()[$slug]['name'] ?? $slug;
+    }
+
+    /** Icon for a benefit slug, regardless of its current active status. */
+    public static function benefitIcon(string $slug): string
+    {
+        return self::allBenefitMeta()[$slug]['icon'] ?? 'check';
     }
 }
