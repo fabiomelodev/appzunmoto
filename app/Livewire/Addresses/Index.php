@@ -3,6 +3,7 @@
 namespace App\Livewire\Addresses;
 
 use App\Models\UserAddress;
+use App\Support\Geocoder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -13,7 +14,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
-#[Title('Meus Endereços — MotoReserva')]
+#[Title('Meus Endereços — GiroMoto')]
 class Index extends Component
 {
     use WithFileUploads;
@@ -23,16 +24,24 @@ class Index extends Component
     public ?string $editingId = null;
 
     public string $label = '';
+
     public string $cep = '';
+
     public string $street = '';
+
     public string $number = '';
+
     public string $district = '';
+
     public string $city = '';
+
     public string $reference = '';
 
     // Optional location photo.
     public $photo = null;
+
     public ?string $existingPhotoUrl = null;
+
     public bool $removePhoto = false;
 
     public bool $cepBusy = false;
@@ -132,7 +141,7 @@ class Index extends Component
 
         $coords = app()->runningUnitTests()
             ? null
-            : \App\Support\Geocoder::forAddress($data['street'], $data['number'], $data['district'], $data['city'], $data['postal_code']);
+            : Geocoder::forAddress($data['street'], $data['number'], $data['district'], $data['city'], $data['postal_code']);
         if ($coords) {
             $data['lat'] = $coords['lat'];
             $data['lng'] = $coords['lng'];

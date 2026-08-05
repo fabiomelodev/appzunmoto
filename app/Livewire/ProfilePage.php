@@ -14,7 +14,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
-#[Title('Perfil — MotoReserva')]
+#[Title('Perfil — GiroMoto')]
 class ProfilePage extends Component
 {
     use WithFileUploads;
@@ -22,14 +22,23 @@ class ProfilePage extends Component
     public string $tab = 'info';
 
     public string $name = '';
+
     public string $cpf = '';
+
     public string $birthDate = '';
+
     public string $phone = '';
+
     public string $street = '';
+
     public string $streetNumber = '';
+
     public string $district = '';
+
     public string $city = '';
+
     public string $bio = '';
+
     public bool $hasBag = false;
 
     public $photo;

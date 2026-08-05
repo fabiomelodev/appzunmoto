@@ -9,7 +9,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Notificações — MotoReserva')]
+#[Title('Notificações — GiroMoto')]
 class Page extends Component
 {
     public function getListeners(): array

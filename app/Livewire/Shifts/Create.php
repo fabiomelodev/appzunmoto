@@ -16,7 +16,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Nova vaga — MotoReserva')]
+#[Title('Nova vaga — GiroMoto')]
 class Create extends Component
 {
     /** 'business' | 'courier' */

@@ -20,6 +20,6 @@ class ExampleTest extends TestCase
      */
     public function test_login_screen_is_reachable(): void
     {
-        $this->get('/login')->assertOk()->assertSee('MotoReserva');
+        $this->get('/login')->assertOk()->assertSee('GiroMoto');
     }
 }
