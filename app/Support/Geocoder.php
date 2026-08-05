@@ -36,7 +36,7 @@ class Geocoder
         }
 
         try {
-            $response = Http::withHeaders(['User-Agent' => 'MotoReserva/1.0 (contato@motoreserva.app)'])
+            $response = Http::withHeaders(['User-Agent' => 'GiroMoto/1.0 (contato@giromoto.com.br)'])
                 ->timeout(8)
                 ->retry(2, 1000, throw: false) // ride out transient network blips
                 ->get('https://nominatim.openstreetmap.org/search', [

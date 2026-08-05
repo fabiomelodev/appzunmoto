@@ -1,4 +1,4 @@
-<x-layouts.app title="Ajuda — MotoReserva">
+<x-layouts.app title="Ajuda — GiroMoto">
     <div class="pb-6" x-data="{ open: 0 }">
         <div class="relative overflow-hidden">
             <div class="absolute inset-0 bg-gradient-to-br from-primary/25 via-primary/5 to-transparent"></div>

@@ -1,4 +1,4 @@
-# MotoReserva
+# GiroMoto
 
 Plataforma de **reserva de vagas (turnos/diárias) para motoboys e entregadores**: restaurantes e comércios publicam turnos, entregadores demonstram interesse, as duas partes confirmam a parceria e conversam pelo chat.
 
@@ -30,7 +30,7 @@ php artisan db:seed           # dados de demonstração (opcional)
 npm run build                 # ou: npm run dev
 ```
 
-Servir: `php artisan serve` (ou via Laragon em `http://motoreserva.test`).
+Servir: `php artisan serve` (ou via Laragon em `http://appgiromoto.test`).
 
 ## Contas de demonstração
 

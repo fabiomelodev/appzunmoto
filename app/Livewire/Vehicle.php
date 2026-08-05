@@ -5,7 +5,6 @@ namespace App\Livewire;
 use App\Models\Document;
 use App\Support\Catalog;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -13,7 +12,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
-#[Title('Veículo e Documentação — MotoReserva')]
+#[Title('Veículo e Documentação — GiroMoto')]
 class Vehicle extends Component
 {
     use WithFileUploads;
@@ -21,6 +20,7 @@ class Vehicle extends Component
     public string $vehicle = 'moto';
 
     public $identityFile;
+
     public $vehicleFile;
 
     public function mount(): void
