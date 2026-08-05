@@ -88,6 +88,19 @@ class SecondaryScreensTest extends TestCase
         $this->get(route('map'))->assertOk()->assertSee('vagas no mapa');
     }
 
+    public function test_help_loads_livewire_assets_so_the_faq_accordion_works(): void
+    {
+        // /help é uma view "solta" (sem componente Livewire); sem @livewireScripts no
+        // layout, Alpine (empacotado dentro do livewire.js) nunca carrega e os
+        // @click do acordeão de FAQ ficam mortos até o usuário navegar por uma
+        // página que É um componente Livewire (ex.: o Menu) e voltar via wire:navigate.
+        $this->actingAs($this->user('Dono'));
+
+        $this->get(route('help'))
+            ->assertOk()
+            ->assertSee('livewire.js', false);
+    }
+
     public function test_help_lists_only_active_faqs_from_database(): void
     {
         Faq::create(['name' => 'Pergunta ativa', 'description' => 'Resposta <strong>rica</strong>.', 'status' => 'active']);
