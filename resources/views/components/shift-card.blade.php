@@ -1,6 +1,12 @@
-@props(['shift', 'interested' => false, 'accepted' => false])
+@props(['shift', 'interested' => false, 'accepted' => false, 'venueTypeLabels' => null, 'expectedVolumeLabels' => null, 'benefitMeta' => null])
 @php
     use App\Support\Catalog;
+
+    // Pass these down from a parent that renders many cards (e.g. Shifts\Index) to
+    // avoid one taxonomy query per card; falls back to a self-fetch otherwise.
+    $venueTypeLabels ??= Catalog::allVenueTypeLabels();
+    $expectedVolumeLabels ??= Catalog::allExpectedVolumeLabels();
+    $benefitMeta ??= Catalog::allBenefitMeta();
 
     $profile = $shift->creator?->profile;
     $creatorName = $profile?->name ?: ($shift->creator?->name ?? 'Usuário');
@@ -35,7 +41,7 @@
                 <div class="min-w-0 flex-1">
                     <h3 class="truncate text-[15px] font-semibold leading-snug text-foreground">{{ $shift->venue }}</h3>
                     @if ($shift->venue_type)
-                        <p class="text-[11px] font-medium text-muted-foreground">{{ Catalog::VENUE_TYPE_LABEL[$shift->venue_type] ?? $shift->venue_type }}</p>
+                        <p class="text-[11px] font-medium text-muted-foreground">{{ $venueTypeLabels[$shift->venue_type] ?? $shift->venue_type }}</p>
                     @endif
                 </div>
                 <div class="shrink-0 text-right">
@@ -127,14 +133,14 @@
         @endif
         @foreach ($shift->benefits ?? [] as $benefit)
             <span class="inline-flex items-center gap-1 rounded-full bg-secondary/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                <x-ui.icon :name="Catalog::BENEFIT_ICON[$benefit] ?? 'check'" class="h-2.5 w-2.5" />
-                {{ Catalog::BENEFIT_LABEL[$benefit] ?? $benefit }}
+                <x-ui.icon :name="$benefitMeta[$benefit]['icon'] ?? 'check'" class="h-2.5 w-2.5" />
+                {{ $benefitMeta[$benefit]['name'] ?? $benefit }}
             </span>
         @endforeach
     </div>
 
     @if ($shift->expected_volume)
-        <p class="mt-2 text-[11px] text-muted-foreground">Movimento: {{ Catalog::VOLUME_LABEL[$shift->expected_volume] ?? $shift->expected_volume }}</p>
+        <p class="mt-2 text-[11px] text-muted-foreground">Movimento: {{ $expectedVolumeLabels[$shift->expected_volume] ?? $shift->expected_volume }}</p>
     @endif
 
     {{-- Footer: creator + last edited --}}

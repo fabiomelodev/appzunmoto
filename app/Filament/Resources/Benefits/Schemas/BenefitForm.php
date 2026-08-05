@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Filament\Resources\Contacts\Schemas;
+namespace App\Filament\Resources\Benefits\Schemas;
 
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
-class ContactForm
+class BenefitForm
 {
     public static function configure(Schema $schema): Schema
     {
@@ -15,22 +15,21 @@ class ContactForm
             ->columns(3)
             ->components([
                 Section::make('Conteúdo')
-                    ->description('Informações exibidas em "Falar com o suporte" na tela de Ajuda.')
+                    ->description('Usado no formulário de nova vaga, ao escolher os benefícios oferecidos.')
                     ->columnSpan(2)
                     ->schema([
                         TextInput::make('name')
                             ->label('Nome')
-                            ->helperText('Texto exibido no item. Ex.: suporte@giromoto.com.br.')
+                            ->helperText('Rótulo exibido para o usuário. Ex.: Lanche, Almoço, Combustível.')
                             ->required(),
-                        Select::make('type')
-                            ->label('Tipo')
-                            ->options(['email' => 'E-mail', 'phone' => 'Telefone', 'chat' => 'Chat'])
-                            ->default('email')
+                        TextInput::make('slug')
+                            ->label('Slug')
+                            ->helperText('Identificador estável usado internamente (sem espaços/acentos). Ex.: lanche.')
+                            ->unique(ignoreRecord: true)
                             ->required(),
-                        TextInput::make('link')
-                            ->label('Link')
-                            ->helperText('URL de destino ao tocar no item. Ex.: mailto:suporte@giromoto.com.br, tel:+551140004000 ou https://wa.me/55...')
-                            ->required(),
+                        TextInput::make('icon')
+                            ->label('Ícone')
+                            ->helperText('Nome do ícone Lucide (lucide.dev) usado no app. Ex.: sandwich, utensils, fuel.'),
                     ]),
                 Section::make('Publicação')
                     ->description('Visibilidade e ordem de exibição.')

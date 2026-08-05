@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Filament\Resources\Contacts\Schemas;
+namespace App\Filament\Resources\ExpectedVolumes\Schemas;
 
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
-class ContactForm
+class ExpectedVolumeForm
 {
     public static function configure(Schema $schema): Schema
     {
@@ -15,21 +15,17 @@ class ContactForm
             ->columns(3)
             ->components([
                 Section::make('Conteúdo')
-                    ->description('Informações exibidas em "Falar com o suporte" na tela de Ajuda.')
+                    ->description('Usado no formulário de nova vaga, ao escolher o movimento esperado.')
                     ->columnSpan(2)
                     ->schema([
                         TextInput::make('name')
                             ->label('Nome')
-                            ->helperText('Texto exibido no item. Ex.: suporte@giromoto.com.br.')
+                            ->helperText('Rótulo exibido para o usuário. Ex.: 😌 Tranquilo (até 20 pedidos).')
                             ->required(),
-                        Select::make('type')
-                            ->label('Tipo')
-                            ->options(['email' => 'E-mail', 'phone' => 'Telefone', 'chat' => 'Chat'])
-                            ->default('email')
-                            ->required(),
-                        TextInput::make('link')
-                            ->label('Link')
-                            ->helperText('URL de destino ao tocar no item. Ex.: mailto:suporte@giromoto.com.br, tel:+551140004000 ou https://wa.me/55...')
+                        TextInput::make('slug')
+                            ->label('Slug')
+                            ->helperText('Identificador estável usado internamente (sem espaços/acentos). Ex.: tranquilo.')
+                            ->unique(ignoreRecord: true)
                             ->required(),
                     ]),
                 Section::make('Publicação')

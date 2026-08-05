@@ -35,7 +35,7 @@
         @endunless
         <h1 class="mt-2 font-display text-2xl font-bold">{{ $shift->venue }}</h1>
         @if ($shift->venue_type)
-            <p class="text-xs font-semibold text-muted-foreground">{{ Catalog::VENUE_TYPE_LABEL[$shift->venue_type] ?? $shift->venue_type }}</p>
+            <p class="text-xs font-semibold text-muted-foreground">{{ Catalog::venueTypeLabel($shift->venue_type) }}</p>
         @endif
         <p class="flex items-center gap-1 text-sm text-muted-foreground">
             <x-ui.icon name="map-pin" class="h-3.5 w-3.5" />
@@ -91,7 +91,7 @@
     @if ($shift->expected_volume)
         <div class="mt-4 rounded-xl border border-border bg-card p-3 text-sm">
             <span class="text-xs text-muted-foreground">Movimento esperado</span>
-            <p class="font-semibold">{{ Catalog::VOLUME_LABEL[$shift->expected_volume] ?? $shift->expected_volume }}</p>
+            <p class="font-semibold">{{ Catalog::volumeLabel($shift->expected_volume) }}</p>
         </div>
     @endif
 
@@ -139,8 +139,8 @@
             <div class="flex flex-wrap gap-2">
                 @foreach ($shift->benefits as $b)
                     <span class="flex items-center gap-1.5 rounded-xl bg-secondary px-3 py-1.5 text-xs font-medium">
-                        <x-ui.icon :name="Catalog::BENEFIT_ICON[$b] ?? 'check'" class="h-4 w-4 text-primary" />
-                        {{ Catalog::BENEFIT_LABEL[$b] ?? $b }}
+                        <x-ui.icon :name="Catalog::benefitIcon($b)" class="h-4 w-4 text-primary" />
+                        {{ Catalog::benefitLabel($b) }}
                     </span>
                 @endforeach
             </div>
