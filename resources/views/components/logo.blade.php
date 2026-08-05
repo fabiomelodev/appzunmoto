@@ -3,9 +3,9 @@
     'withText' => true,
 ])
 <div {{ $attributes->class('flex items-center gap-2') }}>
-    <img src="{{ asset('assets/logo.png') }}" alt="MotoReserva" width="{{ $size }}" height="{{ $size }}"
+    <img src="{{ asset('assets/logo.png') }}" alt="GiroMoto" width="{{ $size }}" height="{{ $size }}"
         class="object-contain" />
     @if ($withText)
-        <span class="font-display text-lg font-bold tracking-tight">Moto<span class="text-primary">Reserva</span></span>
+        <span class="font-display text-lg font-bold tracking-tight">Giro<span class="text-primary">Moto</span></span>
     @endif
 </div>

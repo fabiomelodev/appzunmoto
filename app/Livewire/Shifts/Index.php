@@ -13,7 +13,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Vagas — MotoReserva')]
+#[Title('Vagas — GiroMoto')]
 class Index extends Component
 {
     public string $q = '';

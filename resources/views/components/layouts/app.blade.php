@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>{{ $title ?? 'MotoReserva' }}</title>
+    <title>{{ $title ?? 'GiroMoto' }}</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any" />
     <script>
         (function () {

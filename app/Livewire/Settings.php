@@ -10,21 +10,28 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Configurações — MotoReserva')]
+#[Title('Configurações — GiroMoto')]
 class Settings extends Component
 {
     public bool $notifyShifts = true;
+
     public bool $notifyChat = true;
+
     public bool $notifyEmail = false;
 
     public string $city = '';
 
     // Account dialogs
     public bool $emailOpen = false;
+
     public bool $passwordOpen = false;
+
     public string $newEmail = '';
+
     public string $newPassword = '';
+
     public string $passwordConfirmation = '';
+
     public string $currentPassword = '';
 
     public function mount(): void

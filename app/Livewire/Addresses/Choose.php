@@ -3,6 +3,7 @@
 namespace App\Livewire\Addresses;
 
 use App\Models\UserAddress;
+use App\Support\Geocoder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -13,7 +14,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
-#[Title('Onde será o turno? — MotoReserva')]
+#[Title('Onde será o turno? — GiroMoto')]
 class Choose extends Component
 {
     use WithFileUploads;
@@ -25,10 +26,15 @@ class Choose extends Component
     public string $mode = 'list';
 
     public string $label = '';
+
     public string $cep = '';
+
     public string $street = '';
+
     public string $number = '';
+
     public string $district = '';
+
     public string $city = '';
 
     /** Optional location photo for the new address. */
@@ -97,7 +103,7 @@ class Choose extends Component
         // Self-heal addresses saved before geocoding worked, so the published
         // shift inherits coordinates and shows up on the map.
         if (! app()->runningUnitTests() && (! $address->lat || ! $address->lng)) {
-            $coords = \App\Support\Geocoder::forAddress(
+            $coords = Geocoder::forAddress(
                 $address->street, $address->number, $address->district, $address->city, $address->postal_code,
             );
             if ($coords) {
@@ -134,7 +140,7 @@ class Choose extends Component
 
         $coords = app()->runningUnitTests()
             ? null
-            : \App\Support\Geocoder::forAddress(trim($this->street), trim($this->number), trim($this->district), trim($this->city), $digits);
+            : Geocoder::forAddress(trim($this->street), trim($this->number), trim($this->district), trim($this->city), $digits);
 
         $address = UserAddress::create([
             'user_id' => Auth::id(),

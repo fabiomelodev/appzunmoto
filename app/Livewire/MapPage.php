@@ -10,7 +10,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Mapa — MotoReserva')]
+#[Title('Mapa — GiroMoto')]
 class MapPage extends Component
 {
     #[Computed]
