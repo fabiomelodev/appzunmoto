@@ -50,6 +50,13 @@ class Catalog
         'chat' => 'message-circle',
     ];
 
+    /** Maps a contact type (`contacts.type`) to a Lucide icon name (see <x-ui.icon>). */
+    public const CONTACT_TYPE_ICON = [
+        'email' => 'mail',
+        'phone' => 'phone',
+        'chat' => 'message-circle',
+    ];
+
     /** Human label for a set of accepted vehicles. */
     public static function vehiclesLabel(array $vehicles): string
     {
