@@ -2,9 +2,11 @@
 
 namespace App\Livewire\Shifts;
 
+use App\Models\ExpectedVolume;
 use App\Models\Shift;
 use App\Models\ShiftContact;
 use App\Models\UserAddress;
+use App\Models\VenueType;
 use App\Support\Catalog;
 use App\Support\Geocoder;
 use Illuminate\Support\Carbon;
@@ -33,11 +35,17 @@ class Create extends Component
 
     // Resolved location (from the chosen address or the existing/cloned shift).
     public string $venue = '';
+
     public string $addressLine = '';
+
     public string $region = '';
+
     public ?string $cep = null;
+
     public float $lat = 0;
+
     public float $lng = 0;
+
     public ?string $addressPhotoUrl = null;
 
     /** Initial form values handed to Alpine. */
@@ -146,7 +154,7 @@ class Create extends Component
         $venueType = $form['venueType'] ?? null;
         $expectedVolume = $form['expectedVolume'] ?? null;
         $vehicles = array_values(array_intersect((array) ($form['vehicles'] ?? []), Catalog::VEHICLE_OPTIONS));
-        $benefits = array_values(array_intersect((array) ($form['benefits'] ?? []), Catalog::BENEFIT_OPTIONS));
+        $benefits = array_values(array_intersect((array) ($form['benefits'] ?? []), Catalog::benefitOptions()));
         $couriers = max(1, min(10, (int) ($form['couriersNeeded'] ?? 1)));
 
         if ($dailyRate === '') {
@@ -155,10 +163,14 @@ class Create extends Component
         if ($fee === '') {
             return $toast('Informe a taxa por entrega.');
         }
-        if (! array_key_exists($venueType, Catalog::VENUE_TYPE_LABEL)) {
+        // Validated against the full table (any status), not just active — so
+        // editing a shift keeps working even if its venue type/volume was
+        // meanwhile deactivated in the admin panel; only new selections are
+        // restricted to active options (see the button list in the view).
+        if (! $venueType || ! VenueType::where('slug', $venueType)->exists()) {
             return $toast('Selecione o tipo do local.');
         }
-        if (! array_key_exists($expectedVolume, Catalog::VOLUME_LABEL)) {
+        if (! $expectedVolume || ! ExpectedVolume::where('slug', $expectedVolume)->exists()) {
             return $toast('Selecione o movimento esperado.');
         }
         if (empty($vehicles)) {

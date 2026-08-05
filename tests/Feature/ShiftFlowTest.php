@@ -3,15 +3,19 @@
 namespace Tests\Feature;
 
 use App\Livewire\Addresses\Choose;
+use App\Livewire\ProfileModal;
 use App\Livewire\Shifts\Create;
 use App\Livewire\Shifts\Index;
 use App\Livewire\Shifts\Show;
 use App\Models\Application;
+use App\Models\Benefit;
+use App\Models\ExpectedVolume;
 use App\Models\Notification;
 use App\Models\Review;
 use App\Models\Shift;
-use App\Models\UserAddress;
 use App\Models\User;
+use App\Models\UserAddress;
+use App\Models\VenueType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -19,6 +23,17 @@ use Tests\TestCase;
 class ShiftFlowTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Shift::save() now validates venue_type/expected_volume/benefits against
+        // these DB-backed taxonomies (see App\Support\Catalog) instead of fixed lists.
+        VenueType::create(['name' => 'Pizzaria', 'slug' => 'pizzaria', 'status' => 'active']);
+        ExpectedVolume::create(['name' => 'Moderado', 'slug' => 'moderado', 'status' => 'active']);
+        Benefit::create(['name' => 'Lanche', 'slug' => 'lanche', 'icon' => 'sandwich', 'status' => 'active']);
+    }
 
     protected function user(string $name = 'User'): User
     {
@@ -166,7 +181,7 @@ class ShiftFlowTest extends TestCase
         Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
 
         $this->actingAs($creator);
-        Livewire::test(\App\Livewire\ProfileModal::class)
+        Livewire::test(ProfileModal::class)
             ->call('open', $courier->id)
             ->assertSee('Rápido e pontual');
     }

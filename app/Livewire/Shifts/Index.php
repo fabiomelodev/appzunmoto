@@ -2,7 +2,10 @@
 
 namespace App\Livewire\Shifts;
 
+use App\Models\Application;
 use App\Models\Shift;
+use App\Support\Catalog;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -50,11 +53,11 @@ class Index extends Component
         $ownBag = $draft['ownBag'] ?? 'any';
 
         $this->filters = [
-            'vehicles' => array_values(array_intersect((array) ($draft['vehicles'] ?? []), \App\Support\Catalog::VEHICLE_OPTIONS)),
+            'vehicles' => array_values(array_intersect((array) ($draft['vehicles'] ?? []), Catalog::VEHICLE_OPTIONS)),
             'dailyMin' => (string) ($draft['dailyMin'] ?? ''),
             'feeMin' => (string) ($draft['feeMin'] ?? ''),
             'startTime' => (string) ($draft['startTime'] ?? ''),
-            'benefits' => array_values(array_intersect((array) ($draft['benefits'] ?? []), \App\Support\Catalog::BENEFIT_OPTIONS)),
+            'benefits' => array_values(array_intersect((array) ($draft['benefits'] ?? []), Catalog::benefitOptions())),
             'ownBag' => in_array($ownBag, ['any', 'yes', 'no'], true) ? $ownBag : 'any',
             'date' => (string) ($draft['date'] ?? ''),
             'onlyInterested' => (bool) ($draft['onlyInterested'] ?? false),
@@ -68,13 +71,13 @@ class Index extends Component
 
     public function setVehicle(string $vehicle): void
     {
-        if (! in_array($vehicle, \App\Support\Catalog::VEHICLE_OPTIONS, true)) {
+        if (! in_array($vehicle, Catalog::VEHICLE_OPTIONS, true)) {
             return;
         }
 
         Auth::user()?->profile?->update(['vehicle' => $vehicle]);
 
-        $this->dispatch('toast', message: 'Veículo atualizado: '.(\App\Support\Catalog::VEHICLE_LABEL[$vehicle] ?? $vehicle));
+        $this->dispatch('toast', message: 'Veículo atualizado: '.(Catalog::VEHICLE_LABEL[$vehicle] ?? $vehicle));
     }
 
     #[Computed]
@@ -114,15 +117,15 @@ class Index extends Component
     #[Computed]
     public function myInterestIds()
     {
-        return \App\Models\Application::where('user_id', Auth::id())->pluck('shift_id');
+        return Application::where('user_id', Auth::id())->pluck('shift_id');
     }
 
     /** Shift ids the current user was ACCEPTED on (their card shows the success banner). */
     #[Computed]
     public function myAcceptedIds()
     {
-        return \App\Models\Application::where('user_id', Auth::id())
-            ->where('status', \App\Models\Application::STATUS_ACCEPTED)
+        return Application::where('user_id', Auth::id())
+            ->where('status', Application::STATUS_ACCEPTED)
             ->pluck('shift_id');
     }
 
@@ -203,7 +206,7 @@ class Index extends Component
                 // who was accepted on it, so they still see their confirmation.
                 $hasRoom = $s->accepted_count < ($s->couriers_needed ?? 1);
                 $mineAccepted = $acceptedIds->contains($s->id);
-                $endsAt = \Illuminate\Support\Carbon::parse($s->date->toDateString().' '.$s->end_time);
+                $endsAt = Carbon::parse($s->date->toDateString().' '.$s->end_time);
 
                 return ($hasRoom || $mineAccepted) && $endsAt->gte($now);
             })
