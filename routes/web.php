@@ -20,6 +20,7 @@ use App\Livewire\Shifts\Show as ShiftsShow;
 use App\Livewire\Vehicle;
 use App\Models\Contact;
 use App\Models\Document;
+use App\Models\Faq;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -87,6 +88,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/history', History::class)->name('history');
     Route::get('/help', function () {
         return view('help', [
+            'faqs' => Faq::active()->get(),
             'contacts' => Contact::active()->orderBy('order')->get(),
         ]);
     })->name('help');

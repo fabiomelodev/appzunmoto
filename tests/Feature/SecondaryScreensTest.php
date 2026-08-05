@@ -6,6 +6,7 @@ use App\Livewire\History;
 use App\Livewire\MapPage;
 use App\Models\Application;
 use App\Models\Contact;
+use App\Models\Faq;
 use App\Models\Shift;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -78,11 +79,26 @@ class SecondaryScreensTest extends TestCase
 
     public function test_pages_render(): void
     {
+        Faq::create(['name' => 'Como aceito uma vaga?', 'description' => 'Toque no card da vaga.', 'status' => 'active']);
+
         $this->actingAs($this->user('Dono'));
 
         $this->get(route('history'))->assertOk()->assertSee('Histórico de Turnos');
         $this->get(route('help'))->assertOk()->assertSee('Perguntas frequentes');
         $this->get(route('map'))->assertOk()->assertSee('vagas no mapa');
+    }
+
+    public function test_help_lists_only_active_faqs_from_database(): void
+    {
+        Faq::create(['name' => 'Pergunta ativa', 'description' => 'Resposta <strong>rica</strong>.', 'status' => 'active']);
+        Faq::create(['name' => 'Pergunta inativa', 'description' => 'Não deve aparecer.', 'status' => 'inactive']);
+
+        $this->actingAs($this->user('Dono'));
+
+        $response = $this->get(route('help'))->assertOk();
+        $response->assertSee('Pergunta ativa');
+        $response->assertSee('Resposta <strong>rica</strong>.', false);
+        $response->assertDontSee('Pergunta inativa');
     }
 
     public function test_help_lists_active_contacts_from_database_in_order(): void

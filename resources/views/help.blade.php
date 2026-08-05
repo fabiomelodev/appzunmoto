@@ -1,12 +1,3 @@
-@php
-    $faq = [
-        ['q' => 'Como aceito uma vaga?', 'a' => "Toque no card da vaga, confira os detalhes e use o botão 'Aceitar Vaga'. Ele só fica ativo se seu veículo selecionado for compatível."],
-        ['q' => 'Como solicito a cobertura do meu turno?', 'a' => "Use o botão '+' na barra inferior e escolha 'Sou um Motoboy' para abrir o formulário de substituição de turno."],
-        ['q' => 'Onde mudo meu veículo ativo?', 'a' => "No Menu, abra 'Veículo e Documentação' e escolha entre Moto, Moto Elétrica / Bicicleta Motorizada ou Bicicleta Convencional."],
-        ['q' => 'Meus documentos estão seguros?', 'a' => "Sim. Os arquivos enviados na seção 'Documentação Profissional' ficam armazenados de forma segura e só são utilizados para validação do seu cadastro."],
-    ];
-@endphp
-
 <x-layouts.app title="Ajuda — MotoReserva">
     <div class="pb-6" x-data="{ open: 0 }">
         <div class="relative overflow-hidden">
@@ -23,22 +14,24 @@
         </div>
 
         <div class="mt-2 space-y-5 px-4">
-            <section class="space-y-2">
-                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Perguntas frequentes</h2>
-                <div class="space-y-2">
-                    @foreach ($faq as $i => $item)
-                        <div class="rounded-2xl border border-border/60 bg-card">
-                            <button type="button" @click="open === {{ $i }} ? open = null : open = {{ $i }}"
-                                class="flex w-full items-center gap-3 p-4 text-left">
-                                <x-ui.icon name="help-circle" class="h-4 w-4 shrink-0 text-primary" />
-                                <span class="flex-1 text-sm font-semibold">{{ $item['q'] }}</span>
-                                <x-ui.icon name="chevron-down" class="h-4 w-4 shrink-0 text-muted-foreground transition" x-bind:class="open === {{ $i }} ? 'rotate-180' : ''" />
-                            </button>
-                            <p x-show="open === {{ $i }}" x-cloak class="border-t border-border/60 px-4 py-3 text-xs text-muted-foreground">{{ $item['a'] }}</p>
-                        </div>
-                    @endforeach
-                </div>
-            </section>
+            @if ($faqs->isNotEmpty())
+                <section class="space-y-2">
+                    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Perguntas frequentes</h2>
+                    <div class="space-y-2">
+                        @foreach ($faqs as $i => $faq)
+                            <div class="rounded-2xl border border-border/60 bg-card">
+                                <button type="button" @click="open === {{ $i }} ? open = null : open = {{ $i }}"
+                                    class="flex w-full items-center gap-3 p-4 text-left">
+                                    <x-ui.icon name="help-circle" class="h-4 w-4 shrink-0 text-primary" />
+                                    <span class="flex-1 text-sm font-semibold">{{ $faq->name }}</span>
+                                    <x-ui.icon name="chevron-down" class="h-4 w-4 shrink-0 text-muted-foreground transition" x-bind:class="open === {{ $i }} ? 'rotate-180' : ''" />
+                                </button>
+                                <div x-show="open === {{ $i }}" x-cloak class="border-t border-border/60 px-4 py-3 text-xs text-muted-foreground">{!! $faq->description !!}</div>
+                            </div>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
 
             @if ($contacts->isNotEmpty())
                 <section class="space-y-2">
