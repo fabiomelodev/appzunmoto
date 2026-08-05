@@ -86,7 +86,7 @@ Route::middleware('auth')->group(function () {
     // Map, history & help
     Route::get('/map', MapPage::class)->name('map');
     Route::get('/history', History::class)->name('history');
-    Route::get('/help', function () {
+    Route::get('/ajuda-e-suporte', function () {
         return view('help', [
             'faqs' => Faq::active()->get(),
             'contacts' => Contact::active()->orderBy('order')->get(),
