@@ -4,7 +4,9 @@
     $editing = $editId !== null;
     // Persist a draft only when starting a brand-new shift (not editing/cloning).
     $persistDraft = $editId === null && empty($cloneId);
-    $volumeShort = ['tranquilo' => "😌 Tranquilo\n(até 20)", 'moderado' => "⚡ Moderado\n(20–40)", 'pesado' => "🔥 Pesado\n(40+)"];
+    $venueTypes = Catalog::venueTypes();
+    $expectedVolumes = Catalog::expectedVolumes();
+    $benefits = Catalog::benefits();
 @endphp
 
 <div class="px-4 pb-10 pt-4"
@@ -105,7 +107,7 @@
         <div>
             <x-ui.label class="mb-2 block">Tipo do local</x-ui.label>
             <div class="grid grid-cols-3 gap-2">
-                @foreach (Catalog::VENUE_TYPE_LABEL as $val => $lbl)
+                @foreach ($venueTypes as $val => $lbl)
                     <button type="button" @click="f.venueType = '{{ $val }}'"
                         class="h-auto min-h-10 rounded-md border px-2 py-2 text-xs font-medium transition"
                         :class="f.venueType === '{{ $val }}' ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background hover:bg-accent'">{{ $lbl }}</button>
@@ -116,7 +118,7 @@
         <div>
             <x-ui.label class="mb-2 block">Movimento esperado</x-ui.label>
             <div class="grid grid-cols-3 gap-2">
-                @foreach ($volumeShort as $val => $lbl)
+                @foreach ($expectedVolumes as $val => $lbl)
                     <button type="button" @click="f.expectedVolume = '{{ $val }}'"
                         class="min-h-16 whitespace-pre-line rounded-md border px-1 py-2 text-[10px] font-medium leading-tight transition"
                         :class="f.expectedVolume === '{{ $val }}' ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background hover:bg-accent'">{{ $lbl }}</button>
@@ -167,10 +169,10 @@
         <div>
             <x-ui.label class="mb-2 block">Benefícios</x-ui.label>
             <div class="flex flex-wrap gap-2">
-                @foreach (Catalog::BENEFIT_OPTIONS as $b)
-                    <button type="button" @click="toggleBenefit('{{ $b }}')"
+                @foreach ($benefits as $benefit)
+                    <button type="button" @click="toggleBenefit('{{ $benefit['slug'] }}')"
                         class="rounded-full px-3 py-1.5 text-xs font-semibold transition"
-                        :class="f.benefits.includes('{{ $b }}') ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'">{{ Catalog::BENEFIT_LABEL[$b] }}</button>
+                        :class="f.benefits.includes('{{ $benefit['slug'] }}') ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'">{{ $benefit['name'] }}</button>
                 @endforeach
             </div>
         </div>
