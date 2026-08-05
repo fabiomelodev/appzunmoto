@@ -14,6 +14,7 @@
     </script>
     <x-broadcast-config />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 </head>
 
 <body class="antialiased">
@@ -36,6 +37,8 @@
                 x-text="t.message"></div>
         </template>
     </div>
+
+    @livewireScripts
 </body>
 
 </html>
