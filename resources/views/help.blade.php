@@ -40,17 +40,18 @@
                 </div>
             </section>
 
-            <section class="space-y-2">
-                <h2 class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Falar com o suporte</h2>
-                <div class="grid grid-cols-1 gap-2">
-                    <a href="mailto:suporte@motoreserva.app" class="flex h-12 items-center rounded-xl border border-border/60 bg-surface px-4 text-sm font-medium">
-                        <x-ui.icon name="mail" class="mr-2 h-4 w-4 text-primary" /> suporte@motoreserva.app
-                    </a>
-                    <a href="tel:+551140004000" class="flex h-12 items-center rounded-xl border border-border/60 bg-surface px-4 text-sm font-medium">
-                        <x-ui.icon name="phone" class="mr-2 h-4 w-4 text-primary" /> (11) 4000-4000
-                    </a>
-                </div>
-            </section>
+            @if ($contacts->isNotEmpty())
+                <section class="space-y-2">
+                    <h2 class="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Falar com o suporte</h2>
+                    <div class="grid grid-cols-1 gap-2">
+                        @foreach ($contacts as $contact)
+                            <a href="{{ $contact->link }}" class="flex h-12 items-center rounded-xl border border-border/60 bg-surface px-4 text-sm font-medium">
+                                <x-ui.icon :name="App\Support\Catalog::CONTACT_TYPE_ICON[$contact->type] ?? 'mail'" class="mr-2 h-4 w-4 text-primary" /> {{ $contact->name }}
+                            </a>
+                        @endforeach
+                    </div>
+                </section>
+            @endif
         </div>
     </div>
 </x-layouts.app>

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\History;
 use App\Livewire\MapPage;
 use App\Models\Application;
+use App\Models\Contact;
 use App\Models\Shift;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -82,5 +83,19 @@ class SecondaryScreensTest extends TestCase
         $this->get(route('history'))->assertOk()->assertSee('Histórico de Turnos');
         $this->get(route('help'))->assertOk()->assertSee('Perguntas frequentes');
         $this->get(route('map'))->assertOk()->assertSee('vagas no mapa');
+    }
+
+    public function test_help_lists_active_contacts_from_database_in_order(): void
+    {
+        Contact::create(['name' => 'suporte@giromoto.com.br', 'link' => 'mailto:suporte@giromoto.com.br', 'type' => 'email', 'status' => 'active', 'order' => 2]);
+        Contact::create(['name' => 'Contato desativado', 'link' => 'mailto:antigo@giromoto.com.br', 'type' => 'email', 'status' => 'inactive', 'order' => 1]);
+        Contact::create(['name' => '(11) 4000-4000', 'link' => 'tel:+551140004000', 'type' => 'phone', 'status' => 'active', 'order' => 1]);
+
+        $this->actingAs($this->user('Dono'));
+
+        $response = $this->get(route('help'))->assertOk();
+        $response->assertSeeInOrder(['(11) 4000-4000', 'suporte@giromoto.com.br']);
+        $response->assertSee('tel:+551140004000', false);
+        $response->assertDontSee('Contato desativado');
     }
 }

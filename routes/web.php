@@ -1,24 +1,28 @@
 <?php
+
 // routes/web.php
 
+use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Livewire\Addresses\Choose as AddressesChoose;
 use App\Livewire\Addresses\Index as AddressesIndex;
-use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Livewire\Auth\Login;
-use App\Livewire\History;
-use App\Livewire\MapPage;
 use App\Livewire\Chats\Index as ChatsIndex;
 use App\Livewire\Chats\Show as ChatsShow;
+use App\Livewire\History;
+use App\Livewire\MapPage;
 use App\Livewire\Menu;
 use App\Livewire\Notifications\Page as NotificationsPage;
 use App\Livewire\ProfilePage;
 use App\Livewire\Settings;
-use App\Livewire\Vehicle;
 use App\Livewire\Shifts\Create as ShiftsCreate;
 use App\Livewire\Shifts\Index as ShiftsIndex;
 use App\Livewire\Shifts\Show as ShiftsShow;
+use App\Livewire\Vehicle;
+use App\Models\Contact;
+use App\Models\Document;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 // ── Public (guest) ───────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
@@ -65,14 +69,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/documents', Vehicle::class)->name('documents');
 
     // Serve a private document file to its owner only.
-    Route::get('/documents/{document}/file', function (\App\Models\Document $document) {
+    Route::get('/documents/{document}/file', function (Document $document) {
         abort_unless($document->user_id === Auth::id(), 403);
         abort_unless(
-            $document->file_path && \Illuminate\Support\Facades\Storage::disk('local')->exists($document->file_path),
+            $document->file_path && Storage::disk('local')->exists($document->file_path),
             404,
         );
 
-        return \Illuminate\Support\Facades\Storage::disk('local')->response($document->file_path, $document->file_name);
+        return Storage::disk('local')->response($document->file_path, $document->file_name);
     })->name('documents.file');
 
     // Addresses (management list)
@@ -81,5 +85,9 @@ Route::middleware('auth')->group(function () {
     // Map, history & help
     Route::get('/map', MapPage::class)->name('map');
     Route::get('/history', History::class)->name('history');
-    Route::view('/help', 'help')->name('help');
+    Route::get('/help', function () {
+        return view('help', [
+            'contacts' => Contact::active()->orderBy('order')->get(),
+        ]);
+    })->name('help');
 });

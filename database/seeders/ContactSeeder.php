@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -25,8 +24,8 @@ class ContactSeeder extends Seeder
             ],
 
             [
-                'name' => 'suporte@motoreserva.com.br',
-                'link' => 'https://google.com',
+                'name' => 'suporte@giromoto.com.br',
+                'link' => 'mailto:suporte@giromoto.com.br',
                 'type' => 'email',
                 'status' => 'active',
                 'order' => 2,
@@ -35,8 +34,8 @@ class ContactSeeder extends Seeder
             ],
 
             [
-                'name' => '(xx) 99999-9999',
-                'link' => 'https://google.com',
+                'name' => '(11) 4000-4000',
+                'link' => 'tel:+551140004000',
                 'type' => 'phone',
                 'status' => 'active',
                 'order' => 3,
