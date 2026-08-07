@@ -14,7 +14,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Detalhes da vaga — GiroMoto')]
+#[Title('Detalhes da vaga — ZunMoto')]
 class Show extends Component
 {
     public string $shiftId;

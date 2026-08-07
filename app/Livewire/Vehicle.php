@@ -12,7 +12,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
-#[Title('Veículo e Documentação — GiroMoto')]
+#[Title('Veículo e Documentação — ZunMoto')]
 class Vehicle extends Component
 {
     use WithFileUploads;

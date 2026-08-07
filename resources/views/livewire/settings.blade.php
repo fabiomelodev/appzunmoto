@@ -85,9 +85,9 @@
         {{-- About --}}
         <x-settings-section icon="info" title="Sobre o aplicativo">
             <x-settings-row label="Versão" value="1.0.0" />
-            <x-settings-row label="Build" value="GiroMoto · Stable" />
+            <x-settings-row label="Build" value="ZunMoto · Stable" />
             <div class="mt-3 rounded-xl border border-border bg-surface p-3 text-xs text-muted-foreground">
-                GiroMoto conecta motoboys a turnos disponíveis em restaurantes parceiros, com agilidade, transparência e foco em rentabilidade.
+                ZunMoto conecta motoboys a turnos disponíveis em restaurantes parceiros, com agilidade, transparência e foco em rentabilidade.
             </div>
         </x-settings-section>
     </div>

@@ -4,8 +4,8 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>{{ $title ?? 'GiroMoto' }}</title>
-    <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any" />
+    <title>{{ $title ?? 'ZunMoto' }}</title>
+    <link rel="icon" href="{{ asset('assets/favicon.png') }}" type="image/png" />
     <script>
         (function () {
             try { document.documentElement.className = localStorage.getItem('mr-theme') || 'dark'; }
