@@ -8,7 +8,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Menu — GiroMoto')]
+#[Title('Menu — ZunMoto')]
 class Menu extends Component
 {
     public function logout()

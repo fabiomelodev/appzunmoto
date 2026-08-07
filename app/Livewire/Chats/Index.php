@@ -15,7 +15,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Parcerias — GiroMoto')]
+#[Title('Parcerias — ZunMoto')]
 class Index extends Component
 {
     /** 'conversas' | 'candidaturas' */

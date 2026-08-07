@@ -14,7 +14,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
-#[Title('Meus Endereços — GiroMoto')]
+#[Title('Meus Endereços — ZunMoto')]
 class Index extends Component
 {
     use WithFileUploads;

@@ -10,7 +10,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Histórico — GiroMoto')]
+#[Title('Histórico — ZunMoto')]
 class History extends Component
 {
     /** 'published' (Publiquei) | 'worked' (Trabalhei) */

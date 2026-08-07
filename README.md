@@ -1,4 +1,4 @@
-# GiroMoto
+# ZunMoto
 
 Plataforma de **reserva de vagas (turnos/diárias) para motoboys e entregadores**: restaurantes e comércios publicam turnos, entregadores demonstram interesse, as duas partes confirmam a parceria e conversam pelo chat.
 

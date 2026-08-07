@@ -14,7 +14,7 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
-#[Title('Onde será o turno? — GiroMoto')]
+#[Title('Onde será o turno? — ZunMoto')]
 class Choose extends Component
 {
     use WithFileUploads;

@@ -13,7 +13,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.guest')]
-#[Title('Entrar — GiroMoto')]
+#[Title('Entrar — ZunMoto')]
 class Login extends Component
 {
     /** 'signin' | 'signup' */
@@ -191,7 +191,7 @@ class Login extends Component
 
         $user = User::create([
             'name' => $name,
-            'email' => 'guest_'.Str::lower(Str::random(16)).'@giromoto.test',
+            'email' => 'guest_'.Str::lower(Str::random(16)).'@zunmoto.test',
             'password' => Str::random(40),
         ]);
 

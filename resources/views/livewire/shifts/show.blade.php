@@ -19,7 +19,7 @@
             <x-ui.icon name="arrow-left" class="h-4 w-4" />
         </button>
         <button type="button" aria-label="Compartilhar no WhatsApp"
-            x-on:click="window.open('https://wa.me/?text=' + encodeURIComponent({{ Illuminate\Support\Js::from("Olha essa vaga no GiroMoto!\n\n📍 {$shift->venue} — {$shift->region}\n📅 ".$shift->date->isoFormat('DD/MM/YYYY')." · {$shift->start_time}–{$shift->end_time}\n💰 R$ ".($shift->daily_rate + 0)." diária\n\n".route('shifts.show', $shift->id)) }}), '_blank')"
+            x-on:click="window.open('https://wa.me/?text=' + encodeURIComponent({{ Illuminate\Support\Js::from("Olha essa vaga no ZunMoto!\n\n📍 {$shift->venue} — {$shift->region}\n📅 ".$shift->date->isoFormat('DD/MM/YYYY')." · {$shift->start_time}–{$shift->end_time}\n💰 R$ ".($shift->daily_rate + 0)." diária\n\n".route('shifts.show', $shift->id)) }}), '_blank')"
             class="grid h-10 w-10 place-items-center rounded-xl border border-border bg-surface text-muted-foreground">
             <x-ui.icon name="share-2" class="h-4 w-4" />
         </button>

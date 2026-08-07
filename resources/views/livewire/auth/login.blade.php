@@ -3,7 +3,7 @@
         {{-- Branding --}}
         <div class="mb-8 flex flex-col items-center text-center">
             <x-logo :size="80" :withText="false" />
-            <h1 class="mt-4 font-display text-3xl font-bold tracking-tight">Giro<span class="text-primary">Moto</span></h1>
+            <h1 class="mt-4 font-display text-3xl font-bold tracking-tight">Zun<span class="text-primary">Moto</span></h1>
             <p class="mt-2 max-w-xs text-sm text-muted-foreground">
                 Conectando motoboys e comércios para nenhuma entrega ficar para trás.
             </p>

@@ -10,7 +10,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Configurações — GiroMoto')]
+#[Title('Configurações — ZunMoto')]
 class Settings extends Component
 {
     public bool $notifyShifts = true;

@@ -17,7 +17,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 #[Layout('components.layouts.app')]
-#[Title('Conversa — GiroMoto')]
+#[Title('Conversa — ZunMoto')]
 class Show extends Component
 {
     public string $chatId;
