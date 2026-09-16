@@ -73,6 +73,26 @@ class Settings extends Component
         $this->dispatch('toast', message: 'Cidade atualizada.');
     }
 
+    /** Persists this browser's push subscription, sent by window.webPushSubscribe(). */
+    public function subscribeToPush(array $subscription): void
+    {
+        $endpoint = $subscription['endpoint'] ?? null;
+        $keys = $subscription['keys'] ?? [];
+        if (! $endpoint) {
+            return;
+        }
+
+        Auth::user()->updatePushSubscription($endpoint, $keys['p256dh'] ?? null, $keys['auth'] ?? null);
+        $this->dispatch('toast', message: 'Notificações do navegador ativadas!');
+    }
+
+    /** Removes this browser's push subscription, sent by window.webPushUnsubscribe(). */
+    public function unsubscribeFromPush(string $endpoint): void
+    {
+        Auth::user()->deletePushSubscription($endpoint);
+        $this->dispatch('toast', message: 'Notificações do navegador desativadas.');
+    }
+
     /** Switch the active profile (courier <-> business); the same account can be both, one at a time. */
     public function switchRole(string $role): void
     {
