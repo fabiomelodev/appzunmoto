@@ -108,10 +108,10 @@
                     loading: false,
                     async refresh() {
                         this.status = await window.webPushStatus();
-                        // Browser-side "I'm subscribed" doesn't guarantee the
-                        // server still has the row — re-sync it silently so a
-                        // lost/failed save heals itself instead of leaving the
-                        // toggle stuck "on" with nothing actually saved.
+                        // The browser remembering a subscription doesn't guarantee
+                        // the server still has the row — re-sync it silently so a
+                        // lost or failed save heals itself instead of leaving the
+                        // toggle stuck on with nothing actually saved.
                         if (this.status === 'subscribed') {
                             const sub = await window.webPushCurrentSubscription();
                             if (sub) $wire.subscribeToPush(sub, true);
