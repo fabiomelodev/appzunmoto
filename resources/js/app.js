@@ -1,6 +1,14 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
+// ── PWA installability ────────────────────────────────────────────
+// Registers the service worker on every visit, not just when push gets
+// activated — an active registration is part of what makes the browser
+// consider the site installable ("Adicionar à Tela de Início").
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
 // ── Realtime (Reverb or Pusher) ──────────────────────────────────
 // Connection params come from the server at runtime (window.__BROADCAST__,
 // injected by <x-broadcast-config>) so the pre-built bundle connects to the
@@ -180,8 +188,36 @@ window.webPushStatus = async function () {
 
     const registration = await navigator.serviceWorker.getRegistration('/sw.js');
     const subscription = registration && (await registration.pushManager.getSubscription());
+    if (!subscription) return 'unsubscribed';
 
-    return subscription ? 'subscribed' : 'unsubscribed';
+    if (!subscriptionKeyMatches(subscription)) {
+        // Looks active to the browser, but it's tied to an old/different
+        // VAPID key — the push service will silently reject anything sent
+        // to it. Clear it so the UI reports the true state (off) instead of
+        // a misleading "on" that a page reload can't self-heal, since a
+        // mismatched key is never re-synced to the server on purpose.
+        await subscription.unsubscribe();
+        return 'unsubscribed';
+    }
+
+    return 'subscribed';
+};
+
+// If this browser already has an active, current-key subscription, returns it
+// (as a plain object) so the caller can re-sync it to the server. The browser
+// remembering "I'm subscribed" doesn't mean the server still has that row —
+// it can get lost (e.g. wiped, or the original save silently failed) while
+// the browser-side subscription keeps existing, leaving the toggle stuck
+// showing "on" with nothing actually saved. Called on every Settings page
+// load so that mismatch heals itself instead of requiring an off/on toggle.
+window.webPushCurrentSubscription = async function () {
+    if (!window.webPushSupported() || Notification.permission !== 'granted') return null;
+
+    const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+    const subscription = registration && (await registration.pushManager.getSubscription());
+    if (!subscription || !subscriptionKeyMatches(subscription)) return null;
+
+    return JSON.parse(JSON.stringify(subscription));
 };
 
 // If this browser already has an active, current-key subscription, returns it
