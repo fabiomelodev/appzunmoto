@@ -9,6 +9,7 @@ use App\Models\Message;
 use App\Models\Shift;
 use App\Models\User;
 use App\Notifications\PushNotification;
+use App\Support\Partnerships;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Livewire\Livewire;
@@ -118,6 +119,105 @@ class WebPushTest extends TestCase
         Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
 
         NotificationFacade::assertNotSentTo($creator, PushNotification::class);
+    }
+
+    public function test_accepting_a_courier_does_not_send_a_push(): void
+    {
+        NotificationFacade::fake();
+
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+
+        Partnerships::accept($shift->fresh()->load('applications'), $courier->id);
+
+        NotificationFacade::assertNotSentTo($courier, PushNotification::class);
+    }
+
+    public function test_confirmed_partnership_sends_a_push_to_both_sides(): void
+    {
+        NotificationFacade::fake();
+
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+        Partnerships::accept($shift->fresh()->load('applications'), $courier->id);
+
+        Partnerships::confirm($shift->fresh(), $creator->id, $courier->id);
+        Partnerships::confirm($shift->fresh(), $courier->id, $courier->id);
+
+        NotificationFacade::assertSentTo($creator, PushNotification::class);
+        NotificationFacade::assertSentTo($courier, PushNotification::class);
+    }
+
+    public function test_publishing_a_shift_notifies_compatible_couriers(): void
+    {
+        NotificationFacade::fake();
+
+        $creator = $this->user('Dono');
+        $onMoto = $this->user('Moto');
+        $onMoto->profile()->update(['vehicle' => 'moto']);
+        $onBike = $this->user('Bike');
+        $onBike->profile()->update(['vehicle' => 'bike']);
+
+        $this->shift($creator, ['accepted_vehicles' => ['moto']]);
+
+        NotificationFacade::assertSentTo($onMoto, PushNotification::class);
+        NotificationFacade::assertNotSentTo($onBike, PushNotification::class);
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $onMoto->id, 'type' => 'nova_vaga',
+        ]);
+        $this->assertDatabaseMissing('notifications', [
+            'user_id' => $onBike->id, 'type' => 'nova_vaga',
+        ]);
+    }
+
+    public function test_publishing_a_shift_with_no_vehicle_restriction_notifies_every_courier(): void
+    {
+        NotificationFacade::fake();
+
+        $creator = $this->user('Dono');
+        $onMoto = $this->user('Moto');
+        $onMoto->profile()->update(['vehicle' => 'moto']);
+        $onBike = $this->user('Bike');
+        $onBike->profile()->update(['vehicle' => 'bike']);
+
+        $this->shift($creator, ['accepted_vehicles' => []]);
+
+        NotificationFacade::assertSentTo($onMoto, PushNotification::class);
+        NotificationFacade::assertSentTo($onBike, PushNotification::class);
+    }
+
+    public function test_publishing_a_shift_does_not_notify_the_creator_or_business_profiles(): void
+    {
+        NotificationFacade::fake();
+
+        $creator = $this->user('Dono');
+        $creator->profile()->update(['vehicle' => 'moto']);
+        $otherBusiness = $this->user('OutroDono');
+        $otherBusiness->profile()->update(['role' => 'business']);
+
+        $this->shift($creator, ['accepted_vehicles' => []]);
+
+        NotificationFacade::assertNotSentTo($creator, PushNotification::class);
+        NotificationFacade::assertNotSentTo($otherBusiness, PushNotification::class);
+    }
+
+    public function test_publishing_a_shift_skips_couriers_who_disabled_shift_notifications(): void
+    {
+        NotificationFacade::fake();
+
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $courier->profile()->update(['vehicle' => 'moto']);
+        $courier->settings()->update(['notify_shifts' => false]);
+
+        $this->shift($creator, ['accepted_vehicles' => []]);
+
+        NotificationFacade::assertNotSentTo($courier, PushNotification::class);
     }
 
     public function test_push_notification_targets_the_shift_url(): void

@@ -56,7 +56,7 @@ class Page extends Component
 
             return $this->redirect(route('shifts.index'), navigate: true);
         }
-        if ($type === 'turno' && ! empty($payload['shift_id'])) {
+        if (($type === 'turno' || $type === 'nova_vaga') && ! empty($payload['shift_id'])) {
             return $this->redirect(route('shifts.show', $payload['shift_id']), navigate: true);
         }
         if ($type === 'documento') {

@@ -14,7 +14,14 @@ use App\Notifications\PushNotification;
 class NotificationObserver
 {
     /** Types that also fire a browser push, initially: vagas and chat. */
-    protected const PUSH_TYPES = ['vaga', 'mensagem'];
+    protected const PUSH_TYPES = ['vaga', 'nova_vaga', 'mensagem'];
+
+    /**
+     * "turno" covers both "você foi aceito" and "parceria confirmada" (see
+     * Partnerships.php) — only the latter pushes for now, matched by title
+     * since the Notification model has no subtype column.
+     */
+    protected const PUSH_TITLES = ['Parceria confirmada!'];
 
     public function created(Notification $notification): void
     {
@@ -25,7 +32,10 @@ class NotificationObserver
             report($e);
         }
 
-        if (in_array($notification->type, self::PUSH_TYPES, true)) {
+        $shouldPush = in_array($notification->type, self::PUSH_TYPES, true)
+            || in_array($notification->title, self::PUSH_TITLES, true);
+
+        if ($shouldPush) {
             $this->sendPush($notification);
         }
     }
@@ -53,8 +63,13 @@ class NotificationObserver
     {
         $payload = $notification->payload ?? [];
 
+        // Mirrors Notifications/Page.php::open() so the push opens the same
+        // place a click on the in-app notification would.
         return match ($notification->type) {
-            'vaga' => isset($payload['shift_id']) ? route('shifts.show', $payload['shift_id']) : null,
+            'vaga' => isset($payload['shift_id'])
+                ? route('chats.index', ['tab' => 'candidaturas', 'vagaId' => $payload['shift_id']])
+                : route('shifts.index'),
+            'nova_vaga', 'turno' => isset($payload['shift_id']) ? route('shifts.show', $payload['shift_id']) : null,
             'mensagem' => isset($payload['chat_id']) ? route('chats.show', $payload['chat_id']) : null,
             default => null,
         };

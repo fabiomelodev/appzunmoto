@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\Chat;
 use App\Models\Review;
 use App\Models\Shift;
+use App\Support\Catalog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
@@ -189,19 +190,12 @@ class Show extends Component
 
     protected function noRestriction(Shift $shift): bool
     {
-        $v = $this->acceptedVehicles($shift);
-
-        return count($v) === 0 || count($v) === 3;
+        return Catalog::noVehicleRestriction($this->acceptedVehicles($shift));
     }
 
     protected function compatible(Shift $shift): bool
     {
-        if ($this->noRestriction($shift)) {
-            return true;
-        }
-        $vehicle = Auth::user()?->profile?->vehicle;
-
-        return $vehicle && in_array($vehicle, $this->acceptedVehicles($shift), true);
+        return Catalog::vehicleCompatible($this->acceptedVehicles($shift), Auth::user()?->profile?->vehicle);
     }
 
     protected function blockedByBag(Shift $shift): bool
