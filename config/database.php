@@ -55,6 +55,12 @@ return [
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => env('DB_CHARSET', 'utf8mb4'),
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            // Forces the session timezone to match app.timezone (UTC). Without
+            // this, MySQL converts TIMESTAMP columns (created_at with
+            // useCurrent(), e.g. notifications/messages) using the server's
+            // local system timezone, which drifted 3h from PHP's UTC `now()`
+            // and made every relative time ("3 horas atrás") wrong.
+            'timezone' => '+00:00',
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,

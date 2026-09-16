@@ -101,6 +101,48 @@
             <x-settings-toggle label="Novas vagas próximas" description="Avise quando surgir uma vaga compatível" model="notifyShifts" />
             <x-settings-toggle label="Mensagens do chat" description="Notificar respostas de contratantes" model="notifyChat" />
             <x-settings-toggle label="Resumo por e-mail" description="Receber resumo semanal" model="notifyEmail" />
+
+            <div class="border-b border-border/60 py-3 last:border-0"
+                x-data="{
+                    status: 'unsubscribed',
+                    loading: false,
+                    async refresh() { this.status = await window.webPushStatus(); },
+                    async toggle() {
+                        if (this.loading) return;
+                        this.loading = true;
+                        try {
+                            if (this.status === 'subscribed') {
+                                const endpoint = await window.webPushUnsubscribe();
+                                if (endpoint) $wire.unsubscribeFromPush(endpoint);
+                            } else {
+                                const sub = await window.webPushSubscribe();
+                                $wire.subscribeToPush(sub);
+                            }
+                        } catch (e) {
+                            $dispatch('toast', { message: e.message || 'Não foi possível alterar as notificações.', type: 'error' });
+                        } finally {
+                            await this.refresh();
+                            this.loading = false;
+                        }
+                    },
+                }"
+                x-init="refresh()">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-sm font-medium text-foreground">Notificações do navegador</div>
+                        <template x-if="status === 'unsupported'"><div class="text-xs text-muted-foreground">Não suportado neste navegador.</div></template>
+                        <template x-if="status === 'denied'"><div class="text-xs text-muted-foreground">Bloqueadas nas permissões do navegador.</div></template>
+                        <template x-if="status === 'subscribed' || status === 'unsubscribed'"><div class="text-xs text-muted-foreground">Alertas de vagas e chat mesmo com o app em segundo plano.</div></template>
+                    </div>
+                    <template x-if="status === 'subscribed' || status === 'unsubscribed'">
+                        <label class="relative inline-flex cursor-pointer items-center">
+                            <input type="checkbox" class="peer sr-only" :checked="status === 'subscribed'" :disabled="loading" x-on:change="toggle()" />
+                            <div class="h-6 w-11 rounded-full bg-input transition-colors peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-ring"></div>
+                            <div class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-background shadow transition-transform peer-checked:translate-x-5"></div>
+                        </label>
+                    </template>
+                </div>
+            </div>
         </x-settings-section>
 
         {{-- About --}}

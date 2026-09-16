@@ -97,9 +97,11 @@
                     <x-ui.field label="Nome completo"><x-ui.input wire:model="name" class="h-12 rounded-xl" /></x-ui.field>
                     @error('name') <p class="text-xs font-medium text-destructive">{{ $message }}</p> @enderror
                     <x-ui.field label="E-mail"><x-ui.input :value="$user->email" disabled class="h-12 rounded-xl opacity-70" /></x-ui.field>
-                    <x-ui.field label="CPF"><x-ui.input wire:model="cpf" inputmode="numeric" placeholder="000.000.000-00" class="h-12 rounded-xl" x-on:input="$el.value = window.maskCPF($el.value)" /></x-ui.field>
-                    <x-ui.field label="Data de nascimento"><x-ui.input wire:model="birthDate" inputmode="numeric" placeholder="DD/MM/AAAA" class="h-12 rounded-xl" x-on:input="$el.value = window.maskDate($el.value)" /></x-ui.field>
-                    <x-ui.field label="Telefone / WhatsApp"><x-ui.input wire:model="phone" inputmode="tel" placeholder="(11) 9 9999-0000" class="h-12 rounded-xl" x-on:input="$el.value = window.maskPhone($el.value)" /></x-ui.field>
+                    <x-ui.field label="CPF"><x-ui.input wire:model.blur="cpf" inputmode="numeric" placeholder="000.000.000-00" class="h-12 rounded-xl" x-on:input="$el.value = window.maskCPF($el.value)" /></x-ui.field>
+                    @error('cpf') <p class="text-xs font-medium text-destructive">{{ $message }}</p> @enderror
+                    <x-ui.field label="Data de nascimento"><x-ui.input wire:model.blur="birthDate" inputmode="numeric" placeholder="DD/MM/AAAA" class="h-12 rounded-xl" x-on:input="$el.value = window.maskDate($el.value)" /></x-ui.field>
+                    @error('birthDate') <p class="text-xs font-medium text-destructive">{{ $message }}</p> @enderror
+                    <x-ui.field label="Telefone / WhatsApp"><x-ui.input wire:model.blur="phone" inputmode="tel" placeholder="(11) 9 9999-0000" class="h-12 rounded-xl" x-on:input="$el.value = window.maskPhone($el.value)" /></x-ui.field>
                 </x-profile-section>
 
                 @if ($isBusiness)

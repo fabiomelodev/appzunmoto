@@ -97,3 +97,65 @@ window.mrDistance = function (geo, lat, lng) {
     if (km < 1) return `${Math.round(km * 1000)} m`;
     return `${km.toFixed(km < 10 ? 1 : 0).replace('.', ',')} km`;
 };
+
+// ── Browser push notifications (shifts + chat) ────────────────────
+// VAPID public key comes from the server at runtime (window.__VAPID_PUBLIC_KEY__,
+// injected by <x-webpush-config>), same pattern as broadcasting config above.
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+}
+
+window.webPushSupported = function () {
+    return 'serviceWorker' in navigator && 'PushManager' in window && !!window.__VAPID_PUBLIC_KEY__;
+};
+
+// Subscribes this browser to push and returns the subscription as a plain
+// object ({endpoint, keys: {p256dh, auth}}) ready to send to the server.
+window.webPushSubscribe = async function () {
+    if (!window.webPushSupported()) throw new Error('Push não suportado neste navegador.');
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') throw new Error('Permissão de notificação negada.');
+
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(window.__VAPID_PUBLIC_KEY__),
+        });
+    }
+
+    return JSON.parse(JSON.stringify(subscription));
+};
+
+// Unsubscribes this browser and returns the endpoint that was removed (or
+// null when there was nothing to unsubscribe from).
+window.webPushUnsubscribe = async function () {
+    if (!('serviceWorker' in navigator)) return null;
+
+    const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+    const subscription = registration && (await registration.pushManager.getSubscription());
+    if (!subscription) return null;
+
+    const endpoint = subscription.endpoint;
+    await subscription.unsubscribe();
+
+    return endpoint;
+};
+
+// Current status for the UI: 'unsupported' | 'denied' | 'subscribed' | 'unsubscribed'.
+window.webPushStatus = async function () {
+    if (!window.webPushSupported()) return 'unsupported';
+    if (Notification.permission === 'denied') return 'denied';
+
+    const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+    const subscription = registration && (await registration.pushManager.getSubscription());
+
+    return subscription ? 'subscribed' : 'unsubscribed';
+};

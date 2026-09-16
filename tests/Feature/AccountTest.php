@@ -109,7 +109,7 @@ class AccountTest extends TestCase
         $this->assertSame('Maria Souza', $user->fresh()->name);
     }
 
-    public function test_profile_save_ignores_a_calendar_invalid_birth_date(): void
+    public function test_profile_save_blocks_a_calendar_invalid_birth_date(): void
     {
         $user = $this->user();
         $this->actingAs($user);
@@ -118,9 +118,53 @@ class AccountTest extends TestCase
             ->set('name', 'Maria Souza')
             ->set('birthDate', '31/02/1990') // fevereiro não tem dia 31
             ->call('save')
-            ->assertDispatched('toast');
+            ->assertHasErrors('birthDate')
+            ->assertNotDispatched('toast');
 
         $this->assertNull($user->fresh()->profile->birth_date);
+    }
+
+    public function test_profile_save_allows_an_empty_birth_date(): void
+    {
+        $user = $this->user();
+        $this->actingAs($user);
+
+        Livewire::test(ProfilePage::class)
+            ->set('name', 'Maria Souza')
+            ->set('birthDate', '')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertDispatched('toast');
+    }
+
+    public function test_profile_save_blocks_an_invalid_cpf(): void
+    {
+        $user = $this->user();
+        $this->actingAs($user);
+
+        Livewire::test(ProfilePage::class)
+            ->set('name', 'Maria Souza')
+            ->set('cpf', '111.111.111-11')
+            ->call('save')
+            ->assertHasErrors('cpf')
+            ->assertNotDispatched('toast');
+
+        $this->assertNull($user->fresh()->profile->cpf);
+    }
+
+    public function test_profile_save_accepts_a_valid_cpf(): void
+    {
+        $user = $this->user();
+        $this->actingAs($user);
+
+        Livewire::test(ProfilePage::class)
+            ->set('name', 'Maria Souza')
+            ->set('cpf', '529.982.247-25')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertDispatched('toast');
+
+        $this->assertSame('52998224725', $user->fresh()->profile->cpf);
     }
 
     public function test_profile_page_hides_courier_only_sections_for_business(): void
