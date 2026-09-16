@@ -180,8 +180,19 @@ window.webPushStatus = async function () {
 
     const registration = await navigator.serviceWorker.getRegistration('/sw.js');
     const subscription = registration && (await registration.pushManager.getSubscription());
+    if (!subscription) return 'unsubscribed';
 
-    return subscription ? 'subscribed' : 'unsubscribed';
+    if (!subscriptionKeyMatches(subscription)) {
+        // Looks active to the browser, but it's tied to an old/different
+        // VAPID key — the push service will silently reject anything sent
+        // to it. Clear it so the UI reports the true state (off) instead of
+        // a misleading "on" that a page reload can't self-heal, since a
+        // mismatched key is never re-synced to the server on purpose.
+        await subscription.unsubscribe();
+        return 'unsubscribed';
+    }
+
+    return 'subscribed';
 };
 
 // If this browser already has an active, current-key subscription, returns it
