@@ -180,7 +180,7 @@
             </x-profile-section>
         @endif
 
-        <button wire:click="logout"
+        <button type="button" x-on:click="window.webPushUnsubscribe().then((endpoint) => $wire.logout(endpoint))"
             class="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-border/60 bg-surface py-3 text-sm font-medium text-destructive transition hover:bg-surface-elevated">
             <x-ui.icon name="log-out" class="h-4 w-4" /> Sair da conta
         </button>
