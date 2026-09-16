@@ -219,3 +219,20 @@ window.webPushCurrentSubscription = async function () {
 
     return JSON.parse(JSON.stringify(subscription));
 };
+
+// If this browser already has an active, current-key subscription, returns it
+// (as a plain object) so the caller can re-sync it to the server. The browser
+// remembering "I'm subscribed" doesn't mean the server still has that row —
+// it can get lost (e.g. wiped, or the original save silently failed) while
+// the browser-side subscription keeps existing, leaving the toggle stuck
+// showing "on" with nothing actually saved. Called on every Settings page
+// load so that mismatch heals itself instead of requiring an off/on toggle.
+window.webPushCurrentSubscription = async function () {
+    if (!window.webPushSupported() || Notification.permission !== 'granted') return null;
+
+    const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+    const subscription = registration && (await registration.pushManager.getSubscription());
+    if (!subscription || !subscriptionKeyMatches(subscription)) return null;
+
+    return JSON.parse(JSON.stringify(subscription));
+};
