@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Menu;
+use App\Livewire\ProfilePage;
 use App\Livewire\Settings;
 use App\Models\Application;
 use App\Models\Chat;
@@ -244,5 +246,42 @@ class WebPushTest extends TestCase
         $message = $notification->toWebPush($creator, $notification);
 
         $this->assertSame(route('shifts.show', $shift->id), $message->toArray()['data']['url']);
+    }
+
+    public function test_menu_logout_removes_this_browser_push_subscription(): void
+    {
+        $user = $this->user();
+        $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/device-1', 'k', 'a');
+        $this->actingAs($user);
+
+        Livewire::test(Menu::class)
+            ->call('logout', 'https://fcm.googleapis.com/fcm/send/device-1')
+            ->assertRedirect(route('login'));
+
+        $this->assertSame(0, $user->pushSubscriptions()->count());
+    }
+
+    public function test_profile_page_logout_removes_this_browser_push_subscription(): void
+    {
+        $user = $this->user();
+        $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/device-2', 'k', 'a');
+        $this->actingAs($user);
+
+        Livewire::test(ProfilePage::class)
+            ->call('logout', 'https://fcm.googleapis.com/fcm/send/device-2')
+            ->assertRedirect(route('login'));
+
+        $this->assertSame(0, $user->pushSubscriptions()->count());
+    }
+
+    public function test_logout_without_a_push_endpoint_does_not_touch_other_subscriptions(): void
+    {
+        $user = $this->user();
+        $user->updatePushSubscription('https://fcm.googleapis.com/fcm/send/device-3', 'k', 'a');
+        $this->actingAs($user);
+
+        Livewire::test(Menu::class)->call('logout')->assertRedirect(route('login'));
+
+        $this->assertSame(1, $user->pushSubscriptions()->count());
     }
 }
