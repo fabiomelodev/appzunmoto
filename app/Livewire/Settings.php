@@ -73,8 +73,12 @@ class Settings extends Component
         $this->dispatch('toast', message: 'Cidade atualizada.');
     }
 
-    /** Persists this browser's push subscription, sent by window.webPushSubscribe(). */
-    public function subscribeToPush(array $subscription): void
+    /**
+     * Persists this browser's push subscription, sent by window.webPushSubscribe()
+     * or, silently, by the page-load re-sync (window.webPushCurrentSubscription)
+     * that heals a browser-says-subscribed-but-server-has-no-row mismatch.
+     */
+    public function subscribeToPush(array $subscription, bool $silent = false): void
     {
         $endpoint = $subscription['endpoint'] ?? null;
         $keys = $subscription['keys'] ?? [];
@@ -83,7 +87,10 @@ class Settings extends Component
         }
 
         Auth::user()->updatePushSubscription($endpoint, $keys['p256dh'] ?? null, $keys['auth'] ?? null);
-        $this->dispatch('toast', message: 'Notificações do navegador ativadas!');
+
+        if (! $silent) {
+            $this->dispatch('toast', message: 'Notificações do navegador ativadas!');
+        }
     }
 
     /** Removes this browser's push subscription, sent by window.webPushUnsubscribe(). */

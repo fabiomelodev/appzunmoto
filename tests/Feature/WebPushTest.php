@@ -57,6 +57,21 @@ class WebPushTest extends TestCase
         $this->assertSame('https://fcm.googleapis.com/fcm/send/abc123', $user->pushSubscriptions()->first()->endpoint);
     }
 
+    public function test_silent_subscribe_persists_without_a_toast(): void
+    {
+        $user = $this->user();
+        $this->actingAs($user);
+
+        Livewire::test(Settings::class)
+            ->call('subscribeToPush', [
+                'endpoint' => 'https://fcm.googleapis.com/fcm/send/abc123',
+                'keys' => ['p256dh' => 'public-key', 'auth' => 'auth-token'],
+            ], true)
+            ->assertNotDispatched('toast');
+
+        $this->assertSame(1, $user->pushSubscriptions()->count());
+    }
+
     public function test_subscribe_ignores_a_payload_without_an_endpoint(): void
     {
         $user = $this->user();
