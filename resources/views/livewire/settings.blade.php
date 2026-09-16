@@ -106,7 +106,17 @@
                 x-data="{
                     status: 'unsubscribed',
                     loading: false,
-                    async refresh() { this.status = await window.webPushStatus(); },
+                    async refresh() {
+                        this.status = await window.webPushStatus();
+                        // The browser remembering a subscription doesn't guarantee
+                        // the server still has the row — re-sync it silently so a
+                        // lost or failed save heals itself instead of leaving the
+                        // toggle stuck on with nothing actually saved.
+                        if (this.status === 'subscribed') {
+                            const sub = await window.webPushCurrentSubscription();
+                            if (sub) $wire.subscribeToPush(sub, true);
+                        }
+                    },
                     async toggle() {
                         if (this.loading) return;
                         this.loading = true;
@@ -115,8 +125,9 @@
                                 const endpoint = await window.webPushUnsubscribe();
                                 if (endpoint) $wire.unsubscribeFromPush(endpoint);
                             } else {
-                                const sub = await window.webPushSubscribe();
-                                $wire.subscribeToPush(sub);
+                                const { subscription, replacedEndpoint } = await window.webPushSubscribe();
+                                if (replacedEndpoint) $wire.unsubscribeFromPush(replacedEndpoint);
+                                $wire.subscribeToPush(subscription);
                             }
                         } catch (e) {
                             $dispatch('toast', { message: e.message || 'Não foi possível alterar as notificações.', type: 'error' });
