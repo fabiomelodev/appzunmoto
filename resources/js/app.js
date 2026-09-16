@@ -1,6 +1,14 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
+// ── PWA installability ────────────────────────────────────────────
+// Registers the service worker on every visit, not just when push gets
+// activated — an active registration is part of what makes the browser
+// consider the site installable ("Adicionar à Tela de Início").
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
 // ── Realtime (Reverb or Pusher) ──────────────────────────────────
 // Connection params come from the server at runtime (window.__BROADCAST__,
 // injected by <x-broadcast-config>) so the pre-built bundle connects to the

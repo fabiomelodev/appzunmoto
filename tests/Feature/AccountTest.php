@@ -314,4 +314,32 @@ class AccountTest extends TestCase
         $this->get(route('profile'))->assertOk()->assertSee('Dados pessoais');
         $this->get(route('settings'))->assertOk()->assertSee('Aparência');
     }
+
+    public function test_pages_link_the_pwa_manifest_and_icons(): void
+    {
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('manifest.webmanifest', false);
+
+        $this->actingAs($this->user());
+
+        $this->get(route('shifts.index'))
+            ->assertOk()
+            ->assertSee('manifest.webmanifest', false)
+            ->assertSee('apple-touch-icon', false);
+    }
+
+    public function test_pwa_manifest_file_has_the_required_fields(): void
+    {
+        $manifest = json_decode(file_get_contents(public_path('manifest.webmanifest')), true);
+
+        $this->assertSame('ZunMoto', $manifest['name']);
+        $this->assertSame('standalone', $manifest['display']);
+        $this->assertNotEmpty($manifest['icons']);
+        $this->assertTrue(collect($manifest['icons'])->contains(fn ($icon) => $icon['sizes'] === '512x512'));
+
+        foreach ($manifest['icons'] as $icon) {
+            $this->assertFileExists(public_path(ltrim($icon['src'], '/')));
+        }
+    }
 }
