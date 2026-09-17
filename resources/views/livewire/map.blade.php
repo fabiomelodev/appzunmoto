@@ -24,10 +24,15 @@
         build() {
             const dark = (localStorage.getItem('mr-theme') || 'dark') !== 'light';
             this.map = L.map(this.$refs.map, { zoomControl: false, worldCopyJump: true }).setView([-23.561, -46.656], 12);
+            // Carto now requires a (free-tier) API key on basemaps.cartocdn.com —
+            // without window.__CARTO_API_KEY__ (injected by the carto-config
+            // component when CARTO_API_KEY is set), tiles render an
+            // "API KEY REQUIRED" watermark instead of the map.
+            const cartoKey = window.__CARTO_API_KEY__ ? `?api_key=${window.__CARTO_API_KEY__}` : '';
             L.tileLayer(
-                dark
+                (dark
                     ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png') + cartoKey,
                 { attribution: '&copy; CARTO &copy; OpenStreetMap', maxZoom: 19 },
             ).addTo(this.map);
             L.control.zoom({ position: 'bottomright' }).addTo(this.map);
