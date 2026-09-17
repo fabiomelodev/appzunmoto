@@ -50,6 +50,22 @@ class Catalog
         'chat' => 'message-circle',
     ];
 
+    /** Whether a shift with these accepted vehicles takes any vehicle (empty or all 3 selected). */
+    public static function noVehicleRestriction(array $acceptedVehicles): bool
+    {
+        return count($acceptedVehicles) === 0 || count($acceptedVehicles) === 3;
+    }
+
+    /** Whether the given vehicle (nullable) is accepted by a shift with these restrictions. */
+    public static function vehicleCompatible(array $acceptedVehicles, ?string $vehicle): bool
+    {
+        if (self::noVehicleRestriction($acceptedVehicles)) {
+            return true;
+        }
+
+        return $vehicle && in_array($vehicle, $acceptedVehicles, true);
+    }
+
     /** Human label for a set of accepted vehicles. */
     public static function vehiclesLabel(array $vehicles): string
     {

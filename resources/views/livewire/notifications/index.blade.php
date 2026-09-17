@@ -6,6 +6,7 @@
         'documento' => 'file-check',
         'sistema' => 'shield-alert',
         'vaga' => 'calendar-check',
+        'nova_vaga' => 'bike',
     ];
 @endphp
 

@@ -11,8 +11,18 @@ use Livewire\Component;
 #[Title('Menu — ZunMoto')]
 class Menu extends Component
 {
-    public function logout()
+    /**
+     * $pushEndpoint: this browser's push subscription, unsubscribed
+     * client-side right before this call (see menu.blade.php) — deleted here
+     * too so the next account logged in on this device doesn't silently
+     * inherit it (push subscriptions are per-browser, not per-account).
+     */
+    public function logout(?string $pushEndpoint = null)
     {
+        if ($pushEndpoint) {
+            Auth::user()?->deletePushSubscription($pushEndpoint);
+        }
+
         Auth::logout();
         session()->invalidate();
         session()->regenerateToken();

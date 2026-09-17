@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{{ $title ?? 'ZunMoto' }}</title>
     <link rel="icon" href="{{ asset('assets/favicon.png') }}" type="image/png" />
+    <x-pwa-meta />
     <script>
         (function () {
             try { document.documentElement.className = localStorage.getItem('mr-theme') || 'dark'; }
@@ -13,6 +14,7 @@
         })();
     </script>
     <x-broadcast-config />
+    <x-webpush-config />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>

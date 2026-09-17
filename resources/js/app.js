@@ -1,6 +1,14 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
+// ── PWA installability ────────────────────────────────────────────
+// Registers the service worker on every visit, not just when push gets
+// activated — an active registration is part of what makes the browser
+// consider the site installable ("Adicionar à Tela de Início").
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
 // ── Realtime (Reverb or Pusher) ──────────────────────────────────
 // Connection params come from the server at runtime (window.__BROADCAST__,
 // injected by <x-broadcast-config>) so the pre-built bundle connects to the
@@ -96,4 +104,135 @@ window.mrDistance = function (geo, lat, lng) {
 
     if (km < 1) return `${Math.round(km * 1000)} m`;
     return `${km.toFixed(km < 10 ? 1 : 0).replace('.', ',')} km`;
+};
+
+// ── Browser push notifications (shifts + chat) ────────────────────
+// VAPID public key comes from the server at runtime (window.__VAPID_PUBLIC_KEY__,
+// injected by <x-webpush-config>), same pattern as broadcasting config above.
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = atob(base64);
+    return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+}
+
+window.webPushSupported = function () {
+    return 'serviceWorker' in navigator && 'PushManager' in window && !!window.__VAPID_PUBLIC_KEY__;
+};
+
+// Whether an existing subscription's key still matches the server's current
+// VAPID public key. A mismatch (e.g. keys were regenerated, or the
+// subscription is left over from an earlier test) makes the push service
+// silently reject every send — the browser has to unsubscribe and
+// resubscribe with the current key before it'll work again.
+function subscriptionKeyMatches(subscription) {
+    const existing = subscription && subscription.options && subscription.options.applicationServerKey;
+    if (!existing) return false;
+
+    const current = urlBase64ToUint8Array(window.__VAPID_PUBLIC_KEY__);
+    const existingBytes = new Uint8Array(existing);
+    if (existingBytes.length !== current.length) return false;
+
+    return existingBytes.every((byte, i) => byte === current[i]);
+}
+
+// Subscribes this browser to push and returns {subscription, replacedEndpoint}.
+// subscription is a plain object ({endpoint, keys: {p256dh, auth}}) ready to
+// send to the server; replacedEndpoint is the old endpoint to also tell the
+// server to forget, or null when there wasn't a stale one.
+window.webPushSubscribe = async function () {
+    if (!window.webPushSupported()) throw new Error('Push não suportado neste navegador.');
+
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') throw new Error('Permissão de notificação negada.');
+
+    const registration = await navigator.serviceWorker.register('/sw.js');
+    await navigator.serviceWorker.ready;
+
+    let subscription = await registration.pushManager.getSubscription();
+    let replacedEndpoint = null;
+    if (subscription && !subscriptionKeyMatches(subscription)) {
+        replacedEndpoint = subscription.endpoint;
+        await subscription.unsubscribe();
+        subscription = null;
+    }
+    if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(window.__VAPID_PUBLIC_KEY__),
+        });
+    }
+
+    return { subscription: JSON.parse(JSON.stringify(subscription)), replacedEndpoint };
+};
+
+// Unsubscribes this browser and returns the endpoint that was removed (or
+// null when there was nothing to unsubscribe from).
+window.webPushUnsubscribe = async function () {
+    if (!('serviceWorker' in navigator)) return null;
+
+    const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+    const subscription = registration && (await registration.pushManager.getSubscription());
+    if (!subscription) return null;
+
+    const endpoint = subscription.endpoint;
+    await subscription.unsubscribe();
+
+    return endpoint;
+};
+
+// Current status for the UI: 'unsupported' | 'denied' | 'subscribed' | 'unsubscribed'.
+window.webPushStatus = async function () {
+    if (!window.webPushSupported()) return 'unsupported';
+    if (Notification.permission === 'denied') return 'denied';
+
+    const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+    const subscription = registration && (await registration.pushManager.getSubscription());
+    if (!subscription) return 'unsubscribed';
+
+    if (!subscriptionKeyMatches(subscription)) {
+        // Looks active to the browser, but it's tied to an old/different
+        // VAPID key — the push service will silently reject anything sent
+        // to it. Clear it so the UI reports the true state (off) instead of
+        // a misleading "on" that a page reload can't self-heal, since a
+        // mismatched key is never re-synced to the server on purpose.
+        await subscription.unsubscribe();
+        return 'unsubscribed';
+    }
+
+    return 'subscribed';
+};
+
+// If this browser already has an active, current-key subscription, returns it
+// (as a plain object) so the caller can re-sync it to the server. The browser
+// remembering "I'm subscribed" doesn't mean the server still has that row —
+// it can get lost (e.g. wiped, or the original save silently failed) while
+// the browser-side subscription keeps existing, leaving the toggle stuck
+// showing "on" with nothing actually saved. Called on every Settings page
+// load so that mismatch heals itself instead of requiring an off/on toggle.
+window.webPushCurrentSubscription = async function () {
+    if (!window.webPushSupported() || Notification.permission !== 'granted') return null;
+
+    const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+    const subscription = registration && (await registration.pushManager.getSubscription());
+    if (!subscription || !subscriptionKeyMatches(subscription)) return null;
+
+    return JSON.parse(JSON.stringify(subscription));
+};
+
+// If this browser already has an active, current-key subscription, returns it
+// (as a plain object) so the caller can re-sync it to the server. The browser
+// remembering "I'm subscribed" doesn't mean the server still has that row —
+// it can get lost (e.g. wiped, or the original save silently failed) while
+// the browser-side subscription keeps existing, leaving the toggle stuck
+// showing "on" with nothing actually saved. Called on every Settings page
+// load so that mismatch heals itself instead of requiring an off/on toggle.
+window.webPushCurrentSubscription = async function () {
+    if (!window.webPushSupported() || Notification.permission !== 'granted') return null;
+
+    const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+    const subscription = registration && (await registration.pushManager.getSubscription());
+    if (!subscription || !subscriptionKeyMatches(subscription)) return null;
+
+    return JSON.parse(JSON.stringify(subscription));
 };

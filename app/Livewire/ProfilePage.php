@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Application;
 use App\Models\Review;
 use App\Models\Shift;
+use App\Support\Cpf;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
@@ -76,14 +77,28 @@ class ProfilePage extends Component
             'bio' => ['nullable', 'string', 'max:500'],
         ]);
 
+        // Same rule as the registration wizard: only a real calendar date is accepted.
         $birth = null;
-        if (preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', trim($this->birthDate), $m) && checkdate((int) $m[2], (int) $m[1], (int) $m[3])) {
+        $birthDate = trim($this->birthDate);
+        if ($birthDate !== '') {
+            if (! preg_match('/^(\d{2})\/(\d{2})\/(\d{4})$/', $birthDate, $m) || ! checkdate((int) $m[2], (int) $m[1], (int) $m[3])) {
+                $this->addError('birthDate', 'Data de nascimento inválida (use DD/MM/AAAA).');
+
+                return;
+            }
             $birth = "{$m[3]}-{$m[2]}-{$m[1]}";
+        }
+
+        $cpfDigits = preg_replace('/\D/', '', $this->cpf);
+        if ($cpfDigits !== '' && ! Cpf::isValid($cpfDigits)) {
+            $this->addError('cpf', 'CPF inválido.');
+
+            return;
         }
 
         Auth::user()->profile?->update([
             'name' => trim($this->name),
-            'cpf' => preg_replace('/\D/', '', $this->cpf) ?: null,
+            'cpf' => $cpfDigits ?: null,
             'birth_date' => $birth,
             'phone' => preg_replace('/\D/', '', $this->phone) ?: null,
             'street' => trim($this->street),
@@ -125,8 +140,18 @@ class ProfilePage extends Component
             ->get();
     }
 
-    public function logout()
+    /**
+     * $pushEndpoint: this browser's push subscription, unsubscribed
+     * client-side right before this call (see profile-page.blade.php) —
+     * deleted here too so the next account logged in on this device doesn't
+     * silently inherit it (push subscriptions are per-browser, not per-account).
+     */
+    public function logout(?string $pushEndpoint = null)
     {
+        if ($pushEndpoint) {
+            Auth::user()?->deletePushSubscription($pushEndpoint);
+        }
+
         Auth::logout();
         session()->invalidate();
         session()->regenerateToken();

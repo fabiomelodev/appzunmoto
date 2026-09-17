@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{{ $title ?? 'ZunMoto' }}</title>
     <link rel="icon" href="{{ asset('assets/favicon.png') }}" type="image/png" />
+    <x-pwa-meta />
     {{-- Apply the saved theme before paint to avoid a flash --}}
     <script>
         (function () {
