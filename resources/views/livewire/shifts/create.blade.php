@@ -100,8 +100,12 @@
         </x-ui.field>
 
         <div>
-            <x-ui.field label="Taxa por entrega (R$)"><x-ui.input type="number" inputmode="decimal" min="0" step="0.5" x-model="f.fee" /></x-ui.field>
-            <p class="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">Valor médio pago por entrega no local (ex.: R$ 8).</p>
+            <x-ui.label class="mb-2 block">Taxa por entrega (R$)</x-ui.label>
+            <div class="grid grid-cols-2 gap-2">
+                <x-ui.field label="Mínima"><x-ui.input type="number" inputmode="decimal" min="0" step="0.5" x-model="f.feeMin" /></x-ui.field>
+                <x-ui.field label="Máxima"><x-ui.input type="number" inputmode="decimal" min="0" step="0.5" x-model="f.feeMax" /></x-ui.field>
+            </div>
+            <p class="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">Faixa paga por entrega no local (ex.: R$ 8 a R$ 12).</p>
         </div>
 
         <div>

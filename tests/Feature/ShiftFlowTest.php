@@ -289,7 +289,7 @@ class ShiftFlowTest extends TestCase
         $form = [
             'date' => now()->addDay()->toDateString(),
             'startTime' => '18:00', 'endTime' => '23:00',
-            'dailyRate' => '150', 'fee' => '8',
+            'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
             'contactName' => 'Maria', 'contactPhone' => '11999990000',
             'notes' => 'Chegar 10min antes', 'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
             'couriersNeeded' => 2, 'benefits' => ['lanche'], 'vehicles' => ['moto'], 'requiresOwnBag' => true,
@@ -305,10 +305,32 @@ class ShiftFlowTest extends TestCase
         $this->assertSame('Pizzaria', $shift->venue);
         $this->assertSame(2, $shift->couriers_needed);
         $this->assertSame(['moto'], $shift->accepted_vehicles);
-        // A taxa única por entrega é gravada igual em min e max.
         $this->assertEquals(8, $shift->delivery_fee_min);
-        $this->assertEquals(8, $shift->delivery_fee_max);
+        $this->assertEquals(12, $shift->delivery_fee_max);
         $this->assertDatabaseHas('shift_contacts', ['shift_id' => $shift->id, 'contact_name' => 'Maria']);
+    }
+
+    public function test_create_shift_rejects_max_fee_below_min(): void
+    {
+        $user = $this->user('Dono');
+        $address = UserAddress::create([
+            'user_id' => $user->id, 'label' => 'Pizzaria', 'postal_code' => '01310100',
+            'street' => 'Av Paulista', 'number' => '1000', 'district' => 'Bela Vista', 'city' => 'São Paulo',
+        ]);
+        $this->actingAs($user);
+
+        Livewire::withQueryParams(['as' => 'business', 'address' => $address->id])
+            ->test(Create::class)
+            ->call('save', [
+                'date' => now()->addDay()->toDateString(),
+                'startTime' => '18:00', 'endTime' => '23:00',
+                'dailyRate' => '150', 'feeMin' => '12', 'feeMax' => '8',
+                'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
+                'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
+            ])
+            ->assertDispatched('toast');
+
+        $this->assertDatabaseCount('shifts', 0);
     }
 
     public function test_shift_inherits_address_photo(): void
@@ -326,7 +348,7 @@ class ShiftFlowTest extends TestCase
             ->call('save', [
                 'date' => now()->addDay()->toDateString(),
                 'startTime' => '18:00', 'endTime' => '23:00',
-                'dailyRate' => '150', 'fee' => '8',
+                'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
                 'contactName' => '', 'contactPhone' => '', 'notes' => '',
                 'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
                 'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
@@ -348,7 +370,7 @@ class ShiftFlowTest extends TestCase
         $form = [
             'date' => $shift->date->toDateString(),
             'startTime' => '18:00', 'endTime' => '23:00',
-            'dailyRate' => '150', 'fee' => '8',
+            'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
             'contactName' => '', 'contactPhone' => '', 'notes' => '',
             'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
             'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
@@ -381,7 +403,7 @@ class ShiftFlowTest extends TestCase
             ->call('save', [
                 'date' => now()->subDay()->toDateString(),
                 'startTime' => '18:00', 'endTime' => '23:00',
-                'dailyRate' => '150', 'fee' => '8',
+                'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
                 'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
                 'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
             ]);
@@ -421,7 +443,7 @@ class ShiftFlowTest extends TestCase
             ->call('save', [
                 'date' => $shift->date->toDateString(),
                 'startTime' => '18:00', 'endTime' => '23:00',
-                'dailyRate' => '200', 'fee' => '8',
+                'dailyRate' => '200', 'feeMin' => '8', 'feeMax' => '12',
                 'contactName' => '', 'contactPhone' => '',
                 'notes' => 'editado', 'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
                 'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
