@@ -1,6 +1,23 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
+// ── Theme (dark/light/urbano) ─────────────────────────────────────
+// The <html class="dark"> in both layouts is hardcoded server-side; the
+// inline <script> in <head> only overrides it with the saved theme on a
+// real page load (before paint, to avoid a flash). wire:navigate swaps
+// the page without a full reload, so that inline script never re-runs —
+// the class silently fell back to the server-rendered "dark" on every
+// SPA-style navigation until the user did a full reload. Re-apply it here
+// on Livewire's own "navigation finished" hook so it survives wire:navigate.
+function applyStoredTheme() {
+    try {
+        document.documentElement.className = localStorage.getItem('mr-theme') || 'dark';
+    } catch (e) {
+        document.documentElement.className = 'dark';
+    }
+}
+document.addEventListener('livewire:navigated', applyStoredTheme);
+
 // ── PWA installability ────────────────────────────────────────────
 // Registers the service worker on every visit, not just when push gets
 // activated — an active registration is part of what makes the browser
