@@ -24,13 +24,14 @@
         build() {
             const dark = (localStorage.getItem('mr-theme') || 'dark') !== 'light';
             this.map = L.map(this.$refs.map, { zoomControl: false, worldCopyJump: true }).setView([-23.561, -46.656], 12);
-            const cartoKey = window.__CARTO_API_KEY__ ? `?api_key=${window.__CARTO_API_KEY__}` : '';
-            L.tileLayer(
-                (dark
-                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                    : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png') + cartoKey,
-                { attribution: '&copy; CARTO &copy; OpenStreetMap', maxZoom: 19 },
-            ).addTo(this.map);
+            // OpenStreetMap has no native dark style, so dark mode is simulated
+            // with a CSS filter on the tile pane only (see <style> below) —
+            // markers/popups/controls keep their normal colors.
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors',
+                maxZoom: 19,
+            }).addTo(this.map);
+            if (dark) this.$refs.map.classList.add('map-dark');
             L.control.zoom({ position: 'bottomright' }).addTo(this.map);
 
             const groups = {};
@@ -79,6 +80,9 @@
     <style>
         .leaflet-bottom.leaflet-right, .leaflet-bottom.leaflet-left { margin-bottom: 96px; }
         .leaflet-control-attribution { font-size: 9px; }
+        /* Simulates a dark map from OSM's light-only tiles — only the tile
+           pane is inverted, so markers/popups/controls stay their real colors. */
+        .map-dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9); }
     </style>
 
     <header class="pointer-events-none absolute left-0 right-0 top-0 z-[1100] flex items-center justify-between px-4 pt-4">

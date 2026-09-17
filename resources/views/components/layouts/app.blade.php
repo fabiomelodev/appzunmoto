@@ -15,7 +15,6 @@
     </script>
     <x-broadcast-config />
     <x-webpush-config />
-    <x-carto-config />
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>

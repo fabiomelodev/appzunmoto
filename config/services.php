@@ -41,8 +41,4 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI'),
     ],
 
-    'carto' => [
-        'key' => env('CARTO_API_KEY'),
-    ],
-
 ];
