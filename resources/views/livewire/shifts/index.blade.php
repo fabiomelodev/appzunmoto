@@ -24,8 +24,9 @@
         clear() { this.draft = JSON.parse(JSON.stringify(this.initial)); $wire.clearFilters(); },
     }" x-init="window.mrRequestGeo && window.mrRequestGeo()">
     {{-- Header --}}
-    <header class="flex items-center justify-between gap-2">
-        <x-logo />
+    <header class="flex items-center justify-between gap-2 lg:justify-end">
+        {{-- lg: a sidebar já mostra a logo (ver <x-sidebar-nav />) --}}
+        <x-logo class="lg:hidden" />
         <div class="flex min-w-0 items-center gap-2">
             @if ($currentRole !== 'business')
                 <button type="button" @click="vehicleOpen = true" aria-label="Trocar veículo"
