@@ -251,8 +251,11 @@
         </div>
     @endif
 
-    {{-- Sticky bottom action --}}
-    <div class="app-shell fixed bottom-20 left-1/2 z-30 -translate-x-1/2 px-4">
+    {{-- Sticky bottom action. lg: no bottom-nav to clear anymore (sidebar
+    instead), and the anchor shifts right by half the sidebar's width (8rem)
+    to stay centered in the remaining space — see the toast container in
+    layouts/app.blade.php for the same adjustment. --}}
+    <div class="app-shell fixed bottom-20 left-1/2 z-30 -translate-x-1/2 px-4 lg:bottom-6 lg:left-[calc(50%+8rem)]">
         @if ($isCreator)
             <a href="{{ route('chats.index') }}" wire:navigate>
                 <x-ui.button variant="outline" size="lg" class="w-full"><x-ui.icon name="message-circle" class="mr-2 h-4 w-4" /> Ver conversas</x-ui.button>

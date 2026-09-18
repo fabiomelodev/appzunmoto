@@ -23,6 +23,7 @@ use App\Livewire\Vehicle;
 use App\Models\Contact;
 use App\Models\Document;
 use App\Models\Faq;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -36,10 +37,18 @@ Route::middleware('guest')->group(function () {
     Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('google.callback');
 });
 
-Route::post('/logout', function () {
+Route::post('/logout', function (Request $request) {
+    // push_endpoint: sent by the desktop sidebar's logout button (window.mrLogout,
+    // resources/js/app.js) after unsubscribing this browser client-side — deleted
+    // here too so the next account logged in on this device doesn't silently
+    // inherit it (push subscriptions are per-browser, not per-account).
+    if ($endpoint = $request->input('push_endpoint')) {
+        Auth::user()?->deletePushSubscription($endpoint);
+    }
+
     Auth::logout();
-    request()->session()->invalidate();
-    request()->session()->regenerateToken();
+    $request->session()->invalidate();
+    $request->session()->regenerateToken();
 
     return redirect()->route('login');
 })->middleware('auth')->name('logout');
