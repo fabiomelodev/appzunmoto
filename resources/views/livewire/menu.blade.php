@@ -45,8 +45,10 @@
 
     <div class="mt-2 space-y-2 px-4">
         @foreach ($items as $it)
+            {{-- Configurações já tem atalho fixo no rodapé da sidebar desktop —
+            evita duplicar a entrada aqui quando a sidebar está visível (lg+). --}}
             <a href="{{ route($it['route']) }}" @if($it['navigate'] ?? true) wire:navigate @endif
-                class="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-4 transition hover:border-primary/40 hover:bg-surface-elevated">
+                class="flex items-center gap-4 rounded-2xl border border-border/60 bg-card p-4 transition hover:border-primary/40 hover:bg-surface-elevated {{ $it['route'] === 'settings' ? 'lg:hidden' : '' }}">
                 <span class="grid h-11 w-11 place-items-center rounded-xl bg-primary/15 text-primary">
                     <x-ui.icon :name="$it['icon']" class="h-5 w-5" />
                 </span>
@@ -58,8 +60,10 @@
             </a>
         @endforeach
 
+        {{-- Mesmo raciocínio do item Configurações acima: a sidebar desktop já
+        tem um atalho fixo de "Sair". --}}
         <button type="button" x-on:click="window.webPushUnsubscribe().then((endpoint) => $wire.logout(endpoint))"
-            class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-border/60 bg-surface py-3 text-sm font-medium text-destructive transition hover:bg-surface-elevated">
+            class="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-border/60 bg-surface py-3 text-sm font-medium text-destructive transition hover:bg-surface-elevated lg:hidden">
             <x-ui.icon name="log-out" class="h-4 w-4" /> Sair da conta
         </button>
     </div>

@@ -206,7 +206,8 @@
 }
 @media (min-width: 1536px) {
     .app-shell {
-        max-width: 96rem; /* 1536px — Tailwind 2xl container */
+        max-width: 104rem; /* alargado além do container 2xl padrão (96rem) para
+        reduzir a sobra lateral ao lado da sidebar fixa em telas bem grandes */
     }
 }
 

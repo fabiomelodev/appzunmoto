@@ -9,7 +9,8 @@
     $currentRole = auth()->user()->profile?->role === 'business' ? 'business' : 'courier';
 @endphp
 
-<div>
+{{-- lg: replaced by the fixed left sidebar (see <x-sidebar-nav />) --}}
+<div class="lg:hidden">
     <nav
         class="app-shell fixed bottom-0 left-1/2 z-40 -translate-x-1/2 border-t border-border bg-surface/95 px-2 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
         <div class="relative grid grid-cols-5">
