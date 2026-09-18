@@ -198,6 +198,35 @@ window.webPushUnsubscribe = async function () {
     return endpoint;
 };
 
+// Logs out from anywhere in the app (the desktop sidebar is shared across
+// every page, including plain Blade ones with no enclosing Livewire
+// component, so this can't rely on $wire like the Menu/Profile logout
+// buttons do). Unsubscribes this browser's push subscription first — it's
+// per-browser, not per-account, so leaving it tied to this session would let
+// the next person on this device inherit it — then ends the session via the
+// plain /logout route.
+window.mrLogout = async function () {
+    let endpoint = null;
+    try {
+        endpoint = await window.webPushUnsubscribe();
+    } catch (e) {}
+
+    try {
+        await fetch('/logout', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ push_endpoint: endpoint }),
+        });
+    } catch (e) {}
+
+    window.location.href = '/login';
+};
+
 // Current status for the UI: 'unsupported' | 'denied' | 'subscribed' | 'unsubscribed'.
 window.webPushStatus = async function () {
     if (!window.webPushSupported()) return 'unsupported';
