@@ -77,18 +77,18 @@
                     <label class="mb-2 block text-xs font-medium text-muted-foreground">Você é...</label>
                     <div class="grid grid-cols-2 gap-2">
                         <button type="button" wire:click="setRole('courier')"
-                            class="flex items-center gap-2 rounded-xl border p-3 text-left transition {{ $role === 'courier' ? 'border-primary bg-accent text-foreground shadow-sm glow-orange' : 'border-border bg-surface text-muted-foreground hover:text-foreground' }}">
+                            class="flex min-w-0 flex-col items-center gap-2 rounded-xl border p-3 text-center transition {{ $role === 'courier' ? 'border-primary bg-accent text-foreground shadow-sm glow-orange' : 'border-border bg-surface text-muted-foreground hover:text-foreground' }}">
                             <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg {{ $role === 'courier' ? 'bg-primary text-primary-foreground' : 'bg-surface-elevated' }}">
                                 <x-ui.icon name="bike" class="h-5 w-5" />
                             </span>
-                            <span class="text-sm font-semibold">Motoboy</span>
+                            <span class="min-w-0 break-words text-sm font-semibold leading-tight">Motoboy</span>
                         </button>
                         <button type="button" wire:click="setRole('business')" @disabled(! $this->isAdult)
-                            class="flex items-center gap-2 rounded-xl border p-3 text-left transition {{ ! $this->isAdult ? 'cursor-not-allowed border-border/60 bg-surface/50 text-muted-foreground opacity-60' : ($role === 'business' ? 'border-primary bg-accent text-foreground shadow-sm glow-orange' : 'border-border bg-surface text-muted-foreground hover:text-foreground') }}">
+                            class="flex min-w-0 flex-col items-center gap-2 rounded-xl border p-3 text-center transition {{ ! $this->isAdult ? 'cursor-not-allowed border-border/60 bg-surface/50 text-muted-foreground opacity-60' : ($role === 'business' ? 'border-primary bg-accent text-foreground shadow-sm glow-orange' : 'border-border bg-surface text-muted-foreground hover:text-foreground') }}">
                             <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg {{ $role === 'business' && $this->isAdult ? 'bg-primary text-primary-foreground' : 'bg-surface-elevated' }}">
                                 <x-ui.icon name="store" class="h-5 w-5" />
                             </span>
-                            <span class="text-sm font-semibold">{{ $this->isAdult ? 'Estabelecimento' : 'Precisa ter 18 anos' }}</span>
+                            <span class="min-w-0 break-words text-sm font-semibold leading-tight">{{ $this->isAdult ? 'Estabelecimento' : 'Precisa ter 18 anos' }}</span>
                         </button>
                     </div>
                     <p class="mt-1.5 text-[11px] text-muted-foreground">Depois você pode alternar entre os dois perfis em Configurações.</p>
