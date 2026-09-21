@@ -51,27 +51,11 @@ class NotificationObserver
             $user->notify(new PushNotification(
                 $notification->title,
                 $notification->description,
-                $this->urlFor($notification),
+                $notification->resolveUrl(),
             ));
         } catch (\Throwable $e) {
             // Push is best-effort too: a bad subscription must never break the request.
             report($e);
         }
-    }
-
-    protected function urlFor(Notification $notification): ?string
-    {
-        $payload = $notification->payload ?? [];
-
-        // Mirrors Notifications/Page.php::open() so the push opens the same
-        // place a click on the in-app notification would.
-        return match ($notification->type) {
-            'vaga' => isset($payload['shift_id'])
-                ? route('chats.index', ['tab' => 'candidaturas', 'vagaId' => $payload['shift_id']])
-                : route('shifts.index'),
-            'nova_vaga', 'turno' => isset($payload['shift_id']) ? route('shifts.show', $payload['shift_id']) : null,
-            'mensagem' => isset($payload['chat_id']) ? route('chats.show', $payload['chat_id']) : null,
-            default => null,
-        };
     }
 }
