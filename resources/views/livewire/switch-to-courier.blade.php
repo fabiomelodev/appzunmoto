@@ -44,7 +44,7 @@
                             $blocked = $v === 'moto' && ! $isAdult;
                         @endphp
                         <button type="button" wire:click="setVehicle('{{ $v }}')" @disabled($blocked)
-                            class="flex w-full items-center gap-3 rounded-xl border p-4 text-left transition {{ $blocked ? 'cursor-not-allowed border-border/60 bg-surface/50 text-muted-foreground opacity-60' : ($active ? 'border-primary bg-primary/10 text-foreground' : 'border-border/60 bg-surface text-muted-foreground hover:text-foreground') }}">
+                            class="flex w-full items-center gap-3 rounded-xl border p-4 text-left transition {{ $blocked ? 'cursor-not-allowed border-border/60 bg-surface/50 text-muted-foreground opacity-60' : ($active ? 'border-primary bg-primary/10 text-foreground' : 'border-border/60 bg-input text-muted-foreground hover:text-foreground') }}">
                             <span class="grid h-10 w-10 shrink-0 place-items-center rounded-lg {{ $active && ! $blocked ? 'bg-primary text-primary-foreground' : 'bg-surface-elevated' }}">
                                 <x-ui.icon :name="Catalog::VEHICLE_ICON[$v]" class="h-5 w-5" />
                             </span>
