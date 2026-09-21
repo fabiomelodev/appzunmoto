@@ -58,12 +58,15 @@
                 <p class="truncate text-sm font-semibold">{{ $venue ?: '—' }}</p>
                 <p class="truncate text-[11px] text-muted-foreground">{{ $addressLine }}</p>
             </div>
-            @unless ($editing)
-                <a href="{{ route('addresses.choose', ['as' => $as]) }}" wire:navigate aria-label="Trocar endereço"
+            {{-- Uma vez que algum motoboy demonstrou interesse, o endereço
+            trava — ver $canChangeAddress em Shifts/Create.php. --}}
+            @if (! $editing || $canChangeAddress)
+                <a href="{{ $editing ? route('addresses.choose', ['as' => $as, 'edit' => $editId]) : route('addresses.choose', ['as' => $as]) }}"
+                    wire:navigate aria-label="Trocar endereço"
                     class="grid h-8 w-8 place-items-center rounded-lg bg-surface text-muted-foreground hover:text-primary">
                     <x-ui.icon name="pencil" class="h-3.5 w-3.5" />
                 </a>
-            @endunless
+            @endif
         </div>
     </div>
 
