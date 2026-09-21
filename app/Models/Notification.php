@@ -42,4 +42,37 @@ class Notification extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    /**
+     * Where clicking this notification should take the user. Single source of
+     * truth shared by the notifications list (Notifications/Page::open()),
+     * the browser push notification (NotificationObserver) and the realtime
+     * floating toast (NotificationReceived::broadcastWith()).
+     */
+    public function resolveUrl(): ?string
+    {
+        $payload = $this->payload ?? [];
+
+        if ($this->type === 'mensagem' && ! empty($payload['chat_id'])) {
+            return route('chats.show', $payload['chat_id']);
+        }
+        if ($this->type === 'vaga') {
+            if (! empty($payload['shift_id'])) {
+                return route('chats.index', ['tab' => 'candidaturas', 'vagaId' => $payload['shift_id']]);
+            }
+
+            return route('shifts.index');
+        }
+        if (($this->type === 'turno' || $this->type === 'nova_vaga') && ! empty($payload['shift_id'])) {
+            return route('shifts.show', $payload['shift_id']);
+        }
+        if ($this->type === 'documento') {
+            return route('documents');
+        }
+        if (! empty($payload['shift_id'])) {
+            return route('shifts.show', $payload['shift_id']);
+        }
+
+        return null;
+    }
 }
