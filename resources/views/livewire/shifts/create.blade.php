@@ -114,7 +114,7 @@
                 @foreach ($venueTypes as $val => $lbl)
                     <button type="button" @click="f.venueType = '{{ $val }}'"
                         class="h-auto min-h-10 rounded-md border px-2 py-2 text-xs font-medium transition"
-                        :class="f.venueType === '{{ $val }}' ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background hover:bg-accent'">{{ $lbl }}</button>
+                        :class="f.venueType === '{{ $val }}' ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-muted hover:bg-accent'">{{ $lbl }}</button>
                 @endforeach
             </div>
         </div>
@@ -125,7 +125,7 @@
                 @foreach ($expectedVolumes as $val => $lbl)
                     <button type="button" @click="f.expectedVolume = '{{ $val }}'"
                         class="min-h-16 whitespace-pre-line rounded-md border px-1 py-2 text-[10px] font-medium leading-tight transition"
-                        :class="f.expectedVolume === '{{ $val }}' ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-background hover:bg-accent'">{{ $lbl }}</button>
+                        :class="f.expectedVolume === '{{ $val }}' ? 'border-primary bg-primary text-primary-foreground' : 'border-input bg-muted hover:bg-accent'">{{ $lbl }}</button>
                 @endforeach
             </div>
         </div>
@@ -143,13 +143,13 @@
         <div>
             <x-ui.label class="mb-2 block">Veículos aceitos</x-ui.label>
             <div class="space-y-2">
-                <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-border/60 bg-surface p-3">
+                <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-border/60 bg-muted p-3">
                     <input type="checkbox" class="h-4 w-4 accent-[var(--color-primary)]" :checked="allVehicles" @change="toggleAll()" />
                     <span class="text-sm font-semibold">Todos os veículos</span>
                 </label>
                 @foreach (Catalog::VEHICLE_OPTIONS as $v)
                     <label class="flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition"
-                        :class="f.vehicles.includes('{{ $v }}') ? 'border-primary bg-primary/10' : 'border-border/60 bg-surface'">
+                        :class="f.vehicles.includes('{{ $v }}') ? 'border-primary bg-primary/10' : 'border-border/60 bg-muted'">
                         <input type="checkbox" class="h-4 w-4 accent-[var(--color-primary)]" :checked="f.vehicles.includes('{{ $v }}')" @change="toggleVehicle('{{ $v }}')" />
                         <x-ui.icon :name="Catalog::VEHICLE_ICON[$v]" class="h-4 w-4 text-primary" />
                         <span class="text-sm">{{ Catalog::VEHICLE_LABEL[$v] }}</span>
@@ -163,10 +163,10 @@
             <div class="grid grid-cols-2 gap-2">
                 <button type="button" @click="f.requiresOwnBag = true"
                     class="rounded-xl border px-3 py-2.5 text-sm font-semibold transition"
-                    :class="f.requiresOwnBag ? 'border-primary bg-primary/15 text-primary' : 'border-border/60 bg-surface text-muted-foreground'">Sim</button>
+                    :class="f.requiresOwnBag ? 'border-primary bg-primary/15 text-primary' : 'border-border/60 bg-muted text-muted-foreground'">Sim</button>
                 <button type="button" @click="f.requiresOwnBag = false"
                     class="rounded-xl border px-3 py-2.5 text-sm font-semibold transition"
-                    :class="!f.requiresOwnBag ? 'border-primary bg-primary/15 text-primary' : 'border-border/60 bg-surface text-muted-foreground'">Não</button>
+                    :class="!f.requiresOwnBag ? 'border-primary bg-primary/15 text-primary' : 'border-border/60 bg-muted text-muted-foreground'">Não</button>
             </div>
         </div>
 

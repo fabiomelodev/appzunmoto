@@ -25,7 +25,7 @@
                 @foreach (Catalog::VEHICLE_OPTIONS as $v)
                     @php $active = $vehicle === $v; @endphp
                     <button type="button" wire:click="setVehicle('{{ $v }}')"
-                        class="flex w-full items-center gap-3 rounded-xl border p-4 text-left transition {{ $active ? 'border-primary bg-primary/10 text-foreground' : 'border-border/60 bg-surface text-muted-foreground hover:text-foreground' }}">
+                        class="flex w-full items-center gap-3 rounded-xl border p-4 text-left transition {{ $active ? 'border-primary bg-primary/10 text-foreground' : 'border-border/60 bg-input text-muted-foreground hover:text-foreground' }}">
                         <span class="grid h-10 w-10 place-items-center rounded-lg {{ $active ? 'bg-primary text-primary-foreground' : 'bg-surface-elevated' }}">
                             <x-ui.icon :name="Catalog::VEHICLE_ICON[$v]" class="h-5 w-5" />
                         </span>

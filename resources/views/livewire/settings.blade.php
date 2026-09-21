@@ -25,7 +25,7 @@
                 @foreach (['dark' => ['moon', 'Escuro', 'Premium'], 'light' => ['sun', 'Claro', 'Elegante'], 'urbano' => ['zap', 'Urbano', 'Speed']] as $value => $meta)
                     <button type="button" @click="setTheme('{{ $value }}')"
                         class="flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition"
-                        :class="theme === '{{ $value }}' ? 'border-primary bg-accent text-foreground shadow-sm glow-orange' : 'border-border bg-surface text-muted-foreground hover:text-foreground'">
+                        :class="theme === '{{ $value }}' ? 'border-primary bg-accent text-foreground shadow-sm glow-orange' : 'border-border bg-input text-muted-foreground hover:text-foreground'">
                         <span class="grid h-9 w-9 place-items-center rounded-lg"
                             :class="theme === '{{ $value }}' ? 'bg-primary text-primary-foreground' : 'bg-surface-elevated'">
                             <x-ui.icon :name="$meta[0]" class="h-5 w-5" />
@@ -53,14 +53,14 @@
             <p class="mb-3 text-xs text-muted-foreground">Sua conta pode ser as duas coisas — alterne quando quiser.</p>
             <div class="grid grid-cols-2 gap-2">
                 <button type="button" wire:click="switchRole('courier')"
-                    class="flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition {{ $profile?->role === 'courier' ? 'border-primary bg-accent text-foreground shadow-sm glow-orange' : 'border-border bg-surface text-muted-foreground hover:text-foreground' }}">
+                    class="flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition {{ $profile?->role === 'courier' ? 'border-primary bg-accent text-foreground shadow-sm glow-orange' : 'border-border bg-input text-muted-foreground hover:text-foreground' }}">
                     <span class="grid h-9 w-9 place-items-center rounded-lg {{ $profile?->role === 'courier' ? 'bg-primary text-primary-foreground' : 'bg-surface-elevated' }}">
                         <x-ui.icon name="bike" class="h-5 w-5" />
                     </span>
                     <div class="text-sm font-semibold text-foreground">Motoboy</div>
                 </button>
                 <button type="button" wire:click="switchRole('business')"
-                    class="flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition {{ $profile?->role === 'business' ? 'border-primary bg-accent text-foreground shadow-sm glow-orange' : 'border-border bg-surface text-muted-foreground hover:text-foreground' }}">
+                    class="flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition {{ $profile?->role === 'business' ? 'border-primary bg-accent text-foreground shadow-sm glow-orange' : 'border-border bg-input text-muted-foreground hover:text-foreground' }}">
                     <span class="grid h-9 w-9 place-items-center rounded-lg {{ $profile?->role === 'business' ? 'bg-primary text-primary-foreground' : 'bg-surface-elevated' }}">
                         <x-ui.icon name="store" class="h-5 w-5" />
                     </span>
