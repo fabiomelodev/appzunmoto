@@ -17,6 +17,15 @@ return Application::configure(basePath: dirname(__DIR__))
         // Where the 'guest' middleware sends already-authenticated users.
         $middleware->redirectUsersTo('/shifts');
         $middleware->alias(['onboarded' => EnsureProfileOnboarded::class]);
+
+        // Hospedagem compartilhada termina o TLS antes do PHP (via hCDN/LiteSpeed
+        // na Hostinger) — sem confiar no X-Forwarded-Proto que essa camada manda,
+        // $request->url() "acha" que a requisição chegou em http, mesmo com
+        // URL::forceScheme('https') forçando o lado da geração (AppServiceProvider).
+        // Isso quebra a validação de URLs assinadas (ex.: prévia de foto do
+        // Livewire): assina com https, valida com http, nunca bate — 401. Não dá
+        // pra saber o IP exato do proxy de antemão, então confia em qualquer um.
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
