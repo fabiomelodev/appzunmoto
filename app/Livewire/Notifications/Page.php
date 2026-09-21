@@ -43,30 +43,9 @@ class Page extends Component
 
         $notification->update(['read' => true]);
 
-        $payload = $notification->payload ?? [];
-        $type = $notification->type;
+        $url = $notification->resolveUrl();
 
-        if ($type === 'mensagem' && ! empty($payload['chat_id'])) {
-            return $this->redirect(route('chats.show', $payload['chat_id']), navigate: true);
-        }
-        if ($type === 'vaga') {
-            if (! empty($payload['shift_id'])) {
-                return $this->redirect(route('chats.index', ['tab' => 'candidaturas', 'vagaId' => $payload['shift_id']]), navigate: true);
-            }
-
-            return $this->redirect(route('shifts.index'), navigate: true);
-        }
-        if (($type === 'turno' || $type === 'nova_vaga') && ! empty($payload['shift_id'])) {
-            return $this->redirect(route('shifts.show', $payload['shift_id']), navigate: true);
-        }
-        if ($type === 'documento') {
-            return $this->redirect(route('documents'), navigate: true);
-        }
-        if (! empty($payload['shift_id'])) {
-            return $this->redirect(route('shifts.show', $payload['shift_id']), navigate: true);
-        }
-
-        return null;
+        return $url ? $this->redirect($url, navigate: true) : null;
     }
 
     public function render()

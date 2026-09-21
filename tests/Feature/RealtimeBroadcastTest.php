@@ -5,9 +5,11 @@ namespace Tests\Feature;
 use App\Events\MessageSent;
 use App\Events\NotificationReceived;
 use App\Livewire\Chats\Show as ChatsShow;
+use App\Livewire\NotificationListener;
 use App\Models\Application;
 use App\Models\Chat;
 use App\Models\Message;
+use App\Models\Notification;
 use App\Models\Shift;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -86,7 +88,7 @@ class RealtimeBroadcastTest extends TestCase
     public function test_notification_event_targets_private_user_channel(): void
     {
         $user = $this->user('Dono');
-        $notification = \App\Models\Notification::create([
+        $notification = Notification::create([
             'user_id' => $user->id, 'type' => 'sistema', 'title' => 'Oi', 'description' => 'teste',
         ]);
 
@@ -123,5 +125,61 @@ class RealtimeBroadcastTest extends TestCase
         $this->assertTrue($chat->hasParticipant($creator->id));
         $this->assertTrue($chat->hasParticipant($courier->id));
         $this->assertFalse($chat->hasParticipant($outsider->id));
+    }
+
+    public function test_notification_resolves_url_per_type(): void
+    {
+        $user = $this->user('Dono');
+        $shift = $this->shift($user);
+        $chat = Chat::findOrCreateBetween($shift->id, $user->id, $this->user('Moto')->id);
+
+        $make = fn (string $type, array $payload = []) => Notification::create([
+            'user_id' => $user->id, 'type' => $type, 'title' => 'T', 'description' => 'D', 'payload' => $payload,
+        ]);
+
+        $this->assertSame(
+            route('chats.show', $chat->id),
+            $make('mensagem', ['chat_id' => $chat->id])->resolveUrl(),
+        );
+        $this->assertSame(
+            route('chats.index', ['tab' => 'candidaturas', 'vagaId' => $shift->id]),
+            $make('vaga', ['shift_id' => $shift->id])->resolveUrl(),
+        );
+        $this->assertSame(route('shifts.index'), $make('vaga')->resolveUrl());
+        $this->assertSame(route('shifts.show', $shift->id), $make('nova_vaga', ['shift_id' => $shift->id])->resolveUrl());
+        $this->assertSame(route('shifts.show', $shift->id), $make('turno', ['shift_id' => $shift->id])->resolveUrl());
+        $this->assertSame(route('documents'), $make('documento')->resolveUrl());
+        // Unknown type still falls back to the shift when the payload has one.
+        $this->assertSame(route('shifts.show', $shift->id), $make('sistema', ['shift_id' => $shift->id])->resolveUrl());
+        $this->assertNull($make('sistema')->resolveUrl());
+    }
+
+    public function test_notification_event_includes_resolved_url(): void
+    {
+        $creator = $this->user('Dono');
+        $shift = $this->shift($creator);
+        $notification = Notification::create([
+            'user_id' => $creator->id, 'type' => 'nova_vaga', 'title' => 'T', 'description' => 'D',
+            'payload' => ['shift_id' => $shift->id],
+        ]);
+
+        $payload = (new NotificationReceived($notification))->broadcastWith();
+
+        $this->assertSame(route('shifts.show', $shift->id), $payload['url']);
+    }
+
+    public function test_notification_listener_dispatches_the_floating_toast(): void
+    {
+        $user = $this->user('Dono');
+        $this->actingAs($user);
+
+        Livewire::test(NotificationListener::class)
+            ->call('onNotification', [
+                'id' => 'abc-123',
+                'title' => 'Nova candidatura',
+                'description' => 'Alguém se candidatou à sua vaga.',
+                'url' => '/shifts',
+            ])
+            ->assertDispatched('notification-toast', id: 'abc-123', title: 'Nova candidatura', description: 'Alguém se candidatou à sua vaga.', url: '/shifts');
     }
 }

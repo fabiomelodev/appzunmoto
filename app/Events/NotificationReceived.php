@@ -40,6 +40,7 @@ class NotificationReceived implements ShouldBroadcastNow
             'payload' => $this->notification->payload,    // {chat_id} | {shift_id} | ...
             'read' => false,
             'created_at' => ($this->notification->created_at ?? now())->toIso8601String(),
+            'url' => $this->notification->resolveUrl(),
         ];
     }
 }
