@@ -119,7 +119,7 @@
                     <label class="text-[11px] uppercase tracking-wider text-muted-foreground">Meu interesse</label>
                     <button type="button" @click="draft.onlyInterested = !draft.onlyInterested"
                         class="mt-2 flex w-full items-center justify-between rounded-xl border p-3 text-sm font-semibold transition"
-                        :class="draft.onlyInterested ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 bg-surface text-muted-foreground'">
+                        :class="draft.onlyInterested ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 bg-input text-muted-foreground'">
                         <span class="flex items-center gap-2"><x-ui.icon name="check" class="h-4 w-4" /> Apenas vagas com meu interesse</span>
                         <span class="flex h-5 w-9 items-center rounded-full p-0.5 transition" :class="draft.onlyInterested ? 'bg-primary' : 'bg-muted'">
                             <span class="h-4 w-4 rounded-full bg-background transition" :class="draft.onlyInterested ? 'translate-x-4' : ''"></span>
@@ -145,7 +145,7 @@
                         @foreach (Catalog::VEHICLE_OPTIONS as $v)
                             <button type="button" @click="toggleVehicle('{{ $v }}')"
                                 class="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition"
-                                :class="draft.vehicles.includes('{{ $v }}') ? 'border-primary bg-primary/15 text-primary' : 'border-border/60 bg-surface text-muted-foreground'">
+                                :class="draft.vehicles.includes('{{ $v }}') ? 'border-primary bg-primary/15 text-primary' : 'border-border/60 bg-input text-muted-foreground'">
                                 <x-ui.icon :name="Catalog::VEHICLE_ICON[$v]" class="h-3.5 w-3.5" />
                                 {{ Catalog::VEHICLE_LABEL[$v] }}
                             </button>
@@ -177,7 +177,7 @@
                     <div class="mt-2 grid grid-cols-2 gap-2">
                         @foreach ($benefits as $benefit)
                             <label class="flex cursor-pointer items-center gap-2 rounded-xl border p-2.5 text-xs"
-                                :class="draft.benefits.includes('{{ $benefit['slug'] }}') ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 bg-surface'">
+                                :class="draft.benefits.includes('{{ $benefit['slug'] }}') ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 bg-input'">
                                 <input type="checkbox" class="h-4 w-4 accent-[var(--color-primary)]"
                                     :checked="draft.benefits.includes('{{ $benefit['slug'] }}')" @change="toggleBenefit('{{ $benefit['slug'] }}')" />
                                 {{ $benefit['name'] }}
@@ -193,7 +193,7 @@
                         @foreach (['any' => 'Qualquer', 'yes' => 'Sim', 'no' => 'Não'] as $opt => $optLabel)
                             <button type="button" @click="draft.ownBag = '{{ $opt }}'"
                                 class="rounded-xl border px-3 py-2 text-xs font-semibold transition"
-                                :class="draft.ownBag === '{{ $opt }}' ? 'border-primary bg-primary/15 text-primary' : 'border-border/60 bg-surface text-muted-foreground'">
+                                :class="draft.ownBag === '{{ $opt }}' ? 'border-primary bg-primary/15 text-primary' : 'border-border/60 bg-input text-muted-foreground'">
                                 {{ $optLabel }}
                             </button>
                         @endforeach

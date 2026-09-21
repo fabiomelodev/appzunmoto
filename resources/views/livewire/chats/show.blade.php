@@ -110,7 +110,7 @@
     <form wire:submit="send" class="flex items-center gap-2 border-t border-border bg-surface/95 p-3">
         <input type="text" wire:model="body" @disabled($expired)
             placeholder="{{ $expired ? 'Conversa encerrada (somente leitura)' : 'Mensagem' }}"
-            class="h-10 flex-1 rounded-md border border-input bg-transparent px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" />
+            class="h-10 flex-1 rounded-md border border-input bg-muted px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50" />
         <button type="submit" @disabled($expired)
             class="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground disabled:opacity-50">
             <x-ui.icon name="send" class="h-4 w-4" />
