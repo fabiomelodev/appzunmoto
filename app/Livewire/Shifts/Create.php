@@ -33,6 +33,10 @@ class Create extends Component
      *  can only have its quantity increased, never reduced. */
     public int $minCouriers = 1;
 
+    /** Whether the address can still be changed while editing — only before
+     *  any courier has shown interest (same cutoff as $minCouriers above). */
+    public bool $canChangeAddress = true;
+
     // Resolved location (from the chosen address or the existing/cloned shift).
     public string $venue = '';
 
@@ -71,17 +75,7 @@ class Create extends Component
             if (! $address) {
                 return $this->redirect(route('addresses.choose', ['as' => $this->as]), navigate: true);
             }
-            $this->venue = $address->label;
-            $this->addressLine = collect([
-                $address->street.($address->number ? ', '.$address->number : ''),
-                $address->district,
-                $address->city,
-            ])->filter()->join(' — ');
-            $this->region = $address->district ?: $address->city ?: '';
-            $this->cep = $address->postal_code;
-            $this->lat = (float) ($address->lat ?? 0);
-            $this->lng = (float) ($address->lng ?? 0);
-            $this->addressPhotoUrl = $address->photo_url;
+            $this->fillLocationFromAddress($address);
         }
 
         $this->initial = $this->initialFrom($clone);
@@ -98,9 +92,23 @@ class Create extends Component
 
         $this->editId = $shift->id;
         $this->as = $shift->creator_role;
-        // Once a courier has shown interest, the quantity can only grow.
-        $this->minCouriers = $shift->applications()->exists() ? (int) $shift->couriers_needed : 1;
-        $this->fillLocationFromShift($shift);
+        $hasInterest = $shift->applications()->exists();
+        // Once a courier has shown interest, the quantity can only grow and
+        // the address is locked — see save()'s matching server-side guard.
+        $this->minCouriers = $hasInterest ? (int) $shift->couriers_needed : 1;
+        $this->canChangeAddress = ! $hasInterest;
+
+        $addressId = request('address');
+        $address = ($this->canChangeAddress && $addressId)
+            ? UserAddress::where('user_id', Auth::id())->find($addressId)
+            : null;
+
+        if ($address) {
+            $this->fillLocationFromAddress($address);
+        } else {
+            $this->fillLocationFromShift($shift);
+        }
+
         $this->initial = $this->initialFrom($shift, withContact: true);
 
         return null;
@@ -115,6 +123,21 @@ class Create extends Component
         $this->lat = (float) $shift->lat;
         $this->lng = (float) $shift->lng;
         $this->addressPhotoUrl = $shift->address_photo_url;
+    }
+
+    protected function fillLocationFromAddress(UserAddress $address): void
+    {
+        $this->venue = $address->label;
+        $this->addressLine = collect([
+            $address->street.($address->number ? ', '.$address->number : ''),
+            $address->district,
+            $address->city,
+        ])->filter()->join(' — ');
+        $this->region = $address->district ?: $address->city ?: '';
+        $this->cep = $address->postal_code;
+        $this->lat = (float) ($address->lat ?? 0);
+        $this->lng = (float) ($address->lng ?? 0);
+        $this->addressPhotoUrl = $address->photo_url;
     }
 
     protected function initialFrom(?Shift $source, bool $withContact = false): array
@@ -187,8 +210,11 @@ class Create extends Component
         if (Carbon::parse("{$date} {$startTime}")->isPast()) {
             return $toast('A data/horário já passou. Ajuste para um momento futuro.');
         }
-        // A shift that already has interested couriers can only grow.
-        if ($existing && $existing->applications()->exists() && $couriers < (int) $existing->couriers_needed) {
+        // A shift that already has interested couriers can only grow, and its
+        // address locks — re-checked fresh here rather than trusting the
+        // client's $canChangeAddress, in case interest arrived meanwhile.
+        $hasInterest = $existing && $existing->applications()->exists();
+        if ($hasInterest && $couriers < (int) $existing->couriers_needed) {
             return $toast('Esta vaga já tem motoboys interessados — só é possível aumentar a quantidade.');
         }
 
@@ -225,6 +251,29 @@ class Create extends Component
         $contactPhone = trim((string) ($form['contactPhone'] ?? '')) ?: null;
 
         if ($existing) {
+            // The address can only change while no courier has shown interest
+            // yet (client-side, "Trocar endereço" is hidden the moment there's
+            // interest — see $canChangeAddress in the view).
+            if (! $hasInterest) {
+                if ((! $this->lat || ! $this->lng) && ! app()->runningUnitTests()) {
+                    $coords = Geocoder::forShift($this->addressLine, $this->region, null, $this->cep);
+                    if ($coords) {
+                        $this->lat = $coords['lat'];
+                        $this->lng = $coords['lng'];
+                    }
+                }
+
+                $data += [
+                    'venue' => $this->venue,
+                    'region' => $this->region,
+                    'address' => $this->addressLine,
+                    'postal_code' => $this->cep,
+                    'lat' => $this->lat,
+                    'lng' => $this->lng,
+                    'address_photo_url' => $this->addressPhotoUrl,
+                ];
+            }
+
             $existing->update($data + ['edited_at' => now()]);
             ShiftContact::updateOrCreate(
                 ['shift_id' => $existing->id],

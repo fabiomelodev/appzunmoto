@@ -22,6 +22,11 @@ class Choose extends Component
     /** 'business' | 'courier' — carried through the publish flow. */
     public string $as = 'business';
 
+    /** Set when opened from an existing shift's edit screen ("Trocar
+     *  endereço") — the chosen address goes back there instead of starting a
+     *  brand-new shift. */
+    public ?string $editShiftId = null;
+
     /** 'list' | 'new' */
     public string $mode = 'list';
 
@@ -55,10 +60,18 @@ class Choose extends Component
     public function mount(): void
     {
         $this->as = request('as') === 'courier' ? 'courier' : 'business';
+        $this->editShiftId = request('edit');
 
         if ($this->addresses->isEmpty()) {
             $this->mode = 'new';
         }
+    }
+
+    protected function destinationUrl(string $addressId): string
+    {
+        return $this->editShiftId
+            ? route('shifts.edit', ['id' => $this->editShiftId, 'address' => $addressId])
+            : route('shifts.create', ['as' => $this->as, 'address' => $addressId]);
     }
 
     #[Computed]
@@ -111,7 +124,7 @@ class Choose extends Component
             }
         }
 
-        return $this->redirect(route('shifts.create', ['as' => $this->as, 'address' => $address->id]), navigate: true);
+        return $this->redirect($this->destinationUrl($address->id), navigate: true);
     }
 
     public function saveNew()
@@ -165,7 +178,7 @@ class Choose extends Component
 
         $this->dispatch('toast', message: 'Endereço salvo.');
 
-        return $this->redirect(route('shifts.create', ['as' => $this->as, 'address' => $address->id]), navigate: true);
+        return $this->redirect($this->destinationUrl($address->id), navigate: true);
     }
 
     public function render()

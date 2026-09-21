@@ -9,7 +9,7 @@
             </button>
             <div class="flex-1">
                 <p class="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
-                    <x-ui.icon :name="$as === 'business' ? 'store' : 'user'" class="h-3 w-3" /> Etapa 2 de 3
+                    <x-ui.icon :name="$as === 'business' ? 'store' : 'user'" class="h-3 w-3" /> {{ $editShiftId ? 'Trocar endereço' : 'Etapa 2 de 3' }}
                 </p>
                 <h1 class="font-display text-2xl font-bold leading-tight">Onde será o turno?</h1>
                 <p class="mt-0.5 text-xs text-muted-foreground">Escolha um endereço salvo ou cadastre um novo.</p>
