@@ -456,6 +456,65 @@ class ShiftFlowTest extends TestCase
         $this->assertNotNull($fresh->edited_at);
     }
 
+    public function test_editing_shift_without_interest_allows_changing_address(): void
+    {
+        $creator = $this->user('Dono');
+        $shift = $this->shift($creator, ['venue' => 'Endereço Antigo']);
+        $newAddress = UserAddress::create([
+            'user_id' => $creator->id, 'label' => 'Endereço Novo', 'postal_code' => '01310100',
+            'street' => 'Av Paulista', 'number' => '1000', 'district' => 'Bela Vista', 'city' => 'São Paulo',
+            'lat' => -23.5, 'lng' => -46.6,
+        ]);
+
+        $this->actingAs($creator);
+        Livewire::withQueryParams(['address' => $newAddress->id])
+            ->test(Create::class, ['id' => $shift->id])
+            ->assertSet('canChangeAddress', true)
+            ->assertSet('venue', 'Endereço Novo')
+            ->call('save', [
+                'date' => $shift->date->toDateString(),
+                'startTime' => '18:00', 'endTime' => '23:00',
+                'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
+                'contactName' => '', 'contactPhone' => '',
+                'notes' => '', 'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
+                'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
+            ])
+            ->assertRedirect();
+
+        $fresh = $shift->fresh();
+        $this->assertSame('Endereço Novo', $fresh->venue);
+        $this->assertStringContainsString('Bela Vista', $fresh->address);
+    }
+
+    public function test_editing_shift_with_interest_locks_the_address(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator, ['venue' => 'Endereço Antigo']);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+        $newAddress = UserAddress::create([
+            'user_id' => $creator->id, 'label' => 'Endereço Novo', 'postal_code' => '01310100',
+            'street' => 'Av Paulista', 'number' => '1000', 'district' => 'Bela Vista', 'city' => 'São Paulo',
+        ]);
+
+        $this->actingAs($creator);
+        Livewire::withQueryParams(['address' => $newAddress->id])
+            ->test(Create::class, ['id' => $shift->id])
+            ->assertSet('canChangeAddress', false)
+            ->assertSet('venue', 'Endereço Antigo')
+            ->call('save', [
+                'date' => $shift->date->toDateString(),
+                'startTime' => '18:00', 'endTime' => '23:00',
+                'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
+                'contactName' => '', 'contactPhone' => '',
+                'notes' => '', 'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
+                'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('Endereço Antigo', $shift->fresh()->venue);
+    }
+
     public function test_deactivate_hides_shift_from_listing(): void
     {
         $creator = $this->user('Dono');
