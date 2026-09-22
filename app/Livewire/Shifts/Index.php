@@ -3,6 +3,7 @@
 namespace App\Livewire\Shifts;
 
 use App\Models\Application;
+use App\Models\Banner;
 use App\Models\Shift;
 use App\Support\Catalog;
 use Illuminate\Support\Carbon;
@@ -106,6 +107,14 @@ class Index extends Component
 
         $profile->update(['role' => $role]);
         $this->dispatch('toast', message: $role === 'business' ? 'Perfil alterado para Estabelecimento.' : 'Perfil alterado para Motoboy.');
+    }
+
+    /** Active carousel banners, in display order — falls back to the hero
+     *  text on the page when this is empty (see shifts/index.blade.php). */
+    #[Computed]
+    public function banners()
+    {
+        return Banner::active()->orderBy('order')->get();
     }
 
     #[Computed]

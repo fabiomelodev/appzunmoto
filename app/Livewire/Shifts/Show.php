@@ -65,6 +65,28 @@ class Show extends Component
         $this->dispatch('toast', message: 'Interesse enviado!');
     }
 
+    /** Courier backs out of a shift they showed interest in, before being
+     *  accepted — once accepted, this is out of reach (see $wasAccepted in
+     *  the view), a partnership already in motion needs the creator involved. */
+    public function withdrawInterest(): void
+    {
+        $shift = $this->shift();
+
+        $application = Application::where('shift_id', $shift->id)
+            ->where('user_id', Auth::id())
+            ->where('status', Application::STATUS_INTERESTED)
+            ->first();
+
+        if (! $application) {
+            return;
+        }
+
+        $application->delete();
+
+        unset($this->shift);
+        $this->dispatch('toast', message: 'Interesse removido.');
+    }
+
     /** Atalho pra confirmar que tem bag própria direto da tela da vaga, sem ir em "Meu Perfil". */
     public function confirmHasBag(): void
     {

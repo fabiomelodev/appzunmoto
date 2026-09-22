@@ -272,7 +272,15 @@
         @elseif ($shift->status === 'filled' || $full)
             <x-ui.button size="lg" class="w-full" disabled>{{ $shift->status === 'filled' ? 'Vaga preenchida' : 'Vagas esgotadas' }}</x-ui.button>
         @elseif ($alreadyInterested)
-            <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="check" class="mr-2 h-4 w-4" /> Interesse registrado</x-ui.button>
+            <div class="space-y-2">
+                <div class="flex items-center justify-center gap-1.5 rounded-md bg-green-600 p-3 text-center text-sm font-semibold text-white">
+                    <x-ui.icon name="check" class="h-4 w-4" /> Interesse registrado
+                </div>
+                <x-ui.button size="lg" variant="destructive" class="w-full" wire:click="withdrawInterest"
+                    wire:loading.attr="disabled" wire:target="withdrawInterest">
+                    Remover interesse
+                </x-ui.button>
+            </div>
         @elseif (! $compatible)
             <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="lock" class="mr-2 h-4 w-4" /> Vaga exclusiva para {{ $requiredTypeLabel }}</x-ui.button>
         @elseif ($blockedByBag)

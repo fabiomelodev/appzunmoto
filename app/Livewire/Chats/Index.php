@@ -56,23 +56,31 @@ class Index extends Component
         $this->openShift = $this->openShift === $shiftId ? null : $shiftId;
     }
 
-    public function acceptCandidate(string $shiftId, string $courierId)
+    public function acceptCandidate(string $shiftId, string $courierId): void
     {
         $shift = Shift::with('applications')->find($shiftId);
         if (! $shift || $shift->creator_id !== Auth::id()) {
-            return null;
+            return;
         }
 
         $chat = Partnerships::accept($shift, $courierId);
         if (! $chat) {
             $this->dispatch('toast', message: 'Essa vaga já está completa');
 
-            return null;
+            return;
         }
 
-        $this->dispatch('toast', message: 'Candidato aceito!');
+        // The creator's side of "Confirmar Parceria" happens right here — no
+        // need to redirect to the chat just to click it again. The courier
+        // still confirms independently from their own side before the shift
+        // is actually filled (see Partnerships::confirm()).
+        $filled = Partnerships::confirm($shift, Auth::id(), $courierId);
 
-        return $this->redirect(route('chats.show', $chat->id), navigate: true);
+        $this->dispatch('toast', message: $filled
+            ? 'Candidato aceito e parceria confirmada!'
+            : 'Candidato aceito! Aguardando confirmação do motoboy.');
+
+        unset($this->myShifts);
     }
 
     public function requestDecline(string $shiftId, string $courierId): void

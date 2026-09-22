@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Application;
+use App\Models\Profile;
 use App\Models\Review;
 use App\Models\Shift;
 use App\Support\Cpf;
@@ -90,10 +91,18 @@ class ProfilePage extends Component
         }
 
         $cpfDigits = preg_replace('/\D/', '', $this->cpf);
-        if ($cpfDigits !== '' && ! Cpf::isValid($cpfDigits)) {
-            $this->addError('cpf', 'CPF inválido.');
+        if ($cpfDigits !== '') {
+            if (! Cpf::isValid($cpfDigits)) {
+                $this->addError('cpf', 'CPF inválido.');
 
-            return;
+                return;
+            }
+
+            if (Profile::where('cpf', $cpfDigits)->where('id', '!=', Auth::id())->exists()) {
+                $this->addError('cpf', 'Esse CPF já está cadastrado em outra conta.');
+
+                return;
+            }
         }
 
         Auth::user()->profile?->update([
