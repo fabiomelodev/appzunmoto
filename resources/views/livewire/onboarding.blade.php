@@ -60,6 +60,12 @@
                     @error('birthDate') <p class="mt-1 text-[11px] font-medium text-destructive">{{ $message }}</p> @enderror
                 </x-ui.field>
 
+                <x-ui.field label="CPF">
+                    <x-ui.input wire:model.blur="cpf" inputmode="numeric" placeholder="000.000.000-00"
+                        x-on:input="$el.value = window.maskCPF($el.value)" />
+                    @error('cpf') <p class="mt-1 text-[11px] font-medium text-destructive">{{ $message }}</p> @enderror
+                </x-ui.field>
+
                 <x-ui.button type="submit" size="lg" class="w-full glow-orange" wire:loading.attr="disabled" wire:target="submitPersonalData">
                     <span wire:loading.remove wire:target="submitPersonalData">Continuar</span>
                     <span wire:loading wire:target="submitPersonalData" class="inline-flex items-center gap-2">

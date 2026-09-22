@@ -2,8 +2,10 @@
 
 namespace App\Livewire;
 
+use App\Models\Profile;
 use App\Models\UserAddress;
 use App\Support\Catalog;
+use App\Support\Cpf;
 use App\Support\Geocoder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +31,8 @@ class Onboarding extends Component
     public string $phone = '';
 
     public string $birthDate = '';
+
+    public string $cpf = '';
 
     /** 'courier' (motoboy) | 'business' (estabelecimento) — escolhido no passo 2. */
     public string $role = 'courier';
@@ -67,6 +71,7 @@ class Onboarding extends Component
         $profile = Auth::user()->profile;
         $this->name = $profile?->name ?: Auth::user()->name;
         $this->phone = $profile?->phone ?? '';
+        $this->cpf = $profile?->cpf ?? '';
     }
 
     public function setRole(string $role): void
@@ -134,7 +139,8 @@ class Onboarding extends Component
             'name' => ['required', 'min:2'],
             'phone' => ['required'],
             'birthDate' => ['required'],
-        ]);
+            'cpf' => ['required'],
+        ], [], ['cpf' => 'CPF']);
 
         $phoneDigits = preg_replace('/\D/', '', $this->phone);
         if (strlen($phoneDigits) < 10) {
@@ -152,6 +158,19 @@ class Onboarding extends Component
 
         if (Carbon::parse($birth)->isAfter(now()->subYears(16))) {
             $this->addError('birthDate', 'Você precisa ter pelo menos 16 anos para usar o ZunMoto.');
+
+            return null;
+        }
+
+        $cpfDigits = preg_replace('/\D/', '', $this->cpf);
+        if (! Cpf::isValid($cpfDigits)) {
+            $this->addError('cpf', 'CPF inválido.');
+
+            return null;
+        }
+
+        if (Profile::where('cpf', $cpfDigits)->where('id', '!=', Auth::id())->exists()) {
+            $this->addError('cpf', 'Esse CPF já está cadastrado em outra conta.');
 
             return null;
         }
@@ -188,16 +207,34 @@ class Onboarding extends Component
         }
 
         $phoneDigits = preg_replace('/\D/', '', $this->phone);
+        $cpfDigits = preg_replace('/\D/', '', $this->cpf);
 
         $user = Auth::user();
-        $user->profile()->update([
-            'role' => $this->role,
-            'name' => trim($this->name),
-            'phone' => $phoneDigits,
-            'district' => $this->role === 'courier' ? trim($this->district) : null,
-            'city' => $this->role === 'courier' ? trim($this->city) : null,
-            'birth_date' => $birth,
-        ]);
+
+        try {
+            $user->profile()->update([
+                'role' => $this->role,
+                'name' => trim($this->name),
+                'phone' => $phoneDigits,
+                'cpf' => $cpfDigits,
+                'district' => $this->role === 'courier' ? trim($this->district) : null,
+                'city' => $this->role === 'courier' ? trim($this->city) : null,
+                'birth_date' => $birth,
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // CPF is unique — covers the rare race where it got taken between
+            // step 1's check and this save (step 1 only validates, doesn't
+            // persist; see submitPersonalData()).
+            if ($e->getCode() === '23000') {
+                $this->step = 1;
+                $this->addError('cpf', 'Esse CPF já está cadastrado em outra conta.');
+
+                return null;
+            }
+
+            throw $e;
+        }
+
         $user->update(['name' => trim($this->name)]);
 
         // Estabelecimento não escolhe veículo: cadastro termina aqui, já com o primeiro endereço.
