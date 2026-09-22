@@ -52,8 +52,7 @@ class ChatFlowTest extends TestCase
 
         $this->actingAs($creator);
         Livewire::test(ChatsIndex::class)
-            ->call('acceptCandidate', $shift->id, $courier->id)
-            ->assertRedirect();
+            ->call('acceptCandidate', $shift->id, $courier->id);
 
         $this->assertDatabaseHas('applications', [
             'shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'accepted',
@@ -64,6 +63,33 @@ class ChatFlowTest extends TestCase
         $this->assertDatabaseHas('chats', ['shift_id' => $shift->id]);
         // Partnerships::accept notifies the accepted courier.
         $this->assertTrue(Notification::where('user_id', $courier->id)->where('type', 'turno')->exists());
+
+        // Accepting also registers the creator's own confirmation — no separate
+        // "Confirmar Parceria" click needed on their side. The courier still
+        // has to confirm independently before the shift is actually filled.
+        $app = Application::where('shift_id', $shift->id)->where('user_id', $courier->id)->first();
+        $this->assertContains($creator->id, $app->confirmations);
+        $this->assertFalse((bool) $app->confirmed);
+        $this->assertNotSame('filled', $fresh->status);
+    }
+
+    public function test_accept_candidate_fills_the_shift_when_courier_already_confirmed(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+
+        Partnerships::accept($shift->load('applications'), $courier->id);
+        // The courier confirms their side first (e.g. from their own chat screen).
+        Partnerships::confirm($shift->refresh(), $courier->id);
+
+        $this->actingAs($creator);
+        Livewire::test(ChatsIndex::class)->call('acceptCandidate', $shift->id, $courier->id);
+
+        $app = Application::where('shift_id', $shift->id)->where('user_id', $courier->id)->first();
+        $this->assertTrue((bool) $app->confirmed);
+        $this->assertSame('filled', $shift->fresh()->status);
     }
 
     public function test_each_accepted_courier_is_notified_in_multi_courier_shift(): void
