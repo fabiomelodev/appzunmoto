@@ -123,7 +123,7 @@ class Index extends Component
             return false;
         }
 
-        return Carbon::parse($shift->date->toDateString().' '.$shift->end_time)->isPast();
+        return Carbon::parse($shift->date->toDateString().' '.$shift->end_time, 'America/Sao_Paulo')->isPast();
     }
 
     #[Computed]
