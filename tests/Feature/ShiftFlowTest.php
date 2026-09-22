@@ -90,6 +90,55 @@ class ShiftFlowTest extends TestCase
         );
     }
 
+    public function test_courier_withdraws_interest(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+
+        $this->actingAs($courier);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->call('withdrawInterest')
+            ->assertDispatched('toast');
+
+        $this->assertDatabaseMissing('applications', [
+            'shift_id' => $shift->id, 'user_id' => $courier->id,
+        ]);
+    }
+
+    public function test_withdraw_interest_does_not_touch_another_couriers_application(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $other = $this->user('Outro');
+        $shift = $this->shift($creator);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $other->id, 'status' => 'interested']);
+
+        // Courier has no application of their own on this shift — nothing to withdraw.
+        $this->actingAs($courier);
+        Livewire::test(Show::class, ['id' => $shift->id])->call('withdrawInterest');
+
+        $this->assertDatabaseHas('applications', [
+            'shift_id' => $shift->id, 'user_id' => $other->id, 'status' => 'interested',
+        ]);
+    }
+
+    public function test_accepted_courier_cannot_withdraw_via_this_action(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'accepted']);
+
+        $this->actingAs($courier);
+        Livewire::test(Show::class, ['id' => $shift->id])->call('withdrawInterest');
+
+        $this->assertDatabaseHas('applications', [
+            'shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'accepted',
+        ]);
+    }
+
     public function test_register_blocked_for_incompatible_vehicle(): void
     {
         $creator = $this->user('Dono');
