@@ -8,6 +8,7 @@ use App\Livewire\Shifts\Create;
 use App\Livewire\Shifts\Index;
 use App\Livewire\Shifts\Show;
 use App\Models\Application;
+use App\Models\Banner;
 use App\Models\Benefit;
 use App\Models\ExpectedVolume;
 use App\Models\Notification;
@@ -558,6 +559,68 @@ class ShiftFlowTest extends TestCase
 
         $this->actingAs($other);
         Livewire::test(Index::class)->assertSee('Minha Vaga')->assertDontSee('Sua vaga');
+    }
+
+    public function test_hero_text_shows_when_no_active_banners(): void
+    {
+        $user = $this->user('Dono');
+        Banner::create(['image' => 'banners/inactive.jpg', 'status' => 'inactive', 'order' => 0]);
+
+        $this->actingAs($user);
+        Livewire::test(Index::class)
+            ->assertSee('começa aqui')
+            ->assertDontSee('swiper-wrapper');
+    }
+
+    public function test_banner_carousel_shows_instead_of_hero_text_when_active(): void
+    {
+        $user = $this->user('Dono');
+        Banner::create(['image' => 'banners/promo.jpg', 'title' => 'Promoção', 'status' => 'active', 'order' => 0]);
+
+        $this->actingAs($user);
+        Livewire::test(Index::class)
+            ->assertSee('swiper-wrapper')
+            ->assertSee('banners/promo.jpg')
+            ->assertDontSee('começa aqui');
+    }
+
+    public function test_banner_with_link_wraps_image_in_anchor(): void
+    {
+        $user = $this->user('Dono');
+        Banner::create([
+            'image' => 'banners/promo.jpg', 'status' => 'active', 'order' => 0,
+            'link_url' => 'https://exemplo.com/promo', 'open_in_new_tab' => true,
+        ]);
+
+        $this->actingAs($user);
+        Livewire::test(Index::class)
+            ->assertSee('href="https://exemplo.com/promo"', false)
+            ->assertSee('target="_blank"', false);
+    }
+
+    public function test_banner_without_new_tab_does_not_add_target_blank(): void
+    {
+        $user = $this->user('Dono');
+        Banner::create([
+            'image' => 'banners/promo.jpg', 'status' => 'active', 'order' => 0,
+            'link_url' => 'https://exemplo.com/promo', 'open_in_new_tab' => false,
+        ]);
+
+        $this->actingAs($user);
+        Livewire::test(Index::class)
+            ->assertSee('href="https://exemplo.com/promo"', false)
+            ->assertDontSee('target="_blank"');
+    }
+
+    public function test_banner_without_link_does_not_render_an_empty_anchor(): void
+    {
+        $user = $this->user('Dono');
+        Banner::create(['image' => 'banners/promo.jpg', 'status' => 'active', 'order' => 0]);
+
+        $this->actingAs($user);
+        Livewire::test(Index::class)
+            ->assertSee('banners/promo.jpg')
+            ->assertDontSee('href=""', false);
     }
 
     public function test_open_chat_requires_accepted_application(): void

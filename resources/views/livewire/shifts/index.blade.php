@@ -8,6 +8,7 @@
     $expectedVolumeLabels = Catalog::allExpectedVolumeLabels();
     $benefitMeta = Catalog::allBenefitMeta();
     $benefits = Catalog::benefits();
+    $banners = $this->banners;
 @endphp
 
 <div class="px-4 pt-6"
@@ -49,14 +50,71 @@
         </div>
     </header>
 
-    {{-- Hero --}}
-    <div class="relative mt-6">
-        <div aria-hidden class="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full bg-primary/10 blur-3xl"></div>
-        <h1 class="font-display text-[28px] font-bold leading-[1.1] tracking-tight">
-            Sua <span class="bg-gradient-to-r from-primary to-[oklch(0.82_0.17_65)] bg-clip-text text-transparent">parceria</span><br />começa aqui
-        </h1>
-        <p class="mt-2 text-sm font-light text-muted-foreground">Vagas disponíveis na sua região hoje.</p>
-    </div>
+    {{-- Hero / banner carousel — admin-managed under Filament > Vagas > Banners.
+    Swiper is loaded on demand (only when there's at least one banner), the
+    same lazy-CDN pattern used for Leaflet on the map page. wire:ignore keeps
+    Livewire from touching this subtree on unrelated re-renders (typing in
+    the search box, etc.) so the carousel instance survives untouched. --}}
+    @if ($banners->isNotEmpty())
+        <div class="relative mt-6 overflow-hidden rounded-3xl" wire:ignore
+            x-data="{
+                swiper: null,
+                async init() {
+                    await this.ensureSwiper();
+                    this.swiper = new Swiper(this.$refs.swiperEl, {
+                        loop: {{ $banners->count() > 1 ? 'true' : 'false' }},
+                        autoplay: { delay: 4000, disableOnInteraction: false },
+                        pagination: { el: this.$refs.pagination, clickable: true },
+                    });
+                },
+                ensureSwiper() {
+                    return new Promise((resolve) => {
+                        if (window.Swiper) return resolve();
+                        const css = document.createElement('link');
+                        css.rel = 'stylesheet';
+                        css.href = 'https://unpkg.com/swiper@11/swiper-bundle.min.css';
+                        document.head.appendChild(css);
+                        const s = document.createElement('script');
+                        s.src = 'https://unpkg.com/swiper@11/swiper-bundle.min.js';
+                        s.onload = () => resolve();
+                        document.body.appendChild(s);
+                    });
+                },
+            }">
+            <div class="swiper" x-ref="swiperEl">
+                <div class="swiper-wrapper">
+                    @foreach ($banners as $banner)
+                        <div class="swiper-slide">
+                            @if ($banner->link_url)
+                                <a href="{{ $banner->link_url }}" @if ($banner->open_in_new_tab) target="_blank" rel="noopener noreferrer" @endif>
+                                    <img src="{{ $banner->image_url }}" alt="{{ $banner->title ?: 'Banner' }}"
+                                        class="h-36 w-full object-cover sm:h-44" />
+                                </a>
+                            @else
+                                <img src="{{ $banner->image_url }}" alt="{{ $banner->title ?: 'Banner' }}"
+                                    class="h-36 w-full object-cover sm:h-44" />
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+                @if ($banners->count() > 1)
+                    <div class="swiper-pagination" x-ref="pagination"></div>
+                @endif
+            </div>
+        </div>
+        <style>
+            .swiper-pagination-bullet { background: var(--color-muted-foreground); opacity: 0.5; }
+            .swiper-pagination-bullet-active { background: var(--color-primary); opacity: 1; }
+        </style>
+    @else
+        <div class="relative mt-6">
+            <div aria-hidden class="pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full bg-primary/10 blur-3xl"></div>
+            <h1 class="font-display text-[28px] font-bold leading-[1.1] tracking-tight">
+                Sua <span class="bg-gradient-to-r from-primary to-[oklch(0.82_0.17_65)] bg-clip-text text-transparent">parceria</span><br />começa aqui
+            </h1>
+            <p class="mt-2 text-sm font-light text-muted-foreground">Vagas disponíveis na sua região hoje.</p>
+        </div>
+    @endif
 
     {{-- Search + filter button --}}
     <div class="mt-5 flex gap-2">
