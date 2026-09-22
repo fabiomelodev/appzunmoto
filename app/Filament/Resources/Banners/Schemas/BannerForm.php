@@ -22,7 +22,7 @@ class BannerForm
                     ->schema([
                         FileUpload::make('image')
                             ->label('Imagem')
-                            ->helperText('Recomendado: proporção larga (ex.: 16:9), até 4 MB.')
+                            ->helperText('Recomendado: proporção larga (ex.: 16:9), até 4 MB. Para trocar a imagem de um banner existente, clique no X pra remover a atual primeiro — depois envie a nova.')
                             ->image()
                             ->disk('public')
                             ->directory('banners')
