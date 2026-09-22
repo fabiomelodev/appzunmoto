@@ -24,7 +24,7 @@ class MapPage extends Component
             ->filter(function ($s) {
                 return (float) $s->lat !== 0.0
                     && (float) $s->lng !== 0.0
-                    && Carbon::parse($s->date->toDateString().' '.$s->end_time)->isFuture();
+                    && Carbon::parse($s->date->toDateString().' '.$s->end_time, 'America/Sao_Paulo')->isFuture();
             })
             ->map(fn ($s) => [
                 'id' => $s->id,

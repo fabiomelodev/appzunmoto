@@ -207,7 +207,7 @@ class Create extends Component
         if (! $date || ! $startTime || ! $endTime) {
             return $toast('Preencha data e horários.');
         }
-        if (Carbon::parse("{$date} {$startTime}")->isPast()) {
+        if (Carbon::parse("{$date} {$startTime}", 'America/Sao_Paulo')->isPast()) {
             return $toast('A data/horário já passou. Ajuste para um momento futuro.');
         }
         // A shift that already has interested couriers can only grow, and its
