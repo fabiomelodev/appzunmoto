@@ -167,6 +167,24 @@ class AccountTest extends TestCase
         $this->assertSame('52998224725', $user->fresh()->profile->cpf);
     }
 
+    public function test_profile_save_blocks_a_cpf_already_used_by_another_account(): void
+    {
+        $other = $this->user();
+        $other->profile()->update(['cpf' => '52998224725']);
+
+        $user = $this->user();
+        $this->actingAs($user);
+
+        Livewire::test(ProfilePage::class)
+            ->set('name', 'Maria Souza')
+            ->set('cpf', '529.982.247-25')
+            ->call('save')
+            ->assertHasErrors('cpf')
+            ->assertNotDispatched('toast');
+
+        $this->assertNull($user->fresh()->profile->cpf);
+    }
+
     public function test_profile_page_hides_courier_only_sections_for_business(): void
     {
         $courier = $this->user();

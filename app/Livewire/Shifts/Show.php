@@ -202,7 +202,7 @@ class Show extends Component
 
     protected function expired(Shift $shift): bool
     {
-        return Carbon::parse($shift->date->toDateString().' '.$shift->end_time)->isPast();
+        return Carbon::parse($shift->date->toDateString().' '.$shift->end_time, 'America/Sao_Paulo')->isPast();
     }
 
     protected function acceptedVehicles(Shift $shift): array

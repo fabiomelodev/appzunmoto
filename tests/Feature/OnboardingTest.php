@@ -50,6 +50,7 @@ class OnboardingTest extends TestCase
             ->set('name', 'Muito Jovem')
             ->set('phone', '(11) 99999-0000')
             ->set('birthDate', now()->subYears(15)->format('d/m/Y'))
+            ->set('cpf', '529.982.247-25')
             ->call('submitPersonalData')
             ->assertHasErrors('birthDate')
             ->assertSet('step', 1);
@@ -63,8 +64,53 @@ class OnboardingTest extends TestCase
             ->set('name', 'João Silva')
             ->set('phone', '(11) 99999-0000')
             ->set('birthDate', '31/02/1990') // fevereiro não tem dia 31
+            ->set('cpf', '529.982.247-25')
             ->call('submitPersonalData')
             ->assertHasErrors('birthDate')
+            ->assertSet('step', 1);
+    }
+
+    public function test_step1_requires_a_cpf(): void
+    {
+        $this->actingAs($this->pendingUser());
+
+        Livewire::test(Onboarding::class)
+            ->set('name', 'João Silva')
+            ->set('phone', '(11) 99999-0000')
+            ->set('birthDate', now()->subYears(30)->format('d/m/Y'))
+            ->call('submitPersonalData')
+            ->assertHasErrors('cpf')
+            ->assertSet('step', 1);
+    }
+
+    public function test_step1_rejects_an_invalid_cpf(): void
+    {
+        $this->actingAs($this->pendingUser());
+
+        Livewire::test(Onboarding::class)
+            ->set('name', 'João Silva')
+            ->set('phone', '(11) 99999-0000')
+            ->set('birthDate', now()->subYears(30)->format('d/m/Y'))
+            ->set('cpf', '111.111.111-11') // dígitos repetidos, check-digit inválido
+            ->call('submitPersonalData')
+            ->assertHasErrors('cpf')
+            ->assertSet('step', 1);
+    }
+
+    public function test_step1_rejects_a_cpf_already_registered_by_another_account(): void
+    {
+        $other = $this->pendingUser();
+        $other->profile()->update(['cpf' => '52998224725']);
+
+        $this->actingAs($this->pendingUser());
+
+        Livewire::test(Onboarding::class)
+            ->set('name', 'João Silva')
+            ->set('phone', '(11) 99999-0000')
+            ->set('birthDate', now()->subYears(30)->format('d/m/Y'))
+            ->set('cpf', '529.982.247-25')
+            ->call('submitPersonalData')
+            ->assertHasErrors('cpf')
             ->assertSet('step', 1);
     }
 
@@ -76,6 +122,7 @@ class OnboardingTest extends TestCase
             ->set('name', 'João Silva')
             ->set('phone', '(11) 99999-0000')
             ->set('birthDate', now()->subYears(30)->format('d/m/Y'))
+            ->set('cpf', '529.982.247-25')
             ->call('submitPersonalData')
             ->assertHasNoErrors()
             ->assertSet('step', 2);
@@ -89,12 +136,14 @@ class OnboardingTest extends TestCase
             ->set('name', 'João Silva')
             ->set('phone', '(11) 99999-0000')
             ->set('birthDate', now()->subYears(30)->format('d/m/Y'))
+            ->set('cpf', '529.982.247-25')
             ->call('submitPersonalData')
             ->assertSet('step', 2)
             ->call('previousStep')
             ->assertSet('step', 1)
             ->assertSet('name', 'João Silva')
-            ->assertSet('birthDate', now()->subYears(30)->format('d/m/Y'));
+            ->assertSet('birthDate', now()->subYears(30)->format('d/m/Y'))
+            ->assertSet('cpf', '529.982.247-25');
     }
 
     public function test_cannot_select_business_before_entering_an_adult_birth_date(): void
@@ -198,6 +247,7 @@ class OnboardingTest extends TestCase
             ->set('name', 'João Silva')
             ->set('phone', '(11) 99999-0000')
             ->set('birthDate', '10/05/1990')
+            ->set('cpf', '529.982.247-25')
             ->call('submitPersonalData')
             ->call('setRole', 'courier')
             ->set('district', 'Centro')
@@ -212,6 +262,7 @@ class OnboardingTest extends TestCase
         $this->assertNull($profile->street, 'motoboy não precisa de rua/número, só CEP/bairro/cidade');
         $this->assertNull($profile->street_number);
         $this->assertSame('Centro', $profile->district);
+        $this->assertSame('52998224725', $profile->cpf);
         $this->assertFalse($profile->isOnboarded(), 'ainda falta escolher o veículo');
     }
 
@@ -223,6 +274,7 @@ class OnboardingTest extends TestCase
             ->set('name', 'João Silva')
             ->set('phone', '(11) 99999-0000')
             ->set('birthDate', '10/05/1990')
+            ->set('cpf', '529.982.247-25')
             ->call('submitPersonalData')
             ->set('district', 'Centro')
             ->set('city', 'São Paulo')
@@ -246,6 +298,7 @@ class OnboardingTest extends TestCase
             ->set('name', 'João Silva')
             ->set('phone', '(11) 99999-0000')
             ->set('birthDate', '10/05/1990')
+            ->set('cpf', '529.982.247-25')
             ->call('submitPersonalData')
             ->set('district', 'Centro')
             ->set('city', 'São Paulo')
@@ -264,6 +317,7 @@ class OnboardingTest extends TestCase
             ->set('name', 'João Silva')
             ->set('phone', '(11) 99999-0000')
             ->set('birthDate', '10/05/1990')
+            ->set('cpf', '529.982.247-25')
             ->call('submitPersonalData')
             ->set('district', 'Centro')
             ->set('city', 'São Paulo')
@@ -281,6 +335,7 @@ class OnboardingTest extends TestCase
             ->set('name', 'Jovem Demais')
             ->set('phone', '(11) 99999-0000')
             ->set('birthDate', now()->subYears(17)->format('d/m/Y'))
+            ->set('cpf', '529.982.247-25')
             ->call('submitPersonalData')
             ->set('district', 'Centro')
             ->set('city', 'São Paulo')
@@ -310,6 +365,7 @@ class OnboardingTest extends TestCase
             ->set('name', 'Jovem Demais')
             ->set('phone', '(11) 99999-0000')
             ->set('birthDate', now()->subYears(17)->format('d/m/Y'))
+            ->set('cpf', '529.982.247-25')
             ->call('submitPersonalData')
             ->set('district', 'Centro')
             ->set('city', 'São Paulo')
@@ -329,6 +385,7 @@ class OnboardingTest extends TestCase
             ->set('name', 'Ana Souza')
             ->set('phone', '(11) 99999-0000')
             ->set('birthDate', '10/05/1990')
+            ->set('cpf', '529.982.247-25')
             ->call('submitPersonalData')
             ->call('setRole', 'business')
             ->set('label', 'Restaurante da Ana')
@@ -345,6 +402,7 @@ class OnboardingTest extends TestCase
         $profile = auth()->user()->profile->fresh();
         $this->assertSame('business', $profile->role);
         $this->assertSame('1990-05-10', $profile->birth_date->toDateString());
+        $this->assertSame('52998224725', $profile->cpf);
         $this->assertNull($profile->district, 'endereço fica no UserAddress, não no profile');
         $this->assertNull($profile->city);
         $this->assertTrue($profile->isOnboarded());
@@ -368,6 +426,7 @@ class OnboardingTest extends TestCase
             ->set('name', 'Ana Souza')
             ->set('phone', '(11) 99999-0000')
             ->set('birthDate', '10/05/1990')
+            ->set('cpf', '529.982.247-25')
             ->call('submitPersonalData')
             ->call('setRole', 'business')
             ->call('submitAddress')
@@ -385,6 +444,7 @@ class OnboardingTest extends TestCase
             ->set('name', 'Jovem Demais')
             ->set('phone', '(11) 99999-0000')
             ->set('birthDate', now()->subYears(17)->format('d/m/Y')) // passa no piso de 16 do passo 1
+            ->set('cpf', '529.982.247-25')
             ->call('submitPersonalData')
             ->set('role', 'business') // bypassa o guard de setRole() no passo 2
             ->set('label', 'Restaurante do Jovem')

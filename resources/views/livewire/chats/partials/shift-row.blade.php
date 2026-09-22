@@ -71,7 +71,7 @@
 
                     @if (! $expired && $isAcc)
                         <div class="flex items-center justify-center gap-1 rounded-lg bg-success/15 px-3 py-2 text-xs font-semibold text-success">
-                            <x-ui.icon name="check" class="h-3.5 w-3.5" /> Aceito ✓
+                            <x-ui.icon name="check" class="h-3.5 w-3.5" /> Aceito
                         </div>
                     @elseif (! $expired && ! $full)
                         <div class="grid grid-cols-[1fr_auto] gap-2">
