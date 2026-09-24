@@ -143,7 +143,7 @@ class Create extends Component
     protected function initialFrom(?Shift $source, bool $withContact = false): array
     {
         return [
-            'date' => $source && $withContact ? $source->date->toDateString() : now()->toDateString(),
+            'date' => $source && $withContact ? $source->date->toDateString() : now('America/Sao_Paulo')->toDateString(),
             'startTime' => $source->start_time ?? '18:00',
             'endTime' => $source->end_time ?? '23:00',
             'dailyRate' => $source ? (string) ($source->daily_rate + 0) : '',
@@ -207,7 +207,13 @@ class Create extends Component
         if (! $date || ! $startTime || ! $endTime) {
             return $toast('Preencha data e horários.');
         }
-        if (Carbon::parse("{$date} {$startTime}", 'America/Sao_Paulo')->isPast()) {
+        // An end time before the start means the shift runs past midnight
+        // (see Shift::window()); identical times would read as a 24h shift.
+        if ($endTime === $startTime) {
+            return $toast('O horário final não pode ser igual ao horário de início.');
+        }
+        $window = Shift::window($date, $startTime, $endTime);
+        if ($window[0]->isPast()) {
             return $toast('A data/horário já passou. Ajuste para um momento futuro.');
         }
         // A shift that already has interested couriers can only grow, and its
@@ -220,11 +226,12 @@ class Create extends Component
 
         $conflict = Shift::where('creator_id', Auth::id())
             ->where('venue', $this->venue)
-            ->whereDate('date', $date)
+            // Neighbouring days too: an overnight shift spills into the next date.
+            ->whereBetween('date', [Carbon::parse($date)->subDay()->toDateString(), Carbon::parse($date)->addDay()->toDateString()])
             ->where('status', '!=', Shift::STATUS_FILLED)
             ->when($existing, fn ($q) => $q->where('id', '!=', $existing->id))
             ->get()
-            ->first(fn ($v) => $startTime < $v->end_time && $v->start_time < $endTime);
+            ->first(fn ($v) => Shift::windowsOverlap($window, $v->timeWindow()));
 
         if ($conflict) {
             return $toast('Você já tem uma vaga neste local nesse mesmo horário.');

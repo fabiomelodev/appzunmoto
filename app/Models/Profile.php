@@ -42,6 +42,8 @@ class Profile extends Model
         'has_bag' => 'boolean',
         'avg_rating' => 'float',
         'total_reviews' => 'integer',
+        'business_avg_rating' => 'float',
+        'business_total_reviews' => 'integer',
     ];
 
     /** Fields safe to expose to other users (mirrors the Supabase public_profiles view). */

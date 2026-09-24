@@ -19,7 +19,7 @@
             <x-ui.icon name="arrow-left" class="h-4 w-4" />
         </button>
         <button type="button" aria-label="Compartilhar no WhatsApp"
-            x-on:click="window.open('https://wa.me/?text=' + encodeURIComponent({{ Illuminate\Support\Js::from("Olha essa vaga no ZunMoto!\n\n📍 {$shift->venue} — {$shift->region}\n📅 ".$shift->date->isoFormat('DD/MM/YYYY')." · {$shift->start_time}–{$shift->end_time}\n💰 R$ ".($shift->daily_rate + 0)." diária\n\n".route('shifts.show', $shift->id)) }}), '_blank')"
+            x-on:click="window.open('https://wa.me/?text=' + encodeURIComponent({{ Illuminate\Support\Js::from("Olha essa vaga no ZunMoto!\n\n📍 {$shift->venue} — {$shift->region}\n📅 ".$shift->date->isoFormat('DD/MM/YYYY')." · {$shift->timeRange()}\n💰 R$ ".($shift->daily_rate + 0)." diária\n\n".route('shifts.show', $shift->id)) }}), '_blank')"
             class="grid h-10 w-10 place-items-center rounded-xl border border-border bg-surface text-muted-foreground">
             <x-ui.icon name="share-2" class="h-4 w-4" />
         </button>
@@ -129,7 +129,7 @@
             ? 'R$ ' . number_format($shift->delivery_fee_min, 2, ',', '.')
             : 'R$ ' . number_format($shift->delivery_fee_min, 2, ',', '.') . ' a R$ ' . number_format($shift->delivery_fee_max, 2, ',', '.')" />
         <x-shift-info label="Data" :value="$shift->date->isoFormat('DD [de] MMM')" />
-        <x-shift-info label="Horário" :value="$shift->start_time . ' – ' . $shift->end_time" icon="clock" />
+        <x-shift-info label="Horário" :value="$shift->timeRange(' – ')" icon="clock" />
     </div>
 
     {{-- Benefits --}}
@@ -181,6 +181,20 @@
             @if ($creatorProfile?->city)
                 <div class="truncate text-xs text-muted-foreground">{{ $creatorProfile->city }}</div>
             @endif
+            @php
+                $isBusinessShift = $shift->creator_role === 'business';
+                $creatorReviews = $isBusinessShift ? (int) $creatorProfile?->business_total_reviews : (int) $creatorProfile?->total_reviews;
+                $creatorAvg = $isBusinessShift ? (float) $creatorProfile?->business_avg_rating : (float) $creatorProfile?->avg_rating;
+            @endphp
+            <div class="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                <x-ui.icon name="star" class="h-3 w-3 {{ $creatorReviews > 0 ? 'fill-current text-primary' : '' }}" />
+                @if ($creatorReviews > 0)
+                    <span class="font-semibold text-foreground">{{ number_format($creatorAvg, 1, ',', '') }}</span>
+                    <span>({{ $creatorReviews }})</span>
+                @else
+                    <span>Sem avaliações</span>
+                @endif
+            </div>
         </div>
     </div>
 
@@ -241,13 +255,25 @@
             <a href="{{ route('shifts.create', ['clone' => $shift->id]) }}" wire:navigate>
                 <x-ui.button variant="outline" size="lg" class="w-full"><x-ui.icon name="copy" class="mr-2 h-4 w-4" /> Anunciar Novamente</x-ui.button>
             </a>
-            @if ($shift->reserved_by && $needed === 1)
-                @if ($alreadyReviewed)
-                    <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="check" class="mr-2 h-4 w-4" /> Avaliação enviada</x-ui.button>
+        </div>
+    @endif
+
+    {{-- Two-way review: the creator rates each confirmed courier, and each of
+    those couriers rates the creator — only after the shift is over. --}}
+    @if ($reviewables->isNotEmpty())
+        <div class="mt-6 space-y-2">
+            <h3 class="text-sm font-semibold">Avaliações</h3>
+            @foreach ($reviewables as $r)
+                @if ($r['reviewed'])
+                    <x-ui.button wire:key="review-{{ $r['id'] }}" size="lg" variant="secondary" class="w-full" disabled>
+                        <x-ui.icon name="check" class="mr-2 h-4 w-4" /> {{ $r['name'] }} — avaliação enviada
+                    </x-ui.button>
                 @else
-                    <x-ui.button size="lg" class="w-full" wire:click="$set('reviewOpen', true)"><x-ui.icon name="star" class="mr-2 h-4 w-4" /> Avaliar entregador</x-ui.button>
+                    <x-ui.button wire:key="review-{{ $r['id'] }}" size="lg" class="w-full" wire:click="openReview('{{ $r['id'] }}')">
+                        <x-ui.icon name="star" class="mr-2 h-4 w-4" /> Avaliar {{ $r['name'] }}
+                    </x-ui.button>
                 @endif
-            @endif
+            @endforeach
         </div>
     @endif
 
@@ -281,6 +307,11 @@
                     Remover interesse
                 </x-ui.button>
             </div>
+        @elseif ($isBusinessProfile)
+            <div class="space-y-2">
+                <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="lock" class="mr-2 h-4 w-4" /> Disponível apenas para motoboys</x-ui.button>
+                <p class="text-center text-[11px] font-medium text-muted-foreground">Você está no perfil Estabelecimento. Mude para Motoboy para se candidatar.</p>
+            </div>
         @elseif (! $compatible)
             <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="lock" class="mr-2 h-4 w-4" /> Vaga exclusiva para {{ $requiredTypeLabel }}</x-ui.button>
         @elseif ($blockedByBag)
@@ -298,7 +329,8 @@
             <x-ui.button size="lg" class="w-full glow-orange" wire:click="$set('confirmOpen', true)">Aceitar Vaga</x-ui.button>
         @endif
     </div>
-    <div class="h-16"></div>
+    {{-- The accepted-courier bar (banner + chat button) is taller than the others. --}}
+    <div class="{{ $wasAccepted && ! $isCreator ? 'h-32' : 'h-16' }}"></div>
 
     {{-- Confirm dialog --}}
     @if ($confirmOpen)
@@ -326,8 +358,9 @@
     {{-- Review dialog --}}
     @if ($reviewOpen)
         <x-ui.modal wire:click.self="$set('reviewOpen', false)">
-            <h2 class="font-display text-lg font-bold">Avaliar entregador</h2>
+            <h2 class="font-display text-lg font-bold">Avaliar {{ $reviewTargetName }}</h2>
             <p class="text-sm text-muted-foreground">Dê uma nota de 1 a 5 estrelas para essa parceria.</p>
+            <p class="mt-1 text-[11px] text-muted-foreground">Por segurança, sua avaliação é anônima e só fica pública {{ \App\Models\Review::PUBLISH_DELAY_DAYS }} dias depois de enviada.</p>
             <div class="flex justify-center gap-1 py-3">
                 @for ($i = 1; $i <= 5; $i++)
                     <button type="button" wire:click="setRating({{ $i }})">

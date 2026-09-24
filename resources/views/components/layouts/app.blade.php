@@ -61,6 +61,10 @@
     bottom-nav to clear on desktop (sidebar instead). --}}
     <div x-data="{ toasts: [] }"
         @notification-toast.window="
+            {{-- Already on the page this notification points to (e.g. a new chat
+            message while inside that chat): the content updates live, and a toast
+            would just cover the keyboard/composer. --}}
+            if ($event.detail.url && new URL($event.detail.url, location.origin).pathname === location.pathname) return;
             const id = (window.__notifToastId = (window.__notifToastId || 0) + 1);
             toasts.push({ id, title: $event.detail.title, description: $event.detail.description, url: $event.detail.url });
             setTimeout(() => { toasts = toasts.filter(t => t.id !== id); }, 8000);

@@ -14,7 +14,7 @@ use App\Notifications\PushNotification;
 class NotificationObserver
 {
     /** Types that also fire a browser push, initially: vagas and chat. */
-    protected const PUSH_TYPES = ['vaga', 'nova_vaga', 'mensagem'];
+    protected const PUSH_TYPES = ['vaga', 'nova_vaga', 'mensagem', 'avaliacao'];
 
     /**
      * "turno" covers both "você foi aceito" and "parceria confirmada" (see

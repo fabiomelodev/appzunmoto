@@ -6,9 +6,9 @@ use App\Models\Application;
 use App\Models\Chat;
 use App\Models\Message;
 use App\Models\Profile;
-use App\Models\Review;
 use App\Models\Shift;
 use App\Support\Partnerships;
+use App\Support\Reviews;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
@@ -68,7 +68,7 @@ class Show extends Component
             return false;
         }
 
-        return Carbon::parse($shift->date->toDateString().' '.$shift->end_time, 'America/Sao_Paulo')->isPast();
+        return $shift->hasEnded();
     }
 
     public function send(): void
@@ -112,35 +112,15 @@ class Show extends Component
     {
         $chat = $this->chat();
         $shift = $chat->shift;
+        $me = Auth::id();
 
-        // Only the creator reviews, only after the shift ended, only the other
-        // (confirmed) participant, and never self.
-        if (! $shift || $shift->creator_id !== Auth::id() || ! $this->expired($shift)) {
+        // The chat is always between the creator and one courier, so whoever
+        // reviews, the target is the other participant. Reviews::submit()
+        // enforces the rest (shift ended, partnership confirmed, no repeats).
+        $targetId = $chat->otherParticipant($me);
+        if (! $shift || ! $targetId || ! Reviews::submit($shift, $me, $targetId, $this->rating, $this->comment)) {
             return;
         }
-
-        $courierId = $chat->otherParticipant(Auth::id());
-        if (! $courierId || $courierId === Auth::id() || $this->rating < 1) {
-            return;
-        }
-
-        $courierApp = Application::where('shift_id', $shift->id)->where('user_id', $courierId)->first();
-        if (! $courierApp || ! $courierApp->confirmed) {
-            return;
-        }
-
-        $alreadyReviewed = Review::where('shift_id', $shift->id)
-            ->where('author_id', Auth::id())
-            ->where('target_id', $courierId)
-            ->exists();
-        if ($alreadyReviewed) {
-            return;
-        }
-
-        Review::updateOrCreate(
-            ['shift_id' => $shift->id, 'author_id' => Auth::id(), 'target_id' => $courierId],
-            ['rating' => $this->rating, 'comment' => trim($this->comment)],
-        );
 
         $this->rating = 0;
         $this->comment = '';
@@ -172,18 +152,15 @@ class Show extends Component
             // A confirmed partnership usually marks the shift as "filled", so we
             // must NOT exclude filled shifts here (matches the React behaviour).
             $conflict = Shift::where('id', '!=', $shift->id)
-                ->whereDate('date', $shift->date->toDateString())
+                ->whereBetween('date', [$shift->date->copy()->subDay()->toDateString(), $shift->date->copy()->addDay()->toDateString()])
                 ->whereHas('applications', fn ($q) => $q->where('user_id', $courierId)
                     ->where('status', Application::STATUS_ACCEPTED)->where('confirmed', true))
                 ->get()
-                ->first(fn ($v) => $v->start_time < $shift->end_time && $shift->start_time < $v->end_time);
+                ->first(fn ($v) => $shift->overlaps($v));
         }
 
-        $alreadyReviewed = $shift && $courierId
-            && Review::where('shift_id', $shift->id)
-                ->where('author_id', $me)
-                ->where('target_id', $courierId)
-                ->exists();
+        $alreadyReviewed = $shift && $otherId && Reviews::hasReviewed($shift, $me, $otherId);
+        $canReview = $shift && $otherId && ! $alreadyReviewed && Reviews::canReview($shift, $me, $otherId);
 
         $vm = [
             'chat' => $chat,
@@ -197,7 +174,7 @@ class Show extends Component
             'conflict' => $conflict,
             'isCreator' => $shift && $shift->creator_id === $me,
             'alreadyReviewed' => $alreadyReviewed,
-            'canReview' => $shift && $confirmedHere && $expired && $shift->creator_id === $me && $courierId && ! $alreadyReviewed,
+            'canReview' => $canReview,
             // confirm-panel state
             'alreadyConfirmed' => in_array($me, $confirmations, true),
             'otherConfirmed' => in_array($otherId, $confirmations, true),

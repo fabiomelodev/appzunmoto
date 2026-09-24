@@ -6,7 +6,6 @@ use App\Models\Application;
 use App\Models\Banner;
 use App\Models\Shift;
 use App\Support\Catalog;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -188,8 +187,8 @@ class Index extends Component
             // Paused shifts leave the marketplace, but the owner still sees their
             // own (with a "Pausada" badge) so they can manage/resume them.
             ->where(fn ($q) => $q->where('active', true)->orWhere('creator_id', Auth::id()))
-            // Coarse prune of past dates (portable); exact end_time expiry is refined in PHP below.
-            ->whereDate('date', '>=', now()->toDateString());
+            // Coarse prune of past dates (portable; yesterday's overnight shifts may still be running); exact expiry is refined in PHP below.
+            ->whereDate('date', '>=', now('America/Sao_Paulo')->subDay()->toDateString());
 
         if ($term = trim($this->q)) {
             $like = '%'.$term.'%';
@@ -249,9 +248,8 @@ class Index extends Component
                 // who was accepted on it, so they still see their confirmation.
                 $hasRoom = $s->accepted_count < ($s->couriers_needed ?? 1);
                 $mineAccepted = $acceptedIds->contains($s->id);
-                $endsAt = Carbon::parse($s->date->toDateString().' '.$s->end_time);
 
-                return ($hasRoom || $mineAccepted) && $endsAt->gte($now);
+                return ($hasRoom || $mineAccepted) && $s->endsAt()->gte($now);
             })
             ->values();
     }

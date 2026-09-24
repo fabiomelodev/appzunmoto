@@ -140,14 +140,13 @@ class Partnerships
     /** Cancels the courier's other interested applications that overlap this shift. */
     protected static function cancelConflicting(Shift $shift, string $courierId): void
     {
-        $date = $shift->date->toDateString();
-
         $conflicting = Shift::where('id', '!=', $shift->id)
             ->where('status', '!=', Shift::STATUS_FILLED)
-            ->whereDate('date', $date)
+            // Neighbouring days too: an overnight shift spills into the next date.
+            ->whereBetween('date', [$shift->date->copy()->subDay()->toDateString(), $shift->date->copy()->addDay()->toDateString()])
             ->whereHas('applications', fn ($q) => $q->where('user_id', $courierId)->where('status', Application::STATUS_INTERESTED))
             ->get()
-            ->filter(fn ($v) => $shift->start_time < $v->end_time && $v->start_time < $shift->end_time);
+            ->filter(fn ($v) => $shift->overlaps($v));
 
         foreach ($conflicting as $v) {
             Application::where('shift_id', $v->id)
