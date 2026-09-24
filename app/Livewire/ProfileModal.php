@@ -36,11 +36,12 @@ class ProfileModal extends Component
 
         return [
             'profile' => Profile::publicColumns()->find($this->userId),
-            'reviews' => Review::where('target_id', $this->userId)
+            'reviews' => Review::published()
+                ->where('target_id', $this->userId)
                 ->where('target_role', 'courier')
-                ->latest('created_at')
+                ->latest('published_at')
                 ->limit(5)
-                ->get(['rating', 'comment', 'created_at']),
+                ->get(['rating', 'comment', 'published_at']),
         ];
     }
 

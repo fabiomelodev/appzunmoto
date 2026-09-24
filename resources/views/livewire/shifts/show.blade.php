@@ -360,6 +360,7 @@
         <x-ui.modal wire:click.self="$set('reviewOpen', false)">
             <h2 class="font-display text-lg font-bold">Avaliar {{ $reviewTargetName }}</h2>
             <p class="text-sm text-muted-foreground">Dê uma nota de 1 a 5 estrelas para essa parceria.</p>
+            <p class="mt-1 text-[11px] text-muted-foreground">Por segurança, sua avaliação é anônima e só fica pública {{ \App\Models\Review::PUBLISH_DELAY_DAYS }} dias depois de enviada.</p>
             <div class="flex justify-center gap-1 py-3">
                 @for ($i = 1; $i <= 5; $i++)
                     <button type="button" wire:click="setRating({{ $i }})">

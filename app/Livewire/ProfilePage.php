@@ -148,10 +148,11 @@ class ProfilePage extends Component
     #[Computed]
     public function reviews()
     {
-        return Review::with('author.profile')
+        // The author is never loaded: reviews are shown as anonymous.
+        return Review::published()
             ->where('target_id', Auth::id())
             ->where('target_role', Auth::user()->profile?->isBusiness() ? 'business' : 'courier')
-            ->latest('created_at')
+            ->latest('published_at')
             ->get();
     }
 

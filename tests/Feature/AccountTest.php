@@ -215,8 +215,8 @@ class AccountTest extends TestCase
             'requires_own_bag' => false, 'couriers_needed' => 1, 'status' => 'filled', 'lat' => 0, 'lng' => 0,
         ]);
         $author = $this->user();
-        Review::create(['shift_id' => $shift->id, 'author_id' => $author->id, 'target_id' => $user->id, 'target_role' => 'courier', 'rating' => 3, 'comment' => 'Comentário de motoboy']);
-        Review::create(['shift_id' => $shift->id, 'author_id' => $this->user()->id, 'target_id' => $user->id, 'target_role' => 'business', 'rating' => 5, 'comment' => 'Comentário de estabelecimento']);
+        Review::create(['shift_id' => $shift->id, 'author_id' => $author->id, 'target_id' => $user->id, 'target_role' => 'courier', 'rating' => 3, 'comment' => 'Comentário de motoboy', 'published_at' => now()]);
+        Review::create(['shift_id' => $shift->id, 'author_id' => $this->user()->id, 'target_id' => $user->id, 'target_role' => 'business', 'rating' => 5, 'comment' => 'Comentário de estabelecimento', 'published_at' => now()]);
 
         $this->actingAs($user);
         Livewire::test(ProfilePage::class)

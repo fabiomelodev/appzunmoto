@@ -148,14 +148,12 @@
         @else
             <x-profile-section title="Avaliações recebidas">
                 @forelse ($this->reviews as $r)
-                    @php $author = $r->author?->profile?->name ?: 'Usuário'; @endphp
                     <div class="rounded-xl border border-border/60 bg-surface p-3">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <div class="grid h-8 w-8 place-items-center rounded-full bg-primary/15 text-primary"><x-ui.icon name="message-square" class="h-3.5 w-3.5" /></div>
                                 <div>
-                                    <p class="text-xs font-semibold">{{ $author }}</p>
-                                    <p class="text-[10px] text-muted-foreground">{{ \Illuminate\Support\Carbon::parse($r->created_at)->format('d/m/Y') }}</p>
+                                    <p class="text-xs font-semibold">Anônimo</p>
                                 </div>
                             </div>
                             <div class="flex gap-0.5">

@@ -215,6 +215,7 @@ class ChatFlowTest extends TestCase
             'shift_id' => $shift->id, 'author_id' => $courier->id, 'target_id' => $creator->id,
             'target_role' => 'business', 'rating' => 4,
         ]);
+        $this->publishDueReviews();
         $this->assertSame(1, (int) $creator->fresh()->profile->business_total_reviews);
 
         Livewire::test(ChatsShow::class, ['id' => $chat->id])

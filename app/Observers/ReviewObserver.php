@@ -29,7 +29,10 @@ class ReviewObserver
 
     protected function recalculate(string $targetId, string $role): void
     {
-        $aggregate = Review::where('target_id', $targetId)
+        // Private (not yet published) reviews must not move the average either,
+        // or the change itself would give the reviewer away.
+        $aggregate = Review::published()
+            ->where('target_id', $targetId)
             ->where('target_role', $role)
             ->selectRaw('ROUND(AVG(rating), 2) as avg_rating, COUNT(*) as total')
             ->first();

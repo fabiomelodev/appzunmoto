@@ -90,6 +90,7 @@ class Reviews
             return false;
         }
 
+        // Starts private; PublishReviews makes it public Review::PUBLISH_DELAY_DAYS later.
         Review::create([
             'shift_id' => $shift->id,
             'author_id' => $authorId,
@@ -97,6 +98,7 @@ class Reviews
             'target_role' => self::targetRole($shift, $targetId),
             'rating' => $rating,
             'comment' => trim($comment),
+            'created_at' => now(),
         ]);
 
         return true;

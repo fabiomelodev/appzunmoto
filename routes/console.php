@@ -23,3 +23,9 @@ Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=3')
 Schedule::command('reviews:send-reminders')
     ->everyFiveMinutes()
     ->withoutOverlapping();
+
+// Reviews stay private for a few days so a low rating can't be traced back to
+// a specific shift; this flips them public once that wait is over.
+Schedule::command('reviews:publish')
+    ->hourly()
+    ->withoutOverlapping();

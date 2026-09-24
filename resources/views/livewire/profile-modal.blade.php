@@ -74,7 +74,6 @@
                                                     <x-ui.icon name="star" class="h-3 w-3 {{ $i <= $r->rating ? 'text-primary fill-current' : 'text-muted-foreground/30' }}" />
                                                 @endfor
                                             </div>
-                                            <span class="text-[10px] text-muted-foreground">{{ \Illuminate\Support\Carbon::parse($r->created_at)->format('d/m/Y') }}</span>
                                         </div>
                                         @if ($r->comment)
                                             <p class="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">

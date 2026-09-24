@@ -46,7 +46,9 @@
     {{-- Review panel --}}
     @if ($canReview)
         <div class="space-y-2 border-t border-border bg-surface/80 px-4 py-3">
-            <p class="text-xs font-semibold">Vaga concluída — avalie {{ $firstName }}:</p>            <div class="flex gap-1">
+            <p class="text-xs font-semibold">Vaga concluída — avalie {{ $firstName }}:</p>
+            <p class="text-[11px] text-muted-foreground">Por segurança, sua avaliação é anônima e só fica pública {{ \App\Models\Review::PUBLISH_DELAY_DAYS }} dias depois de enviada.</p>
+            <div class="flex gap-1">
                 @for ($i = 1; $i <= 5; $i++)
                     <button type="button" wire:click="setRating({{ $i }})">
                         <x-ui.icon name="star" class="h-7 w-7 {{ $i <= $rating ? 'text-primary fill-current' : 'text-muted-foreground/40' }}" />

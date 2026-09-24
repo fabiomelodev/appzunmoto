@@ -261,6 +261,7 @@ class ShiftFlowTest extends TestCase
             'shift_id' => $shift->id, 'author_id' => $creator->id, 'target_id' => $courier->id,
             'target_role' => 'courier', 'rating' => 5,
         ]);
+        $this->publishDueReviews();
         $this->assertSame(5.0, (float) $courier->fresh()->profile->avg_rating);
         $this->assertSame(1, (int) $courier->fresh()->profile->total_reviews);
     }
@@ -317,6 +318,7 @@ class ShiftFlowTest extends TestCase
             'target_role' => 'business', 'rating' => 4,
         ]);
 
+        $this->publishDueReviews();
         $creatorProfile = $creator->fresh()->profile;
         $this->assertSame(4.0, (float) $creatorProfile->business_avg_rating);
         $this->assertSame(1, (int) $creatorProfile->business_total_reviews);
@@ -342,6 +344,7 @@ class ShiftFlowTest extends TestCase
             ->call('submitReview');
 
         $this->assertDatabaseHas('reviews', ['target_id' => $creator->id, 'target_role' => 'courier']);
+        $this->publishDueReviews();
         $this->assertSame(1, (int) $creator->fresh()->profile->total_reviews);
         $this->assertSame(0, (int) $creator->fresh()->profile->business_total_reviews);
     }
