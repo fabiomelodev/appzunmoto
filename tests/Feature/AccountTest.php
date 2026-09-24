@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Livewire\Menu;
 use App\Livewire\ProfilePage;
 use App\Livewire\Settings;
+use App\Models\Review;
+use App\Models\Shift;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -198,9 +200,40 @@ class AccountTest extends TestCase
         $owner->profile()->update(['role' => 'business']);
         $this->actingAs($owner);
         Livewire::test(ProfilePage::class)
-            ->assertDontSee('Avaliações')
+            ->assertSee('Avaliações') // couriers review establishments too
             ->assertDontSee('Equipamentos disponíveis')
             ->assertSee('Meus Endereços');
+    }
+
+    public function test_profile_page_shows_the_rating_of_the_active_role_only(): void
+    {
+        $user = $this->user();
+        $shift = Shift::create([
+            'creator_id' => $user->id, 'creator_role' => 'business', 'venue' => 'Pizzaria X', 'region' => 'Centro',
+            'address' => 'Rua A, 1', 'date' => now()->subDay()->toDateString(), 'start_time' => '18:00', 'end_time' => '23:00',
+            'daily_rate' => 150, 'delivery_fee_min' => 8, 'delivery_fee_max' => 12, 'accepted_vehicles' => ['moto'],
+            'requires_own_bag' => false, 'couriers_needed' => 1, 'status' => 'filled', 'lat' => 0, 'lng' => 0,
+        ]);
+        $author = $this->user();
+        Review::create(['shift_id' => $shift->id, 'author_id' => $author->id, 'target_id' => $user->id, 'target_role' => 'courier', 'rating' => 3, 'comment' => 'Comentário de motoboy']);
+        Review::create(['shift_id' => $shift->id, 'author_id' => $this->user()->id, 'target_id' => $user->id, 'target_role' => 'business', 'rating' => 5, 'comment' => 'Comentário de estabelecimento']);
+
+        $this->actingAs($user);
+        Livewire::test(ProfilePage::class)
+            ->assertSeeHtml('text-foreground">3,0</span>')
+            ->assertDontSeeHtml('text-foreground">5,0</span>')
+            ->set('tab', 'reviews')
+            ->assertSee('Comentário de motoboy')
+            ->assertDontSee('Comentário de estabelecimento');
+
+        $user->profile()->update(['role' => 'business']);
+        $this->actingAs($user->fresh()); // drop the profile relation cached with the old role
+        Livewire::test(ProfilePage::class)
+            ->assertSeeHtml('text-foreground">5,0</span>')
+            ->assertDontSeeHtml('text-foreground">3,0</span>')
+            ->set('tab', 'reviews')
+            ->assertSee('Comentário de estabelecimento')
+            ->assertDontSee('Comentário de motoboy');
     }
 
     public function test_profile_page_has_no_verification_or_status_badges(): void

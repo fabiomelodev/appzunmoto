@@ -19,6 +19,7 @@ class Review extends Model
         'shift_id',
         'author_id',
         'target_id',
+        'target_role',
         'rating',
         'comment',
     ];

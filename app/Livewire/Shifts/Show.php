@@ -4,9 +4,10 @@ namespace App\Livewire\Shifts;
 
 use App\Models\Application;
 use App\Models\Chat;
-use App\Models\Review;
+use App\Models\Profile;
 use App\Models\Shift;
 use App\Support\Catalog;
+use App\Support\Reviews;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
@@ -23,6 +24,9 @@ class Show extends Component
     public bool $confirmOpen = false;
 
     public bool $reviewOpen = false;
+
+    /** Who the open review dialog is about (a shift can have several couriers to review). */
+    public ?string $reviewTargetId = null;
 
     public int $rating = 0;
 
@@ -94,38 +98,32 @@ class Show extends Component
         $this->dispatch('toast', message: 'Bag própria confirmada no seu perfil.');
     }
 
-    public function submitReview(): void
+    public function openReview(string $targetId): void
     {
         $shift = $this->shift();
 
-        // Server-side gating (the UI gating is cosmetic): only the shift creator
-        // reviews the reserved courier, only after the shift ended, and never self.
-        if ($shift->creator_id !== Auth::id()) {
-            return;
-        }
-        if (! $shift->reserved_by || $shift->reserved_by === Auth::id()) {
-            return;
-        }
-        if (! $this->expired($shift) || $this->rating < 1) {
+        if (! Reviews::canReview($shift, Auth::id(), $targetId) || Reviews::hasReviewed($shift, Auth::id(), $targetId)) {
             return;
         }
 
-        $alreadyReviewed = Review::where('shift_id', $shift->id)
-            ->where('author_id', Auth::id())
-            ->where('target_id', $shift->reserved_by)
-            ->exists();
-        if ($alreadyReviewed) {
+        $this->reset('rating', 'comment');
+        $this->reviewTargetId = $targetId;
+        $this->reviewOpen = true;
+    }
+
+    public function submitReview(): void
+    {
+        // Server-side gating lives in Reviews::submit() (the UI gating is cosmetic).
+        if (! $this->reviewTargetId
+            || ! Reviews::submit($this->shift(), Auth::id(), $this->reviewTargetId, $this->rating, $this->comment)) {
             return;
         }
-
-        Review::updateOrCreate(
-            ['shift_id' => $shift->id, 'author_id' => Auth::id(), 'target_id' => $shift->reserved_by],
-            ['rating' => $this->rating, 'comment' => trim($this->comment)],
-        );
 
         $this->reviewOpen = false;
+        $this->reviewTargetId = null;
         $this->rating = 0;
         $this->comment = '';
+        unset($this->shift);
         $this->dispatch('toast', message: 'Avaliação enviada!');
     }
 
@@ -255,16 +253,25 @@ class Show extends Component
 
         $needed = $shift->couriers_needed ?? 1;
 
-        $alreadyReviewed = $shift->creator_id === $userId && $shift->reserved_by
-            && Review::where('shift_id', $shift->id)
-                ->where('author_id', $userId)
-                ->where('target_id', $shift->reserved_by)
-                ->exists();
+        // Who the viewer can review here: the creator reviews every courier
+        // with a confirmed partnership, and each of those couriers reviews the
+        // creator — only once the shift is over.
+        $reviewables = collect();
+        if ($shift->hasEnded()) {
+            $ids = Reviews::reviewableIds($shift, $userId);
+            $names = Profile::publicColumns()->whereIn('id', $ids)->get()->keyBy('id');
+            $reviewables = $ids->map(fn (string $id) => [
+                'id' => $id,
+                'name' => $names->get($id)?->name ?: 'Usuário',
+                'reviewed' => Reviews::hasReviewed($shift, $userId, $id),
+            ]);
+        }
 
         $vm = [
             'shift' => $shift,
             'isCreator' => $shift->creator_id === $userId,
-            'alreadyReviewed' => $alreadyReviewed,
+            'reviewables' => $reviewables,
+            'reviewTargetName' => $reviewables->firstWhere('id', $this->reviewTargetId)['name'] ?? null,
             'alreadyInterested' => $interestedIds->contains($userId),
             'wasAccepted' => in_array($userId, $acceptedIds, true),
             'needed' => $needed,

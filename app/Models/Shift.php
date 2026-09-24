@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Carbon;
 
 #[ObservedBy([ShiftObserver::class])]
 class Shift extends Model
@@ -64,6 +65,17 @@ class Shift extends Model
         'active' => 'boolean',
         'edited_at' => 'datetime',
     ];
+
+    /** Date/times are stored as São Paulo wall-clock values (the app itself runs on UTC). */
+    public function endsAt(): Carbon
+    {
+        return Carbon::parse($this->date->toDateString().' '.$this->end_time, 'America/Sao_Paulo');
+    }
+
+    public function hasEnded(): bool
+    {
+        return $this->endsAt()->isPast();
+    }
 
     // ── Relationships ─────────────────────────────────────────────
     public function creator(): BelongsTo

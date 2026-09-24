@@ -43,22 +43,20 @@
                 </div>
             </div>
 
-            @unless ($isBusiness)
-                <div class="mt-4 flex items-center gap-2">
-                    <div class="flex items-center gap-0.5">
-                        @for ($i = 1; $i <= 5; $i++)
-                            <x-ui.icon name="star" class="h-4 w-4 {{ $i <= round($rating) ? 'text-primary fill-current' : 'text-muted-foreground/30' }}" />
-                        @endfor
-                    </div>
-                    <span class="text-xs text-muted-foreground">
-                        @if ($totalReviews > 0)
-                            <span class="font-semibold text-foreground">{{ number_format($rating, 1, ',', '') }}</span> · {{ $totalReviews }} {{ $totalReviews === 1 ? 'avaliação' : 'avaliações' }}
-                        @else
-                            Sem avaliações ainda
-                        @endif
-                    </span>
+            <div class="mt-4 flex items-center gap-2">
+                <div class="flex items-center gap-0.5">
+                    @for ($i = 1; $i <= 5; $i++)
+                        <x-ui.icon name="star" class="h-4 w-4 {{ $i <= round($rating) ? 'text-primary fill-current' : 'text-muted-foreground/30' }}" />
+                    @endfor
                 </div>
-            @endunless
+                <span class="text-xs text-muted-foreground">
+                    @if ($totalReviews > 0)
+                        <span class="font-semibold text-foreground">{{ number_format($rating, 1, ',', '') }}</span> · {{ $totalReviews }} {{ $totalReviews === 1 ? 'avaliação' : 'avaliações' }}
+                    @else
+                        Sem avaliações ainda
+                    @endif
+                </span>
+            </div>
         </div>
     </div>
 
@@ -72,10 +70,7 @@
     </div>
 
     @php
-        $tabs = ['info' => 'Pessoal', 'stats' => 'Estatísticas'];
-        if (! $isBusiness) {
-            $tabs['reviews'] = 'Avaliações';
-        }
+        $tabs = ['info' => 'Pessoal', 'stats' => 'Estatísticas', 'reviews' => 'Avaliações'];
     @endphp
 
     {{-- Tabs --}}
@@ -146,10 +141,9 @@
             <x-profile-section title="Estatísticas">
                 <x-profile-statrow label="Vagas publicadas" :value="$stats['published']" />
                 <x-profile-statrow label="Escalas concluídas" :value="$stats['completed']" />
-                @unless ($isBusiness)
-                    <x-profile-statrow label="Avaliações recebidas" :value="$totalReviews" />
-                    <x-profile-statrow label="Nota média" :value="$totalReviews > 0 ? number_format($rating, 1, ',', '') : '—'" highlight />
-                @endunless
+                <x-profile-statrow label="Avaliações recebidas" :value="$totalReviews" />
+                <x-profile-statrow label="Nota média" :value="$totalReviews > 0 ? number_format($rating, 1, ',', '') : '—'" highlight />
+
             </x-profile-section>
         @else
             <x-profile-section title="Avaliações recebidas">

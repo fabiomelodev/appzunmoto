@@ -196,6 +196,60 @@ class ChatFlowTest extends TestCase
         ]);
     }
 
+    public function test_courier_reviews_the_creator_from_chat(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator, ['date' => now()->subDay()->toDateString()]);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        $chat = Chat::findOrCreateBetween($shift->id, $creator->id, $courier->id);
+
+        $this->actingAs($courier);
+        Livewire::test(ChatsShow::class, ['id' => $chat->id])
+            ->assertSee('Vaga concluída')
+            ->set('rating', 4)
+            ->set('comment', 'Local organizado')
+            ->call('submitReview');
+
+        $this->assertDatabaseHas('reviews', [
+            'shift_id' => $shift->id, 'author_id' => $courier->id, 'target_id' => $creator->id,
+            'target_role' => 'business', 'rating' => 4,
+        ]);
+        $this->assertSame(1, (int) $creator->fresh()->profile->business_total_reviews);
+
+        Livewire::test(ChatsShow::class, ['id' => $chat->id])
+            ->assertDontSee('Vaga concluída')
+            ->assertSee('Avaliação enviada');
+    }
+
+    public function test_chat_review_requires_a_confirmed_partnership_and_a_finished_shift(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+
+        // Finished, but the courier never confirmed the partnership.
+        $unconfirmed = $this->shift($creator, ['date' => now()->subDay()->toDateString()]);
+        Application::create(['shift_id' => $unconfirmed->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => false]);
+        $chatA = Chat::findOrCreateBetween($unconfirmed->id, $creator->id, $courier->id);
+
+        // Confirmed, but the shift hasn't happened yet.
+        $upcoming = $this->shift($creator);
+        Application::create(['shift_id' => $upcoming->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        $chatB = Chat::findOrCreateBetween($upcoming->id, $creator->id, $courier->id);
+
+        foreach ([$creator, $courier] as $user) {
+            $this->actingAs($user);
+            foreach ([$chatA, $chatB] as $chat) {
+                Livewire::test(ChatsShow::class, ['id' => $chat->id])
+                    ->assertDontSee('Vaga concluída')
+                    ->set('rating', 5)
+                    ->call('submitReview');
+            }
+        }
+
+        $this->assertDatabaseCount('reviews', 0);
+    }
+
     public function test_send_message_persists_and_notifies_recipient(): void
     {
         $creator = $this->user('Dono');

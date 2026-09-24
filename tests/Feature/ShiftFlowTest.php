@@ -227,25 +227,38 @@ class ShiftFlowTest extends TestCase
         $this->assertTrue((bool) $courier->profile->fresh()->has_bag);
     }
 
+    /** A finished shift (yesterday) with a confirmed partnership between creator and courier. */
+    protected function finishedShiftWith(User $creator, User $courier, array $overrides = []): Shift
+    {
+        $shift = $this->shift($creator, array_merge([
+            'status' => 'filled', 'reserved_by' => $courier->id,
+            'date' => now()->subDay()->toDateString(),
+        ], $overrides));
+        Application::create([
+            'shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true,
+        ]);
+
+        return $shift;
+    }
+
     public function test_creator_submits_review_and_rating_is_recalculated(): void
     {
         $creator = $this->user('Dono');
         $courier = $this->user('Moto');
-        // Review is only allowed after the shift has ended.
-        $shift = $this->shift($creator, [
-            'status' => 'reserved', 'reserved_by' => $courier->id,
-            'date' => now()->subDay()->toDateString(),
-        ]);
+        $shift = $this->finishedShiftWith($creator, $courier);
 
         $this->actingAs($creator);
         Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('Avaliar Moto')
+            ->call('openReview', $courier->id)
             ->set('rating', 5)
             ->set('comment', 'Excelente')
             ->call('submitReview')
             ->assertDispatched('toast');
 
         $this->assertDatabaseHas('reviews', [
-            'shift_id' => $shift->id, 'author_id' => $creator->id, 'target_id' => $courier->id, 'rating' => 5,
+            'shift_id' => $shift->id, 'author_id' => $creator->id, 'target_id' => $courier->id,
+            'target_role' => 'courier', 'rating' => 5,
         ]);
         $this->assertSame(5.0, (float) $courier->fresh()->profile->avg_rating);
         $this->assertSame(1, (int) $courier->fresh()->profile->total_reviews);
@@ -255,24 +268,23 @@ class ShiftFlowTest extends TestCase
     {
         $creator = $this->user('Dono');
         $courier = $this->user('Moto');
-        $shift = $this->shift($creator, [
-            'status' => 'reserved', 'reserved_by' => $courier->id,
-            'date' => now()->subDay()->toDateString(),
-        ]);
+        $shift = $this->finishedShiftWith($creator, $courier);
 
         $this->actingAs($creator);
         Livewire::test(Show::class, ['id' => $shift->id])
+            ->call('openReview', $courier->id)
             ->set('rating', 5)
             ->set('comment', 'Primeira avaliação')
             ->call('submitReview');
 
         // Button now shows the locked state instead of the reviewable one.
         Livewire::test(Show::class, ['id' => $shift->id])
-            ->assertSee('Avaliação enviada')
-            ->assertDontSee('Avaliar entregador');
+            ->assertSee('avaliação enviada')
+            ->assertDontSee('Avaliar Moto');
 
         // Even if triggered directly, a second submission must not change the review.
         Livewire::test(Show::class, ['id' => $shift->id])
+            ->call('openReview', $courier->id)
             ->set('rating', 1)
             ->set('comment', 'Tentativa de sobrescrever')
             ->call('submitReview');
@@ -284,18 +296,90 @@ class ShiftFlowTest extends TestCase
         ]);
     }
 
-    public function test_non_creator_cannot_review_or_self_review(): void
+    public function test_courier_reviews_the_establishment_and_the_rating_is_kept_per_role(): void
     {
         $creator = $this->user('Dono');
         $courier = $this->user('Moto');
-        $shift = $this->shift($creator, [
-            'status' => 'reserved', 'reserved_by' => $courier->id,
-            'date' => now()->subDay()->toDateString(),
-        ]);
+        $shift = $this->finishedShiftWith($creator, $courier);
 
-        // The reserved courier tries to review (would be a self-review) → blocked.
         $this->actingAs($courier);
         Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('Avaliar Dono')
+            ->call('openReview', $creator->id)
+            ->set('rating', 4)
+            ->set('comment', 'Bom local')
+            ->call('submitReview')
+            ->assertDispatched('toast');
+
+        $this->assertDatabaseHas('reviews', [
+            'shift_id' => $shift->id, 'author_id' => $courier->id, 'target_id' => $creator->id,
+            'target_role' => 'business', 'rating' => 4,
+        ]);
+
+        $creatorProfile = $creator->fresh()->profile;
+        $this->assertSame(4.0, (float) $creatorProfile->business_avg_rating);
+        $this->assertSame(1, (int) $creatorProfile->business_total_reviews);
+        // Nothing leaks into the account's courier-side rating.
+        $this->assertSame(0.0, (float) $creatorProfile->avg_rating);
+        $this->assertSame(0, (int) $creatorProfile->total_reviews);
+
+        // The creator's review of the courier is independent of this one.
+        $this->actingAs($creator);
+        Livewire::test(Show::class, ['id' => $shift->id])->assertSee('Avaliar Moto');
+    }
+
+    public function test_courier_review_of_a_courier_creator_counts_as_a_courier_rating(): void
+    {
+        $creator = $this->user('Colega');
+        $courier = $this->user('Moto');
+        $shift = $this->finishedShiftWith($creator, $courier, ['creator_role' => 'courier']);
+
+        $this->actingAs($courier);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->call('openReview', $creator->id)
+            ->set('rating', 5)
+            ->call('submitReview');
+
+        $this->assertDatabaseHas('reviews', ['target_id' => $creator->id, 'target_role' => 'courier']);
+        $this->assertSame(1, (int) $creator->fresh()->profile->total_reviews);
+        $this->assertSame(0, (int) $creator->fresh()->profile->business_total_reviews);
+    }
+
+    public function test_only_confirmed_partners_can_review_and_never_themselves(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $stranger = $this->user('Estranho');
+        $unconfirmed = $this->user('Pendente');
+        $shift = $this->finishedShiftWith($creator, $courier);
+        Application::create([
+            'shift_id' => $shift->id, 'user_id' => $unconfirmed->id, 'status' => 'accepted', 'confirmed' => false,
+        ]);
+
+        // Accepted but never confirmed the partnership → can't review, and can't be reviewed.
+        $this->actingAs($unconfirmed);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->call('openReview', $creator->id)
+            ->set('rating', 5)
+            ->call('submitReview');
+
+        $this->actingAs($creator);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->call('openReview', $unconfirmed->id)
+            ->set('rating', 5)
+            ->call('submitReview')
+            // ...nor themselves.
+            ->call('openReview', $creator->id)
+            ->set('rating', 5)
+            ->call('submitReview');
+
+        // A user with no part in the shift can't review either side.
+        $this->actingAs($stranger);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->call('openReview', $creator->id)
+            ->set('rating', 5)
+            ->call('submitReview')
+            ->call('openReview', $courier->id)
             ->set('rating', 5)
             ->call('submitReview');
 
@@ -306,15 +390,61 @@ class ShiftFlowTest extends TestCase
     {
         $creator = $this->user('Dono');
         $courier = $this->user('Moto');
-        // Future shift (not expired yet).
-        $shift = $this->shift($creator, ['status' => 'reserved', 'reserved_by' => $courier->id]);
+        $shift = $this->finishedShiftWith($creator, $courier, ['date' => now()->addDay()->toDateString()]);
+
+        foreach ([[$creator, $courier], [$courier, $creator]] as [$author, $target]) {
+            $this->actingAs($author);
+            Livewire::test(Show::class, ['id' => $shift->id])
+                ->assertDontSee('Avaliar '.$target->profile->name)
+                ->call('openReview', $target->id)
+                ->set('rating', 5)
+                ->call('submitReview');
+        }
+
+        $this->assertDatabaseCount('reviews', 0);
+    }
+
+    public function test_multi_courier_shift_lists_each_confirmed_courier_for_review(): void
+    {
+        $creator = $this->user('Dono');
+        $first = $this->user('Primeiro');
+        $second = $this->user('Segundo');
+        $shift = $this->finishedShiftWith($creator, $first, ['couriers_needed' => 2]);
+        Application::create([
+            'shift_id' => $shift->id, 'user_id' => $second->id, 'status' => 'accepted', 'confirmed' => true,
+        ]);
 
         $this->actingAs($creator);
         Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('Avaliar Primeiro')
+            ->assertSee('Avaliar Segundo')
+            ->call('openReview', $first->id)
             ->set('rating', 5)
             ->call('submitReview');
 
-        $this->assertDatabaseCount('reviews', 0);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertDontSee('Avaliar Primeiro')
+            ->assertSee('Avaliar Segundo');
+
+        $this->assertDatabaseCount('reviews', 1);
+    }
+
+    public function test_shift_page_shows_the_creators_rating_for_its_role(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+
+        $this->actingAs($courier);
+        Livewire::test(Show::class, ['id' => $shift->id])->assertSee('Sem avaliações');
+
+        $creator->profile->update(['role' => 'business']);
+        \App\Models\Profile::where('id', $creator->id)->update(['business_avg_rating' => 4.5, 'business_total_reviews' => 2]);
+
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('4,5')
+            ->assertSee('(2)')
+            ->assertDontSee('Sem avaliações');
     }
 
     public function test_profile_modal_loads_public_profile(): void

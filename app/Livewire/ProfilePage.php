@@ -132,11 +132,16 @@ class ProfilePage extends Component
         $completed = Shift::where('creator_id', $id)->where('status', 'filled')->count()
             + Application::where('user_id', $id)->where('confirmed', true)->count();
 
+        // Ratings are kept per role: what was received as a courier and as an
+        // establishment don't mix (see ReviewObserver).
+        $profile = Auth::user()->profile;
+        $business = $profile?->isBusiness();
+
         return [
             'published' => $published,
             'completed' => $completed,
-            'rating' => (float) (Auth::user()->profile?->avg_rating ?? 0),
-            'totalReviews' => (int) (Auth::user()->profile?->total_reviews ?? 0),
+            'rating' => (float) ($business ? $profile->business_avg_rating : $profile?->avg_rating),
+            'totalReviews' => (int) ($business ? $profile->business_total_reviews : $profile?->total_reviews),
         ];
     }
 
@@ -145,6 +150,7 @@ class ProfilePage extends Component
     {
         return Review::with('author.profile')
             ->where('target_id', Auth::id())
+            ->where('target_role', Auth::user()->profile?->isBusiness() ? 'business' : 'courier')
             ->latest('created_at')
             ->get();
     }
