@@ -7,6 +7,7 @@
         'sistema' => 'shield-alert',
         'vaga' => 'calendar-check',
         'nova_vaga' => 'bike',
+        'avaliacao' => 'star',
     ];
 @endphp
 

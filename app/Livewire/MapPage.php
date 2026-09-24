@@ -18,13 +18,13 @@ class MapPage extends Component
     {
         return Shift::where('status', Shift::STATUS_AVAILABLE)
             ->where('active', true)
-            ->whereDate('date', '>=', now()->toDateString())
+            ->whereDate('date', '>=', now('America/Sao_Paulo')->subDay()->toDateString())
             ->with('creator.profile')
             ->get()
             ->filter(function ($s) {
                 return (float) $s->lat !== 0.0
                     && (float) $s->lng !== 0.0
-                    && Carbon::parse($s->date->toDateString().' '.$s->end_time, 'America/Sao_Paulo')->isFuture();
+                    && ! $s->hasEnded();
             })
             ->map(fn ($s) => [
                 'id' => $s->id,

@@ -16,3 +16,16 @@ Artisan::command('inspire', function () {
 Schedule::command('queue:work --stop-when-empty --max-time=50 --tries=3')
     ->everyMinute()
     ->withoutOverlapping();
+
+// Prompts both sides of a finished shift to review each other. Runs off the
+// same per-minute cron as the queue worker above; the command itself marks
+// each shift as reminded, so running often is harmless.
+Schedule::command('reviews:send-reminders')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();
+
+// Reviews stay private for a few days so a low rating can't be traced back to
+// a specific shift; this flips them public once that wait is over.
+Schedule::command('reviews:publish')
+    ->hourly()
+    ->withoutOverlapping();

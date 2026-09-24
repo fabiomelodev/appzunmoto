@@ -103,7 +103,7 @@
     <div class="mt-4 flex items-center justify-between gap-3">
         <span class="flex items-center gap-1.5 text-xs text-foreground/80">
             <x-ui.icon name="clock" class="h-3.5 w-3.5 text-muted-foreground/70" />
-            {{ \Illuminate\Support\Carbon::parse($shift->date)->isoFormat('DD [de] MMM') }} · {{ $shift->start_time }}–{{ $shift->end_time }}
+            {{ \Illuminate\Support\Carbon::parse($shift->date)->isoFormat('DD [de] MMM') }} · {{ $shift->timeRange() }}
         </span>
     </div>
 

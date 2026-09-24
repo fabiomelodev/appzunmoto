@@ -7,34 +7,43 @@ use App\Models\Review;
 
 /**
  * Recomputes the target's average rating and review count whenever a review
- * is created. Mirrors the Supabase `recalc_profile_rating` trigger.
+ * changes. Mirrors the Supabase `recalc_profile_rating` trigger, kept per
+ * role: ratings received as a courier and as an establishment are separate.
  */
 class ReviewObserver
 {
     public function created(Review $review): void
     {
-        $this->recalculate($review->target_id);
+        $this->recalculate($review->target_id, $review->target_role);
     }
 
     public function updated(Review $review): void
     {
-        $this->recalculate($review->target_id);
+        $this->recalculate($review->target_id, $review->target_role);
     }
 
     public function deleted(Review $review): void
     {
-        $this->recalculate($review->target_id);
+        $this->recalculate($review->target_id, $review->target_role);
     }
 
-    protected function recalculate(string $targetId): void
+    protected function recalculate(string $targetId, string $role): void
     {
-        $aggregate = Review::where('target_id', $targetId)
+        // Private (not yet published) reviews must not move the average either,
+        // or the change itself would give the reviewer away.
+        $aggregate = Review::published()
+            ->where('target_id', $targetId)
+            ->where('target_role', $role)
             ->selectRaw('ROUND(AVG(rating), 2) as avg_rating, COUNT(*) as total')
             ->first();
 
+        $columns = $role === 'business'
+            ? ['avg' => 'business_avg_rating', 'total' => 'business_total_reviews']
+            : ['avg' => 'avg_rating', 'total' => 'total_reviews'];
+
         Profile::where('id', $targetId)->update([
-            'avg_rating' => $aggregate->avg_rating ?? 0,
-            'total_reviews' => $aggregate->total ?? 0,
+            $columns['avg'] => $aggregate->avg_rating ?? 0,
+            $columns['total'] => $aggregate->total ?? 0,
         ]);
     }
 }

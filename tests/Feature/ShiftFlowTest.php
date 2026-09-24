@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Models\UserAddress;
 use App\Models\VenueType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -88,6 +89,31 @@ class ShiftFlowTest extends TestCase
         $this->assertTrue(
             Notification::where('user_id', $creator->id)->where('type', 'vaga')->exists()
         );
+    }
+
+    public function test_account_on_the_business_profile_cannot_register_interest(): void
+    {
+        $creator = $this->user('Dono');
+        $other = $this->user('Outro');
+        // Was a courier (vehicle/bag on file), then switched to estabelecimento.
+        $other->profile->update(['vehicle' => 'moto', 'has_bag' => true, 'role' => 'business']);
+        $shift = $this->shift($creator);
+
+        $this->actingAs($other);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('Disponível apenas para motoboys')
+            ->assertDontSee('Aceitar Vaga')
+            ->call('registerInterest');
+
+        $this->assertDatabaseMissing('applications', ['shift_id' => $shift->id, 'user_id' => $other->id]);
+
+        // Switching back to courier makes the same shift available again.
+        $other->profile->update(['role' => 'courier']);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('Aceitar Vaga')
+            ->call('registerInterest');
+
+        $this->assertDatabaseHas('applications', ['shift_id' => $shift->id, 'user_id' => $other->id]);
     }
 
     public function test_courier_withdraws_interest(): void
@@ -202,26 +228,40 @@ class ShiftFlowTest extends TestCase
         $this->assertTrue((bool) $courier->profile->fresh()->has_bag);
     }
 
+    /** A finished shift (yesterday) with a confirmed partnership between creator and courier. */
+    protected function finishedShiftWith(User $creator, User $courier, array $overrides = []): Shift
+    {
+        $shift = $this->shift($creator, array_merge([
+            'status' => 'filled', 'reserved_by' => $courier->id,
+            'date' => now()->subDay()->toDateString(),
+        ], $overrides));
+        Application::create([
+            'shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true,
+        ]);
+
+        return $shift;
+    }
+
     public function test_creator_submits_review_and_rating_is_recalculated(): void
     {
         $creator = $this->user('Dono');
         $courier = $this->user('Moto');
-        // Review is only allowed after the shift has ended.
-        $shift = $this->shift($creator, [
-            'status' => 'reserved', 'reserved_by' => $courier->id,
-            'date' => now()->subDay()->toDateString(),
-        ]);
+        $shift = $this->finishedShiftWith($creator, $courier);
 
         $this->actingAs($creator);
         Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('Avaliar Moto')
+            ->call('openReview', $courier->id)
             ->set('rating', 5)
             ->set('comment', 'Excelente')
             ->call('submitReview')
             ->assertDispatched('toast');
 
         $this->assertDatabaseHas('reviews', [
-            'shift_id' => $shift->id, 'author_id' => $creator->id, 'target_id' => $courier->id, 'rating' => 5,
+            'shift_id' => $shift->id, 'author_id' => $creator->id, 'target_id' => $courier->id,
+            'target_role' => 'courier', 'rating' => 5,
         ]);
+        $this->publishDueReviews();
         $this->assertSame(5.0, (float) $courier->fresh()->profile->avg_rating);
         $this->assertSame(1, (int) $courier->fresh()->profile->total_reviews);
     }
@@ -230,24 +270,23 @@ class ShiftFlowTest extends TestCase
     {
         $creator = $this->user('Dono');
         $courier = $this->user('Moto');
-        $shift = $this->shift($creator, [
-            'status' => 'reserved', 'reserved_by' => $courier->id,
-            'date' => now()->subDay()->toDateString(),
-        ]);
+        $shift = $this->finishedShiftWith($creator, $courier);
 
         $this->actingAs($creator);
         Livewire::test(Show::class, ['id' => $shift->id])
+            ->call('openReview', $courier->id)
             ->set('rating', 5)
             ->set('comment', 'Primeira avaliação')
             ->call('submitReview');
 
         // Button now shows the locked state instead of the reviewable one.
         Livewire::test(Show::class, ['id' => $shift->id])
-            ->assertSee('Avaliação enviada')
-            ->assertDontSee('Avaliar entregador');
+            ->assertSee('avaliação enviada')
+            ->assertDontSee('Avaliar Moto');
 
         // Even if triggered directly, a second submission must not change the review.
         Livewire::test(Show::class, ['id' => $shift->id])
+            ->call('openReview', $courier->id)
             ->set('rating', 1)
             ->set('comment', 'Tentativa de sobrescrever')
             ->call('submitReview');
@@ -259,18 +298,92 @@ class ShiftFlowTest extends TestCase
         ]);
     }
 
-    public function test_non_creator_cannot_review_or_self_review(): void
+    public function test_courier_reviews_the_establishment_and_the_rating_is_kept_per_role(): void
     {
         $creator = $this->user('Dono');
         $courier = $this->user('Moto');
-        $shift = $this->shift($creator, [
-            'status' => 'reserved', 'reserved_by' => $courier->id,
-            'date' => now()->subDay()->toDateString(),
-        ]);
+        $shift = $this->finishedShiftWith($creator, $courier);
 
-        // The reserved courier tries to review (would be a self-review) → blocked.
         $this->actingAs($courier);
         Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('Avaliar Dono')
+            ->call('openReview', $creator->id)
+            ->set('rating', 4)
+            ->set('comment', 'Bom local')
+            ->call('submitReview')
+            ->assertDispatched('toast');
+
+        $this->assertDatabaseHas('reviews', [
+            'shift_id' => $shift->id, 'author_id' => $courier->id, 'target_id' => $creator->id,
+            'target_role' => 'business', 'rating' => 4,
+        ]);
+
+        $this->publishDueReviews();
+        $creatorProfile = $creator->fresh()->profile;
+        $this->assertSame(4.0, (float) $creatorProfile->business_avg_rating);
+        $this->assertSame(1, (int) $creatorProfile->business_total_reviews);
+        // Nothing leaks into the account's courier-side rating.
+        $this->assertSame(0.0, (float) $creatorProfile->avg_rating);
+        $this->assertSame(0, (int) $creatorProfile->total_reviews);
+
+        // The creator's review of the courier is independent of this one.
+        $this->actingAs($creator);
+        Livewire::test(Show::class, ['id' => $shift->id])->assertSee('Avaliar Moto');
+    }
+
+    public function test_courier_review_of_a_courier_creator_counts_as_a_courier_rating(): void
+    {
+        $creator = $this->user('Colega');
+        $courier = $this->user('Moto');
+        $shift = $this->finishedShiftWith($creator, $courier, ['creator_role' => 'courier']);
+
+        $this->actingAs($courier);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->call('openReview', $creator->id)
+            ->set('rating', 5)
+            ->call('submitReview');
+
+        $this->assertDatabaseHas('reviews', ['target_id' => $creator->id, 'target_role' => 'courier']);
+        $this->publishDueReviews();
+        $this->assertSame(1, (int) $creator->fresh()->profile->total_reviews);
+        $this->assertSame(0, (int) $creator->fresh()->profile->business_total_reviews);
+    }
+
+    public function test_only_confirmed_partners_can_review_and_never_themselves(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $stranger = $this->user('Estranho');
+        $unconfirmed = $this->user('Pendente');
+        $shift = $this->finishedShiftWith($creator, $courier);
+        Application::create([
+            'shift_id' => $shift->id, 'user_id' => $unconfirmed->id, 'status' => 'accepted', 'confirmed' => false,
+        ]);
+
+        // Accepted but never confirmed the partnership → can't review, and can't be reviewed.
+        $this->actingAs($unconfirmed);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->call('openReview', $creator->id)
+            ->set('rating', 5)
+            ->call('submitReview');
+
+        $this->actingAs($creator);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->call('openReview', $unconfirmed->id)
+            ->set('rating', 5)
+            ->call('submitReview')
+            // ...nor themselves.
+            ->call('openReview', $creator->id)
+            ->set('rating', 5)
+            ->call('submitReview');
+
+        // A user with no part in the shift can't review either side.
+        $this->actingAs($stranger);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->call('openReview', $creator->id)
+            ->set('rating', 5)
+            ->call('submitReview')
+            ->call('openReview', $courier->id)
             ->set('rating', 5)
             ->call('submitReview');
 
@@ -281,15 +394,61 @@ class ShiftFlowTest extends TestCase
     {
         $creator = $this->user('Dono');
         $courier = $this->user('Moto');
-        // Future shift (not expired yet).
-        $shift = $this->shift($creator, ['status' => 'reserved', 'reserved_by' => $courier->id]);
+        $shift = $this->finishedShiftWith($creator, $courier, ['date' => now()->addDay()->toDateString()]);
+
+        foreach ([[$creator, $courier], [$courier, $creator]] as [$author, $target]) {
+            $this->actingAs($author);
+            Livewire::test(Show::class, ['id' => $shift->id])
+                ->assertDontSee('Avaliar '.$target->profile->name)
+                ->call('openReview', $target->id)
+                ->set('rating', 5)
+                ->call('submitReview');
+        }
+
+        $this->assertDatabaseCount('reviews', 0);
+    }
+
+    public function test_multi_courier_shift_lists_each_confirmed_courier_for_review(): void
+    {
+        $creator = $this->user('Dono');
+        $first = $this->user('Primeiro');
+        $second = $this->user('Segundo');
+        $shift = $this->finishedShiftWith($creator, $first, ['couriers_needed' => 2]);
+        Application::create([
+            'shift_id' => $shift->id, 'user_id' => $second->id, 'status' => 'accepted', 'confirmed' => true,
+        ]);
 
         $this->actingAs($creator);
         Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('Avaliar Primeiro')
+            ->assertSee('Avaliar Segundo')
+            ->call('openReview', $first->id)
             ->set('rating', 5)
             ->call('submitReview');
 
-        $this->assertDatabaseCount('reviews', 0);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertDontSee('Avaliar Primeiro')
+            ->assertSee('Avaliar Segundo');
+
+        $this->assertDatabaseCount('reviews', 1);
+    }
+
+    public function test_shift_page_shows_the_creators_rating_for_its_role(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+
+        $this->actingAs($courier);
+        Livewire::test(Show::class, ['id' => $shift->id])->assertSee('Sem avaliações');
+
+        $creator->profile->update(['role' => 'business']);
+        \App\Models\Profile::where('id', $creator->id)->update(['business_avg_rating' => 4.5, 'business_total_reviews' => 2]);
+
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('4,5')
+            ->assertSee('(2)')
+            ->assertDontSee('Sem avaliações');
     }
 
     public function test_profile_modal_loads_public_profile(): void
@@ -437,6 +596,145 @@ class ShiftFlowTest extends TestCase
             ->call('save', ['couriersNeeded' => 3] + $form)
             ->assertRedirect();
         $this->assertSame(3, $shift->fresh()->couriers_needed);
+    }
+
+    protected function createShiftForm(array $overrides = []): array
+    {
+        return array_merge([
+            'date' => now()->addDay()->toDateString(),
+            'startTime' => '18:00', 'endTime' => '23:00',
+            'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
+            'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
+            'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
+        ], $overrides);
+    }
+
+    protected function createComponentFor(User $user)
+    {
+        $address = UserAddress::create([
+            'user_id' => $user->id, 'label' => 'Pizzaria', 'street' => 'Av A', 'number' => '1',
+            'district' => 'Centro', 'city' => 'SP',
+        ]);
+        $this->actingAs($user);
+
+        return Livewire::withQueryParams(['as' => 'business', 'address' => $address->id])->test(Create::class);
+    }
+
+    public function test_create_shift_rejects_identical_start_and_end_times(): void
+    {
+        $this->createComponentFor($this->user('Dono'))
+            ->call('save', $this->createShiftForm(['startTime' => '18:00', 'endTime' => '18:00']))
+            ->assertDispatched('toast', message: 'O horário final não pode ser igual ao horário de início.');
+
+        $this->assertDatabaseCount('shifts', 0);
+    }
+
+    public function test_create_shift_accepts_an_overnight_window_and_it_ends_the_next_day(): void
+    {
+        $this->createComponentFor($this->user('Dono'))
+            ->call('save', $this->createShiftForm(['date' => '2099-09-24', 'startTime' => '20:00', 'endTime' => '03:00']));
+
+        $shift = Shift::firstOrFail();
+        $this->assertSame('2099-09-24', $shift->date->toDateString());
+        $this->assertTrue($shift->crossesMidnight());
+        $this->assertSame('2099-09-25 03:00', $shift->endsAt()->format('Y-m-d H:i'));
+        $this->assertSame('20:00–03:00 (+1 dia)', $shift->timeRange());
+    }
+
+    public function test_same_day_shift_does_not_cross_midnight(): void
+    {
+        $shift = $this->shift($this->user('Dono'), ['date' => '2099-09-24', 'start_time' => '18:00', 'end_time' => '23:00']);
+
+        $this->assertFalse($shift->crossesMidnight());
+        $this->assertSame('2099-09-24 23:00', $shift->endsAt()->format('Y-m-d H:i'));
+        $this->assertSame('18:00–23:00', $shift->timeRange());
+    }
+
+    public function test_overnight_shifts_conflict_across_the_date_boundary(): void
+    {
+        $creator = $this->user('Dono');
+        $this->shift($creator, ['venue' => 'Pizzaria X', 'date' => '2099-09-24', 'start_time' => '20:00', 'end_time' => '03:00']);
+        $component = $this->createComponentFor($creator);
+        $component->set('venue', 'Pizzaria X');
+
+        // Next-day 01:00–05:00 overlaps the tail of the overnight shift.
+        $component->call('save', $this->createShiftForm(['date' => '2099-09-25', 'startTime' => '01:00', 'endTime' => '05:00']))
+            ->assertDispatched('toast', message: 'Você já tem uma vaga neste local nesse mesmo horário.');
+        $this->assertDatabaseCount('shifts', 1);
+
+        // Touching edges (starts when the other ends) and other hours don't conflict.
+        $component->call('save', $this->createShiftForm(['date' => '2099-09-25', 'startTime' => '03:00', 'endTime' => '07:00']));
+        $component->call('save', $this->createShiftForm(['date' => '2099-09-24', 'startTime' => '10:00', 'endTime' => '15:00']));
+        $this->assertDatabaseCount('shifts', 3);
+    }
+
+    public function test_listing_keeps_an_overnight_shift_until_it_ends_the_next_day(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $courier->profile->update(['vehicle' => 'moto', 'has_bag' => true]);
+        $this->shift($creator, ['venue' => 'Vaga Madrugada', 'date' => '2026-09-24', 'start_time' => '20:00', 'end_time' => '03:00']);
+        $this->actingAs($courier);
+
+        // Already 25/09 01:00 — dated yesterday but still running.
+        Carbon::setTestNow(Carbon::create(2026, 9, 25, 1, 0, 0, 'America/Sao_Paulo'));
+        Livewire::test(Index::class)->assertSee('Vaga Madrugada');
+
+        Carbon::setTestNow(Carbon::create(2026, 9, 25, 3, 30, 0, 'America/Sao_Paulo'));
+        Livewire::test(Index::class)->assertDontSee('Vaga Madrugada');
+
+        Carbon::setTestNow();
+    }
+
+    public function test_an_overnight_shift_is_not_over_before_its_next_day_end(): void
+    {
+        $shift = $this->shift($this->user('Dono'), ['date' => '2026-09-24', 'start_time' => '20:00', 'end_time' => '03:00']);
+
+        Carbon::setTestNow(Carbon::create(2026, 9, 24, 23, 0, 0, 'America/Sao_Paulo'));
+        $this->assertFalse($shift->hasEnded());
+
+        Carbon::setTestNow(Carbon::create(2026, 9, 25, 3, 1, 0, 'America/Sao_Paulo'));
+        $this->assertTrue($shift->hasEnded());
+
+        Carbon::setTestNow();
+    }
+
+    public function test_create_shift_starting_soon_is_accepted_in_sao_paulo_time(): void
+    {
+        // 12:00 in São Paulo is 15:00 UTC: a 13:00 start is still an hour away.
+        Carbon::setTestNow(Carbon::create(2026, 9, 24, 12, 0, 0, 'America/Sao_Paulo'));
+
+        $this->createComponentFor($this->user('Dono'))
+            ->call('save', $this->createShiftForm([
+                'date' => '2026-09-24', 'startTime' => '13:00', 'endTime' => '17:00',
+            ]));
+
+        Carbon::setTestNow();
+
+        $this->assertDatabaseCount('shifts', 1);
+    }
+
+    public function test_listing_keeps_a_shift_visible_until_it_really_ends_in_sao_paulo_time(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $courier->profile->update(['vehicle' => 'moto', 'has_bag' => true]);
+        $this->shift($creator, ['venue' => 'Vaga Noite', 'date' => '2026-09-24', 'start_time' => '18:00', 'end_time' => '23:30']);
+        $this->actingAs($courier);
+
+        // 20:00 São Paulo = 23:00 UTC: ends 23:30 São Paulo, so still running.
+        Carbon::setTestNow(Carbon::create(2026, 9, 24, 20, 0, 0, 'America/Sao_Paulo'));
+        Livewire::test(Index::class)->assertSee('Vaga Noite');
+
+        // 22:30 São Paulo is already 25/09 in UTC, yet today's shift must still show.
+        Carbon::setTestNow(Carbon::create(2026, 9, 24, 22, 30, 0, 'America/Sao_Paulo'));
+        Livewire::test(Index::class)->assertSee('Vaga Noite');
+
+        // 23:45 São Paulo: over.
+        Carbon::setTestNow(Carbon::create(2026, 9, 24, 23, 45, 0, 'America/Sao_Paulo'));
+        Livewire::test(Index::class)->assertDontSee('Vaga Noite');
+
+        Carbon::setTestNow();
     }
 
     public function test_create_shift_rejects_retroactive(): void
