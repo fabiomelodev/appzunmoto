@@ -18,7 +18,25 @@ self.addEventListener('push', (event) => {
         requireInteraction: data.requireInteraction,
     };
 
-    event.waitUntil(self.registration.showNotification(title, options));
+    // Skip the system notification when the user is already looking at the
+    // page it points to (e.g. inside that chat) — the page updates live.
+    const targetUrl = options.data && options.data.url;
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+            const alreadyViewing = targetUrl && windowClients.some((client) => {
+                if (client.visibilityState !== 'visible') return false;
+                try {
+                    return new URL(client.url).pathname === new URL(targetUrl).pathname;
+                } catch (e) {
+                    return false;
+                }
+            });
+
+            if (!alreadyViewing) {
+                return self.registration.showNotification(title, options);
+            }
+        }),
+    );
 });
 
 self.addEventListener('notificationclick', (event) => {
