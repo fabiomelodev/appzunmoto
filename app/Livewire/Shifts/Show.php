@@ -184,6 +184,12 @@ class Show extends Component
         if (! $userId || $shift->creator_id === $userId) {
             return false;
         }
+        // Only the courier profile can apply — an account switched to
+        // "estabelecimento" keeps its old vehicle/bag data, which would
+        // otherwise still pass the checks below.
+        if (Auth::user()?->profile?->isBusiness()) {
+            return false;
+        }
         if ($shift->status !== Shift::STATUS_AVAILABLE || ! $shift->active) {
             return false;
         }
@@ -265,6 +271,7 @@ class Show extends Component
             'totalAccepted' => count($acceptedIds),
             'totalConfirmed' => $apps->where('status', Application::STATUS_ACCEPTED)->where('confirmed', true)->count(),
             'full' => count($acceptedIds) >= $needed,
+            'isBusinessProfile' => (bool) $me->profile?->isBusiness(),
             'isCoverage' => $shift->creator_role === 'courier',
             'acceptedVehicles' => $this->acceptedVehicles($shift),
             'noRestriction' => $this->noRestriction($shift),

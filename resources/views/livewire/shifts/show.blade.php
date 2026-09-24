@@ -281,6 +281,11 @@
                     Remover interesse
                 </x-ui.button>
             </div>
+        @elseif ($isBusinessProfile)
+            <div class="space-y-2">
+                <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="lock" class="mr-2 h-4 w-4" /> Disponível apenas para motoboys</x-ui.button>
+                <p class="text-center text-[11px] font-medium text-muted-foreground">Você está no perfil Estabelecimento. Mude para Motoboy para se candidatar.</p>
+            </div>
         @elseif (! $compatible)
             <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="lock" class="mr-2 h-4 w-4" /> Vaga exclusiva para {{ $requiredTypeLabel }}</x-ui.button>
         @elseif ($blockedByBag)

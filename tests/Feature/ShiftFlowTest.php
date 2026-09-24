@@ -90,6 +90,31 @@ class ShiftFlowTest extends TestCase
         );
     }
 
+    public function test_account_on_the_business_profile_cannot_register_interest(): void
+    {
+        $creator = $this->user('Dono');
+        $other = $this->user('Outro');
+        // Was a courier (vehicle/bag on file), then switched to estabelecimento.
+        $other->profile->update(['vehicle' => 'moto', 'has_bag' => true, 'role' => 'business']);
+        $shift = $this->shift($creator);
+
+        $this->actingAs($other);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('Disponível apenas para motoboys')
+            ->assertDontSee('Aceitar Vaga')
+            ->call('registerInterest');
+
+        $this->assertDatabaseMissing('applications', ['shift_id' => $shift->id, 'user_id' => $other->id]);
+
+        // Switching back to courier makes the same shift available again.
+        $other->profile->update(['role' => 'courier']);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('Aceitar Vaga')
+            ->call('registerInterest');
+
+        $this->assertDatabaseHas('applications', ['shift_id' => $shift->id, 'user_id' => $other->id]);
+    }
+
     public function test_courier_withdraws_interest(): void
     {
         $creator = $this->user('Dono');
