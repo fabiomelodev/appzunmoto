@@ -5,7 +5,9 @@
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Livewire\Addresses\Choose as AddressesChoose;
 use App\Livewire\Addresses\Index as AddressesIndex;
+use App\Livewire\Auth\ForgotPassword;
 use App\Livewire\Auth\Login;
+use App\Livewire\Auth\ResetPassword;
 use App\Livewire\Chats\Index as ChatsIndex;
 use App\Livewire\Chats\Show as ChatsShow;
 use App\Livewire\History;
@@ -31,6 +33,11 @@ use Illuminate\Support\Facades\Storage;
 // ── Public (guest) ───────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
     Route::get('/login', Login::class)->name('login');
+
+    // Password recovery: e-mail a reset link, then set a new password with it.
+    // The broker's notification links to route('password.reset').
+    Route::get('/forgot-password', ForgotPassword::class)->name('password.request');
+    Route::get('/reset-password/{token}', ResetPassword::class)->name('password.reset');
 
     // Google OAuth (Laravel Socialite) — full-page redirect + callback.
     Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('google.redirect');

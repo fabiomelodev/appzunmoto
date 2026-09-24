@@ -52,6 +52,10 @@
                     </button>
                 </div>
                 @error('password') <p class="mt-1 text-[11px] font-medium text-destructive">{{ $message }}</p> @enderror
+                @if ($mode === 'signin')
+                    <a href="{{ route('password.request') }}" wire:navigate
+                        class="mt-1.5 inline-block text-[11px] font-medium text-primary hover:underline">Esqueci minha senha</a>
+                @endif
             </x-ui.field>
 
             @if ($mode === 'signup')
