@@ -19,7 +19,7 @@
             <x-ui.icon name="arrow-left" class="h-4 w-4" />
         </button>
         <button type="button" aria-label="Compartilhar no WhatsApp"
-            x-on:click="window.open('https://wa.me/?text=' + encodeURIComponent({{ Illuminate\Support\Js::from("Olha essa vaga no ZunMoto!\n\n📍 {$shift->venue} — {$shift->region}\n📅 ".$shift->date->isoFormat('DD/MM/YYYY')." · {$shift->start_time}–{$shift->end_time}\n💰 R$ ".($shift->daily_rate + 0)." diária\n\n".route('shifts.show', $shift->id)) }}), '_blank')"
+            x-on:click="window.open('https://wa.me/?text=' + encodeURIComponent({{ Illuminate\Support\Js::from("Olha essa vaga no ZunMoto!\n\n📍 {$shift->venue} — {$shift->region}\n📅 ".$shift->date->isoFormat('DD/MM/YYYY')." · {$shift->timeRange()}\n💰 R$ ".($shift->daily_rate + 0)." diária\n\n".route('shifts.show', $shift->id)) }}), '_blank')"
             class="grid h-10 w-10 place-items-center rounded-xl border border-border bg-surface text-muted-foreground">
             <x-ui.icon name="share-2" class="h-4 w-4" />
         </button>
@@ -129,7 +129,7 @@
             ? 'R$ ' . number_format($shift->delivery_fee_min, 2, ',', '.')
             : 'R$ ' . number_format($shift->delivery_fee_min, 2, ',', '.') . ' a R$ ' . number_format($shift->delivery_fee_max, 2, ',', '.')" />
         <x-shift-info label="Data" :value="$shift->date->isoFormat('DD [de] MMM')" />
-        <x-shift-info label="Horário" :value="$shift->start_time . ' – ' . $shift->end_time" icon="clock" />
+        <x-shift-info label="Horário" :value="$shift->timeRange(' – ')" icon="clock" />
     </div>
 
     {{-- Benefits --}}

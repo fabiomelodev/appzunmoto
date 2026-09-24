@@ -31,7 +31,7 @@
             @php
                 $myApp = $myApplications[$v->id] ?? null;
                 $completed = $tab === 'worked' ? (bool) $myApp?->confirmed : $v->status === 'filled';
-                $expired = Carbon::parse($v->date->toDateString().' '.$v->end_time)->isPast();
+                $expired = $v->hasEnded();
                 $statusLabel = $completed ? 'Concluída' : ($expired ? 'Expirada' : 'Ativa');
                 $statusClass = $completed ? 'text-sky-400' : ($expired ? 'text-muted-foreground' : 'text-success');
             @endphp
@@ -41,7 +41,7 @@
                     <p class="truncate text-sm font-semibold">{{ $v->venue }}</p>
                     <p class="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                         <x-ui.icon name="clock" class="h-3 w-3" />
-                        {{ $v->date->isoFormat('DD [de] MMM') }} · {{ $v->start_time }}–{{ $v->end_time }}
+                        {{ $v->date->isoFormat('DD [de] MMM') }} · {{ $v->timeRange() }}
                     </p>
                 </div>
                 <div class="text-right">

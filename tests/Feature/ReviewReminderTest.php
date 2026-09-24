@@ -125,6 +125,26 @@ class ReviewReminderTest extends TestCase
         $this->assertNotNull($over->fresh()->review_reminder_sent_at);
     }
 
+    public function test_overnight_shift_is_reminded_only_after_it_ends_the_next_day(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator, ['date' => '2026-09-23', 'start_time' => '20:00', 'end_time' => '03:00']);
+        $this->confirm($shift, $courier);
+
+        // 24/09 01:00: dated yesterday, but still running.
+        Carbon::setTestNow(Carbon::create(2026, 9, 24, 1, 0, 0, 'America/Sao_Paulo'));
+        $this->artisan('reviews:send-reminders');
+        $this->assertCount(0, $this->reminders($creator));
+
+        Carbon::setTestNow(Carbon::create(2026, 9, 24, 3, 30, 0, 'America/Sao_Paulo'));
+        $this->artisan('reviews:send-reminders');
+        Carbon::setTestNow();
+
+        $this->assertCount(1, $this->reminders($creator));
+        $this->assertCount(1, $this->reminders($courier));
+    }
+
     public function test_shifts_without_a_confirmed_partnership_are_skipped(): void
     {
         $creator = $this->user('Dono');

@@ -17,7 +17,7 @@
         <div class="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary"><x-ui.icon name="bike" class="h-4 w-4" /></div>
         <div class="min-w-0 flex-1">
             <div class="truncate text-sm font-semibold">{{ $shift->venue }}</div>
-            <div class="text-[11px] text-muted-foreground">{{ $shift->region }} · {{ $shift->start_time }}–{{ $shift->end_time }}@if ($expired) · Encerrada @endif</div>
+            <div class="text-[11px] text-muted-foreground">{{ $shift->region }} · {{ $shift->timeRange() }}@if ($expired) · Encerrada @endif</div>
         </div>
         <span class="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">{{ $badge }}</span>
         <x-ui.icon name="chevron-right" class="h-4 w-4 text-muted-foreground transition {{ $isOpen ? 'rotate-90' : '' }}" />

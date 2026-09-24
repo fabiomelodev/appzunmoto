@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Models\UserAddress;
 use App\Models\VenueType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -592,6 +593,145 @@ class ShiftFlowTest extends TestCase
             ->call('save', ['couriersNeeded' => 3] + $form)
             ->assertRedirect();
         $this->assertSame(3, $shift->fresh()->couriers_needed);
+    }
+
+    protected function createShiftForm(array $overrides = []): array
+    {
+        return array_merge([
+            'date' => now()->addDay()->toDateString(),
+            'startTime' => '18:00', 'endTime' => '23:00',
+            'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
+            'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
+            'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
+        ], $overrides);
+    }
+
+    protected function createComponentFor(User $user)
+    {
+        $address = UserAddress::create([
+            'user_id' => $user->id, 'label' => 'Pizzaria', 'street' => 'Av A', 'number' => '1',
+            'district' => 'Centro', 'city' => 'SP',
+        ]);
+        $this->actingAs($user);
+
+        return Livewire::withQueryParams(['as' => 'business', 'address' => $address->id])->test(Create::class);
+    }
+
+    public function test_create_shift_rejects_identical_start_and_end_times(): void
+    {
+        $this->createComponentFor($this->user('Dono'))
+            ->call('save', $this->createShiftForm(['startTime' => '18:00', 'endTime' => '18:00']))
+            ->assertDispatched('toast', message: 'O horário final não pode ser igual ao horário de início.');
+
+        $this->assertDatabaseCount('shifts', 0);
+    }
+
+    public function test_create_shift_accepts_an_overnight_window_and_it_ends_the_next_day(): void
+    {
+        $this->createComponentFor($this->user('Dono'))
+            ->call('save', $this->createShiftForm(['date' => '2099-09-24', 'startTime' => '20:00', 'endTime' => '03:00']));
+
+        $shift = Shift::firstOrFail();
+        $this->assertSame('2099-09-24', $shift->date->toDateString());
+        $this->assertTrue($shift->crossesMidnight());
+        $this->assertSame('2099-09-25 03:00', $shift->endsAt()->format('Y-m-d H:i'));
+        $this->assertSame('20:00–03:00 (+1 dia)', $shift->timeRange());
+    }
+
+    public function test_same_day_shift_does_not_cross_midnight(): void
+    {
+        $shift = $this->shift($this->user('Dono'), ['date' => '2099-09-24', 'start_time' => '18:00', 'end_time' => '23:00']);
+
+        $this->assertFalse($shift->crossesMidnight());
+        $this->assertSame('2099-09-24 23:00', $shift->endsAt()->format('Y-m-d H:i'));
+        $this->assertSame('18:00–23:00', $shift->timeRange());
+    }
+
+    public function test_overnight_shifts_conflict_across_the_date_boundary(): void
+    {
+        $creator = $this->user('Dono');
+        $this->shift($creator, ['venue' => 'Pizzaria X', 'date' => '2099-09-24', 'start_time' => '20:00', 'end_time' => '03:00']);
+        $component = $this->createComponentFor($creator);
+        $component->set('venue', 'Pizzaria X');
+
+        // Next-day 01:00–05:00 overlaps the tail of the overnight shift.
+        $component->call('save', $this->createShiftForm(['date' => '2099-09-25', 'startTime' => '01:00', 'endTime' => '05:00']))
+            ->assertDispatched('toast', message: 'Você já tem uma vaga neste local nesse mesmo horário.');
+        $this->assertDatabaseCount('shifts', 1);
+
+        // Touching edges (starts when the other ends) and other hours don't conflict.
+        $component->call('save', $this->createShiftForm(['date' => '2099-09-25', 'startTime' => '03:00', 'endTime' => '07:00']));
+        $component->call('save', $this->createShiftForm(['date' => '2099-09-24', 'startTime' => '10:00', 'endTime' => '15:00']));
+        $this->assertDatabaseCount('shifts', 3);
+    }
+
+    public function test_listing_keeps_an_overnight_shift_until_it_ends_the_next_day(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $courier->profile->update(['vehicle' => 'moto', 'has_bag' => true]);
+        $this->shift($creator, ['venue' => 'Vaga Madrugada', 'date' => '2026-09-24', 'start_time' => '20:00', 'end_time' => '03:00']);
+        $this->actingAs($courier);
+
+        // Already 25/09 01:00 — dated yesterday but still running.
+        Carbon::setTestNow(Carbon::create(2026, 9, 25, 1, 0, 0, 'America/Sao_Paulo'));
+        Livewire::test(Index::class)->assertSee('Vaga Madrugada');
+
+        Carbon::setTestNow(Carbon::create(2026, 9, 25, 3, 30, 0, 'America/Sao_Paulo'));
+        Livewire::test(Index::class)->assertDontSee('Vaga Madrugada');
+
+        Carbon::setTestNow();
+    }
+
+    public function test_an_overnight_shift_is_not_over_before_its_next_day_end(): void
+    {
+        $shift = $this->shift($this->user('Dono'), ['date' => '2026-09-24', 'start_time' => '20:00', 'end_time' => '03:00']);
+
+        Carbon::setTestNow(Carbon::create(2026, 9, 24, 23, 0, 0, 'America/Sao_Paulo'));
+        $this->assertFalse($shift->hasEnded());
+
+        Carbon::setTestNow(Carbon::create(2026, 9, 25, 3, 1, 0, 'America/Sao_Paulo'));
+        $this->assertTrue($shift->hasEnded());
+
+        Carbon::setTestNow();
+    }
+
+    public function test_create_shift_starting_soon_is_accepted_in_sao_paulo_time(): void
+    {
+        // 12:00 in São Paulo is 15:00 UTC: a 13:00 start is still an hour away.
+        Carbon::setTestNow(Carbon::create(2026, 9, 24, 12, 0, 0, 'America/Sao_Paulo'));
+
+        $this->createComponentFor($this->user('Dono'))
+            ->call('save', $this->createShiftForm([
+                'date' => '2026-09-24', 'startTime' => '13:00', 'endTime' => '17:00',
+            ]));
+
+        Carbon::setTestNow();
+
+        $this->assertDatabaseCount('shifts', 1);
+    }
+
+    public function test_listing_keeps_a_shift_visible_until_it_really_ends_in_sao_paulo_time(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $courier->profile->update(['vehicle' => 'moto', 'has_bag' => true]);
+        $this->shift($creator, ['venue' => 'Vaga Noite', 'date' => '2026-09-24', 'start_time' => '18:00', 'end_time' => '23:30']);
+        $this->actingAs($courier);
+
+        // 20:00 São Paulo = 23:00 UTC: ends 23:30 São Paulo, so still running.
+        Carbon::setTestNow(Carbon::create(2026, 9, 24, 20, 0, 0, 'America/Sao_Paulo'));
+        Livewire::test(Index::class)->assertSee('Vaga Noite');
+
+        // 22:30 São Paulo is already 25/09 in UTC, yet today's shift must still show.
+        Carbon::setTestNow(Carbon::create(2026, 9, 24, 22, 30, 0, 'America/Sao_Paulo'));
+        Livewire::test(Index::class)->assertSee('Vaga Noite');
+
+        // 23:45 São Paulo: over.
+        Carbon::setTestNow(Carbon::create(2026, 9, 24, 23, 45, 0, 'America/Sao_Paulo'));
+        Livewire::test(Index::class)->assertDontSee('Vaga Noite');
+
+        Carbon::setTestNow();
     }
 
     public function test_create_shift_rejects_retroactive(): void

@@ -68,7 +68,7 @@ class Show extends Component
             return false;
         }
 
-        return Carbon::parse($shift->date->toDateString().' '.$shift->end_time, 'America/Sao_Paulo')->isPast();
+        return $shift->hasEnded();
     }
 
     public function send(): void
@@ -152,11 +152,11 @@ class Show extends Component
             // A confirmed partnership usually marks the shift as "filled", so we
             // must NOT exclude filled shifts here (matches the React behaviour).
             $conflict = Shift::where('id', '!=', $shift->id)
-                ->whereDate('date', $shift->date->toDateString())
+                ->whereBetween('date', [$shift->date->copy()->subDay()->toDateString(), $shift->date->copy()->addDay()->toDateString()])
                 ->whereHas('applications', fn ($q) => $q->where('user_id', $courierId)
                     ->where('status', Application::STATUS_ACCEPTED)->where('confirmed', true))
                 ->get()
-                ->first(fn ($v) => $v->start_time < $shift->end_time && $shift->start_time < $v->end_time);
+                ->first(fn ($v) => $shift->overlaps($v));
         }
 
         $alreadyReviewed = $shift && $otherId && Reviews::hasReviewed($shift, $me, $otherId);

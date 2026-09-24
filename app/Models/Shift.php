@@ -66,15 +66,64 @@ class Shift extends Model
         'edited_at' => 'datetime',
     ];
 
-    /** Date/times are stored as São Paulo wall-clock values (the app itself runs on UTC). */
+    /**
+     * Real start/end of a shift. Date and times are São Paulo wall-clock values
+     * (the app itself runs on UTC), and the date is the day it starts: an end
+     * time at or before the start time means it ends the next day (20:00–03:00).
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public static function window(string $date, string $startTime, string $endTime): array
+    {
+        $start = Carbon::parse("{$date} {$startTime}", 'America/Sao_Paulo');
+        $end = Carbon::parse("{$date} {$endTime}", 'America/Sao_Paulo');
+
+        return [$start, $end->lte($start) ? $end->addDay() : $end];
+    }
+
+    /** @return array{0: Carbon, 1: Carbon} */
+    public function timeWindow(): array
+    {
+        return self::window($this->date->toDateString(), $this->start_time, $this->end_time);
+    }
+
+    public function startsAt(): Carbon
+    {
+        return $this->timeWindow()[0];
+    }
+
     public function endsAt(): Carbon
     {
-        return Carbon::parse($this->date->toDateString().' '.$this->end_time, 'America/Sao_Paulo');
+        return $this->timeWindow()[1];
     }
 
     public function hasEnded(): bool
     {
         return $this->endsAt()->isPast();
+    }
+
+    public function crossesMidnight(): bool
+    {
+        [$start, $end] = $this->timeWindow();
+
+        return ! $start->isSameDay($end);
+    }
+
+    /** True when the two time windows share any moment (touching edges don't count). */
+    public static function windowsOverlap(array $a, array $b): bool
+    {
+        return $a[0]->lt($b[1]) && $b[0]->lt($a[1]);
+    }
+
+    public function overlaps(self $other): bool
+    {
+        return self::windowsOverlap($this->timeWindow(), $other->timeWindow());
+    }
+
+    /** "18:00–23:00", or "20:00–03:00 (+1 dia)" when it runs past midnight. */
+    public function timeRange(string $separator = '–'): string
+    {
+        return $this->start_time.$separator.$this->end_time.($this->crossesMidnight() ? ' (+1 dia)' : '');
     }
 
     // ── Relationships ─────────────────────────────────────────────
