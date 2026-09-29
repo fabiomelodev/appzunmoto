@@ -33,6 +33,11 @@
     so the floating toast below can fire regardless of where the user is. --}}
     <livewire:notification-listener />
 
+    {{-- [TEST BRANCH feature/avaliacao-obrigatoria] Mandatory review gate: a
+    non-dismissible modal blocking the app until every review this account
+    owes has been submitted. See App\Livewire\ReviewGate. --}}
+    <livewire:review-gate />
+
     {{-- Toasts (replaces sonner). Livewire: $this->dispatch('toast', message: '…', type: 'success'). --}}
     {{-- lg: the app-shell centering below assumes the full viewport width; at
     lg+ a fixed sidebar (w-64) eats the left 16rem, so the anchor point shifts

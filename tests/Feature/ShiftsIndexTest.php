@@ -30,7 +30,10 @@ class ShiftsIndexTest extends TestCase
             'creator_role' => 'business',
             'venue' => 'Local '.uniqid(),
             'region' => 'Centro',
-            'date' => now()->toDateString(),
+            // "Today" per the app's own rules (Shift::window(), Shifts/Index) is a São
+            // Paulo date, not the server's UTC one — using now() here made this file's
+            // dates disagree with the app during the UTC/SP day-boundary window.
+            'date' => now('America/Sao_Paulo')->toDateString(),
             'start_time' => '08:00',
             'end_time' => '23:59',
             'daily_rate' => 150,
@@ -51,7 +54,9 @@ class ShiftsIndexTest extends TestCase
 
         $this->makeShift(['venue' => 'VagaVisivel']);
         $this->makeShift(['venue' => 'VagaPreenchida', 'status' => 'filled']);
-        $this->makeShift(['venue' => 'VagaExpirada', 'date' => now()->subDay()->toDateString()]);
+        // 2 days back, not 1: a single day back can still be "today" in São Paulo
+        // while it's already "yesterday" in UTC, right after the UTC day rolls over.
+        $this->makeShift(['venue' => 'VagaExpirada', 'date' => now('America/Sao_Paulo')->subDays(2)->toDateString()]);
 
         $full = $this->makeShift(['venue' => 'VagaCheia', 'couriers_needed' => 1]);
         Application::create(['shift_id' => $full->id, 'user_id' => $this->creator()->id, 'status' => 'accepted']);
