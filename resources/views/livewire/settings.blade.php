@@ -177,7 +177,15 @@
                     @error('newEmail') <p class="mt-1 text-xs font-medium text-destructive">{{ $message }}</p> @enderror
                 </x-ui.field>
                 <x-ui.field label="Senha atual">
-                    <x-ui.input type="password" wire:model="currentPassword" placeholder="••••••" />
+                    <div class="relative" x-data="{ show: false }">
+                        <x-ui.input x-bind:type="show ? 'text' : 'password'" wire:model="currentPassword" placeholder="••••••" class="pr-10" />
+                        <button type="button" x-on:click="show = !show"
+                            class="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+                            :aria-label="show ? 'Ocultar senha' : 'Mostrar senha'">
+                            <x-ui.icon x-show="!show" name="eye" class="h-4 w-4" />
+                            <x-ui.icon x-show="show" x-cloak name="eye-off" class="h-4 w-4" />
+                        </button>
+                    </div>
                     @error('currentPassword') <p class="mt-1 text-xs font-medium text-destructive">{{ $message }}</p> @enderror
                 </x-ui.field>
                 <div class="flex justify-end gap-2">
@@ -197,15 +205,39 @@
             </p>
             <form wire:submit="updatePassword" class="mt-3 space-y-3">
                 <x-ui.field label="Nova senha">
-                    <x-ui.input type="password" wire:model="newPassword" placeholder="••••••" />
+                    <div class="relative" x-data="{ show: false }">
+                        <x-ui.input x-bind:type="show ? 'text' : 'password'" wire:model="newPassword" placeholder="••••••" class="pr-10" />
+                        <button type="button" x-on:click="show = !show"
+                            class="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+                            :aria-label="show ? 'Ocultar senha' : 'Mostrar senha'">
+                            <x-ui.icon x-show="!show" name="eye" class="h-4 w-4" />
+                            <x-ui.icon x-show="show" x-cloak name="eye-off" class="h-4 w-4" />
+                        </button>
+                    </div>
                     @error('newPassword') <p class="mt-1 text-xs font-medium text-destructive">{{ $message }}</p> @enderror
                 </x-ui.field>
                 <x-ui.field label="Confirmar nova senha">
-                    <x-ui.input type="password" wire:model="passwordConfirmation" placeholder="••••••" />
+                    <div class="relative" x-data="{ show: false }">
+                        <x-ui.input x-bind:type="show ? 'text' : 'password'" wire:model="passwordConfirmation" placeholder="••••••" class="pr-10" />
+                        <button type="button" x-on:click="show = !show"
+                            class="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+                            :aria-label="show ? 'Ocultar senha' : 'Mostrar senha'">
+                            <x-ui.icon x-show="!show" name="eye" class="h-4 w-4" />
+                            <x-ui.icon x-show="show" x-cloak name="eye-off" class="h-4 w-4" />
+                        </button>
+                    </div>
                 </x-ui.field>
                 @if ($hasPassword)
                     <x-ui.field label="Senha atual">
-                        <x-ui.input type="password" wire:model="currentPassword" placeholder="••••••" />
+                        <div class="relative" x-data="{ show: false }">
+                            <x-ui.input x-bind:type="show ? 'text' : 'password'" wire:model="currentPassword" placeholder="••••••" class="pr-10" />
+                            <button type="button" x-on:click="show = !show"
+                                class="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground hover:text-foreground"
+                                :aria-label="show ? 'Ocultar senha' : 'Mostrar senha'">
+                                <x-ui.icon x-show="!show" name="eye" class="h-4 w-4" />
+                                <x-ui.icon x-show="show" x-cloak name="eye-off" class="h-4 w-4" />
+                            </button>
+                        </div>
                         @error('currentPassword') <p class="mt-1 text-xs font-medium text-destructive">{{ $message }}</p> @enderror
                     </x-ui.field>
                 @endif
