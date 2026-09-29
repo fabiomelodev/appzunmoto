@@ -76,6 +76,39 @@ class Reviews
         return $couriers->contains($userId) ? collect([$shift->creator_id]) : collect();
     }
 
+    /**
+     * Every review $userId still owes, across every shift they took part in
+     * (as creator or as a confirmed courier) — used by the mandatory review
+     * gate shown on every page until it's empty.
+     *
+     * @return Collection<int, array{shift: Shift, targetId: string}>
+     */
+    public static function pendingForUser(string $userId): Collection
+    {
+        // Coarse prune only on the lower/future side — a review owed from
+        // months ago must still show up, so there's no lower bound here.
+        $today = now('America/Sao_Paulo')->toDateString();
+
+        $asCreator = Shift::where('creator_id', $userId)
+            ->whereDate('date', '<=', $today)
+            ->get();
+
+        $courierShiftIds = Application::where('user_id', $userId)
+            ->where('status', Application::STATUS_ACCEPTED)
+            ->where('confirmed', true)
+            ->pluck('shift_id');
+
+        $asCourier = Shift::whereIn('id', $courierShiftIds)
+            ->whereDate('date', '<=', $today)
+            ->get();
+
+        return $asCreator->concat($asCourier)
+            ->filter(fn (Shift $shift) => $shift->hasEnded())
+            ->flatMap(fn (Shift $shift) => self::pendingTargetIds($shift, $userId)
+                ->map(fn (string $targetId) => ['shift' => $shift, 'targetId' => $targetId]))
+            ->values();
+    }
+
     /** Which role the reviewed person played on this shift. */
     public static function targetRole(Shift $shift, string $targetId): string
     {
