@@ -37,8 +37,9 @@
                 </button>
             @endif
             <button type="button" @click="roleOpen = true" aria-label="Trocar perfil"
-                class="tap grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border bg-surface text-muted-foreground transition hover:text-foreground">
-                <x-ui.icon :name="$currentRole === 'business' ? 'store' : 'bike'" class="h-4 w-4" />
+                class="tap flex min-w-0 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground">
+                <x-ui.icon :name="$currentRole === 'business' ? 'store' : 'bike'" class="h-4 w-4 shrink-0" />
+                <span class="max-w-[100px] truncate text-[11px] font-semibold">{{ $currentRole === 'business' ? 'Estabelecimento' : 'Motoboy' }}</span>
             </button>
             <a href="{{ route('notifications') }}" wire:navigate aria-label="Notificações"
                 class="tap relative grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border bg-surface text-muted-foreground transition hover:text-foreground">
