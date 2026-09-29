@@ -89,11 +89,11 @@
                             @if ($banner->link_url)
                                 <a href="{{ $banner->link_url }}" @if ($banner->open_in_new_tab) target="_blank" rel="noopener noreferrer" @endif>
                                     <img src="{{ $banner->image_url }}" alt="{{ $banner->title ?: 'Banner' }}"
-                                        class="h-36 w-full object-cover sm:h-44 lg:h-[300px]" />
+                                        class="h-[130px] w-full object-cover sm:h-44 lg:h-[620px]" />
                                 </a>
                             @else
                                 <img src="{{ $banner->image_url }}" alt="{{ $banner->title ?: 'Banner' }}"
-                                    class="h-36 w-full object-cover sm:h-44 lg:h-[300px]" />
+                                    class="h-[130px] w-full object-cover sm:h-44 lg:h-[620px]" />
                             @endif
                         </div>
                     @endforeach
