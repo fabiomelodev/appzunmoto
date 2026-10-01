@@ -209,6 +209,83 @@ class ShiftFlowTest extends TestCase
             ->assertDontSee('Ainda ninguém demonstrou interesse.');
     }
 
+    public function test_application_step_tracks_interested_status_as_under_review(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => Application::STATUS_INTERESTED]);
+
+        $this->actingAs($courier);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('Interesse enviado')
+            ->assertSee('Em análise')
+            ->assertSee('Interesse aceito')
+            ->assertSee('Sua confirmação')
+            ->assertSee('Concluído');
+    }
+
+    public function test_application_step_tracks_acceptance_waiting_on_the_couriers_own_confirmation(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+        Application::create([
+            'shift_id' => $shift->id, 'user_id' => $courier->id,
+            'status' => Application::STATUS_ACCEPTED, 'confirmed' => false, 'confirmations' => [$creator->id],
+        ]);
+
+        $this->actingAs($courier);
+        $html = Livewire::test(Show::class, ['id' => $shift->id])->html();
+
+        // Step 4 ("Sua confirmação") is the active one: filled circles through
+        // step 4 (acceptance implies "Interesse aceito" is already done too),
+        // step 5 still outlined.
+        $this->assertStringContainsString('Sua confirmação', $html);
+        preg_match_all('/<div class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-\[11px\] font-bold ([^"]+)">/', $html, $m);
+        $this->assertCount(5, $m[1]);
+        $this->assertStringContainsString('bg-primary', $m[1][0]);
+        $this->assertStringContainsString('bg-primary', $m[1][1]);
+        $this->assertStringContainsString('bg-primary', $m[1][2]);
+        $this->assertStringContainsString('bg-primary', $m[1][3]);
+        $this->assertStringContainsString('border-border', $m[1][4]);
+    }
+
+    public function test_application_step_tracks_confirmed_partnership_as_concluded(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+        Application::create([
+            'shift_id' => $shift->id, 'user_id' => $courier->id,
+            'status' => Application::STATUS_ACCEPTED, 'confirmed' => true, 'confirmations' => [$creator->id, $courier->id],
+        ]);
+
+        $this->actingAs($courier);
+        $html = Livewire::test(Show::class, ['id' => $shift->id])->html();
+
+        preg_match_all('/<div class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-\[11px\] font-bold ([^"]+)">/', $html, $m);
+        $this->assertCount(5, $m[1]);
+        foreach ($m[1] as $classes) {
+            $this->assertStringContainsString('bg-primary', $classes);
+        }
+    }
+
+    public function test_application_step_is_hidden_for_the_creator_and_for_non_applicants(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $stranger = $this->user('Estranho');
+        $shift = $this->shift($creator);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => Application::STATUS_INTERESTED]);
+
+        $this->actingAs($creator);
+        Livewire::test(Show::class, ['id' => $shift->id])->assertDontSee('Em análise');
+
+        $this->actingAs($stranger);
+        Livewire::test(Show::class, ['id' => $shift->id])->assertDontSee('Em análise');
+    }
+
     public function test_confirm_has_bag_unblocks_registration_without_leaving_the_page(): void
     {
         $creator = $this->user('Dono');

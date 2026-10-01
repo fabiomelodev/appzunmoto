@@ -25,6 +25,24 @@
         </button>
     </div>
 
+    {{-- Courier's own application progress — same visual language as the
+    onboarding step indicator, scaled down to fit 5 steps on mobile. --}}
+    @if ($applicationStep)
+        <div class="mt-4 flex items-start justify-center rounded-2xl border border-border bg-card px-1.5 py-4">
+            @foreach ($applicationStepLabels as $num => $label)
+                @if (! $loop->first)
+                    <div class="mt-3 h-0.5 w-2 shrink-0 {{ $applicationStep > $num - 1 ? 'bg-primary' : 'bg-border' }}"></div>
+                @endif
+                <div class="flex w-12 flex-col items-center gap-1 text-center">
+                    <div class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-bold {{ $applicationStep >= $num ? 'bg-primary text-primary-foreground' : 'border border-border bg-surface text-muted-foreground' }}">
+                        {{ $num }}
+                    </div>
+                    <span class="text-[9px] font-semibold leading-tight {{ $applicationStep === $num ? 'text-foreground' : 'text-muted-foreground' }}">{{ $label }}</span>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
     {{-- Title --}}
     <div class="mt-5">
         <span class="inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ $shift->status !== 'available' ? 'bg-muted text-muted-foreground' : 'bg-success/15 text-success' }}">

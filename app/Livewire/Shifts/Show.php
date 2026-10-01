@@ -253,6 +253,20 @@ class Show extends Component
 
         $needed = $shift->couriers_needed ?? 1;
 
+        // Courier-facing progress tracker for their own application, shown at
+        // the top of the page. The creator always auto-confirms on acceptance
+        // (see Partnerships::accept()), so acceptance and "waiting on this
+        // courier's own confirmation" happen in the very same write — steps 3
+        // and 4 both land as soon as status flips to accepted, only step 4
+        // ("Sua confirmação") is the active one until this courier confirms.
+        $myApp = $shift->creator_id === $userId ? null : $apps->firstWhere('user_id', $userId);
+        $applicationStep = match (true) {
+            ! $myApp => null,
+            $myApp->status === Application::STATUS_ACCEPTED && $myApp->confirmed => 5,
+            $myApp->status === Application::STATUS_ACCEPTED => 4,
+            default => 2,
+        };
+
         // Who the viewer can review here: the creator reviews every courier
         // with a confirmed partnership, and each of those couriers reviews the
         // creator — only once the shift is over.
@@ -289,6 +303,14 @@ class Show extends Component
             'userVehicle' => $me->profile?->vehicle,
             'interested' => $interested,
             'contact' => in_array($userId, $acceptedIds, true) ? $shift->contact : null,
+            'applicationStep' => $applicationStep,
+            'applicationStepLabels' => [
+                1 => 'Interesse enviado',
+                2 => 'Em análise',
+                3 => 'Interesse aceito',
+                4 => 'Sua confirmação',
+                5 => 'Concluído',
+            ],
         ];
 
         return view('livewire.shifts.show', $vm);
