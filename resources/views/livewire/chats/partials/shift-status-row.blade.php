@@ -7,8 +7,16 @@
     $unread = $chat['unread'] ?? 0;
 
     if ($mode === 'interested') {
-        $statusLabel = $expired ? 'Expirada' : 'Em análise';
-        $statusClass = $expired ? 'text-muted-foreground' : 'text-primary';
+        // Same stages as the stepper on the shift page.
+        if ($myApp?->status === 'accepted' && $myApp->confirmed) {
+            [$statusLabel, $statusClass] = ['Concluída', 'text-sky-400'];
+        } elseif ($expired) {
+            [$statusLabel, $statusClass] = ['Expirada', 'text-muted-foreground'];
+        } elseif ($myApp?->status === 'accepted') {
+            [$statusLabel, $statusClass] = ['Confirme', 'text-success'];
+        } else {
+            [$statusLabel, $statusClass] = ['Em análise', 'text-primary'];
+        }
     } else {
         $completed = $mode === 'worked' ? (bool) $myApp?->confirmed : $v->status === 'filled';
         $statusLabel = $completed ? 'Concluída' : ($expired ? 'Expirada' : 'Ativa');

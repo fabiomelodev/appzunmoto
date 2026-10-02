@@ -143,20 +143,28 @@ class ChatFlowTest extends TestCase
             ->assertSee('Vaga Encerrada');
     }
 
-    public function test_interessadas_tab_lists_only_still_pending_applications(): void
+    public function test_interessadas_tab_follows_every_application_through_its_stages(): void
     {
         $creator = $this->user('Dono');
         $courier = $this->user('Moto');
+        $other = $this->user('Outro');
         $pending = $this->shift($creator, ['venue' => 'Aguardando Analise']);
         $accepted = $this->shift($creator, ['venue' => 'Ja Aceita']);
+        $done = $this->shift($creator, ['venue' => 'Ja Confirmada']);
+        $notMine = $this->shift($creator, ['venue' => 'De Outro Motoboy']);
         Application::create(['shift_id' => $pending->id, 'user_id' => $courier->id, 'status' => 'interested']);
-        Application::create(['shift_id' => $accepted->id, 'user_id' => $courier->id, 'status' => 'accepted']);
+        Application::create(['shift_id' => $accepted->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => false]);
+        Application::create(['shift_id' => $done->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        Application::create(['shift_id' => $notMine->id, 'user_id' => $other->id, 'status' => 'interested']);
 
         $this->actingAs($courier);
         Livewire::test(ChatsIndex::class)
             ->call('setTab', 'interessadas')
-            ->assertSee('Aguardando Analise')
-            ->assertDontSee('Ja Aceita');
+            ->assertSee('Aguardando Analise')->assertSee('Em análise')
+            // Accepted shifts stay: the courier still has to confirm (stepper steps 3-4).
+            ->assertSee('Ja Aceita')->assertSee('Confirme')
+            ->assertSee('Ja Confirmada')->assertSee('Concluída')
+            ->assertDontSee('De Outro Motoboy');
     }
 
     public function test_interested_courier_can_reply_in_an_existing_chat_but_not_start_one(): void

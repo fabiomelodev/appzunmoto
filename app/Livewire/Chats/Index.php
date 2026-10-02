@@ -158,13 +158,13 @@ class Index extends Component
         ];
     }
 
-    /** "Vagas interessadas" tab: shifts this courier applied to and is still waiting on (not accepted yet). */
+    /** "Vagas interessadas" tab: every shift this courier applied to — pending, accepted or already confirmed — so it can be followed to the end (the row shows which step it is at). */
     #[Computed]
     public function interestedShifts()
     {
         $id = Auth::id();
 
-        return Shift::whereHas('applications', fn ($q) => $q->where('user_id', $id)->where('status', Application::STATUS_INTERESTED))
+        return Shift::whereHas('applications', fn ($q) => $q->where('user_id', $id)->whereIn('status', [Application::STATUS_INTERESTED, Application::STATUS_ACCEPTED]))
             ->where('creator_id', '!=', $id)
             ->orderByDesc('date')
             ->get();
