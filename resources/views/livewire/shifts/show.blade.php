@@ -45,14 +45,23 @@
         {{-- Same conditions as the sticky bar's "already interested" branch (see below):
         pending interest on a shift that is still open to this courier. --}}
         @if ($alreadyInterested && ! $wasAccepted && ! $expired && $shift->active && $shift->status !== 'filled' && ! $full)
-            <div class="mt-3 space-y-2">
-                <div class="flex items-center justify-center gap-1.5 rounded-md bg-green-600 p-3 text-center text-sm font-semibold text-white">
-                    <x-ui.icon name="check" class="h-4 w-4" /> Interesse registrado
+            {{-- Always side by side, even on the narrowest phones (tighter padding + smaller text there).
+            Soft tinted pair: green = status, red = the (reversible) action. --}}
+            <div class="mt-3 grid grid-cols-2 gap-2">
+                <div class="flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-green-600/40 bg-green-600/10 px-1 text-[11px] font-semibold text-green-500 sm:gap-2 sm:px-3 sm:text-sm">
+                    <span class="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-green-600 text-white sm:h-5 sm:w-5">
+                        {{-- Inline (not x-ui.icon): that component always adds h-5 w-5, which beat the smaller size here. --}}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="h-2.5 w-2.5 sm:h-3 sm:w-3">
+                            <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                    </span>
+                    <span class="truncate">Interesse registrado</span>
                 </div>
-                <x-ui.button size="lg" variant="destructive" class="w-full" wire:click="withdrawInterest"
-                    wire:loading.attr="disabled" wire:target="withdrawInterest">
-                    Remover interesse
-                </x-ui.button>
+                <button type="button" wire:click="withdrawInterest" wire:loading.attr="disabled" wire:target="withdrawInterest"
+                    class="tap flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-destructive/40 bg-destructive/10 px-1 text-[11px] font-semibold text-destructive transition hover:bg-destructive/20 active:scale-[.98] disabled:opacity-50 sm:gap-2 sm:px-3 sm:text-sm">
+                    <x-ui.icon name="arrow-left" class="h-4 w-4 shrink-0" />
+                    <span class="truncate">Remover interesse</span>
+                </button>
             </div>
         @endif
     @endif
