@@ -137,7 +137,7 @@
             <x-ui.icon name="refresh-cw" class="h-4 w-4" /> Vaga de cobertura criada por um colega motoboy
         </div>
     @else
-        <div class="mt-4 flex items-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-400/10 p-3 text-xs font-semibold text-cyan-300">
+        <div class="mt-4 flex items-center gap-2 rounded-xl border border-blue-700 bg-blue-900 p-3 text-xs font-semibold text-white">
             <x-ui.icon name="store" class="h-4 w-4" /> Vaga publicada por um estabelecimento
         </div>
     @endif
