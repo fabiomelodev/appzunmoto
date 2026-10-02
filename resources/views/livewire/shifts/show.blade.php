@@ -65,6 +65,32 @@
             </div>
         @endif
 
+        {{-- Accepted, waiting on this courier: say so and let them confirm right here
+        (the chat's "Confirmar Parceria" still works, it just isn't the only way anymore). --}}
+        @if ($awaitingMyConfirmation)
+            <div class="mt-3 rounded-2xl border border-primary/40 bg-primary/10 p-4">
+                <p class="text-sm font-bold">🎉 Você foi aceito! Falta só a sua confirmação</p>
+                <p class="mt-1 text-xs text-muted-foreground">
+                    Quem publicou a vaga já confirmou. Confirme que você vai realizar esse turno para fechar a parceria.
+                </p>
+                @if ($confirmConflict)
+                    <p class="mt-2 flex items-start gap-1.5 rounded-lg bg-amber-500/10 px-3 py-2 text-[11px] font-medium text-amber-300">
+                        <x-ui.icon name="alert-triangle" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        Você já tem uma parceria confirmada nesse horário em "{{ $confirmConflict->venue }}".
+                    </p>
+                @elseif ($expired)
+                    <p class="mt-2 text-[11px] font-medium text-muted-foreground">Esse turno já passou, não dá mais para confirmar.</p>
+                @endif
+                <x-ui.button size="lg" class="mt-3 w-full glow-orange" wire:click="confirmPartnership"
+                    wire:loading.attr="disabled" wire:target="confirmPartnership" :disabled="$confirmConflict || $expired">
+                    <x-ui.icon name="handshake" class="mr-2 h-4 w-4" /> Confirmar parceria
+                </x-ui.button>
+                <x-ui.button variant="outline" size="lg" class="mt-2 w-full" wire:click="openChat">
+                    <x-ui.icon name="message-circle" class="mr-2 h-4 w-4" /> Conversar com quem publicou
+                </x-ui.button>
+            </div>
+        @endif
+
         {{-- Reply to a message the creator already sent (accepted couriers get their own
         "Abrir conversa" in the sticky bar). The courier can't start a chat from here. --}}
         @if ($chatId && ! $wasAccepted)
@@ -335,9 +361,11 @@
             <a href="{{ route('chats.index', ['tab' => 'publicadas', 'vagaId' => $shift->id]) }}" wire:navigate>
                 <x-ui.button variant="outline" size="lg" class="w-full"><x-ui.icon name="message-circle" class="mr-2 h-4 w-4" /> Ver conversas</x-ui.button>
             </a>
+        @elseif ($wasAccepted && $awaitingMyConfirmation)
+            {{-- The confirmation card under the stepper at the top covers this state. --}}
         @elseif ($wasAccepted)
             <div class="space-y-2">
-                <div class="rounded-xl border border-success/30 bg-success/15 p-3 text-center text-sm font-bold text-success">🎉 Você foi aceito nessa vaga!</div>
+                <div class="rounded-xl border border-success/30 bg-success/15 p-3 text-center text-sm font-bold text-success">✅ Parceria confirmada!</div>
                 <x-ui.button size="lg" class="w-full glow-orange" wire:click="openChat">💬 Abrir conversa</x-ui.button>
             </div>
         @elseif ($expired)

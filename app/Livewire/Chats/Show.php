@@ -163,17 +163,7 @@ class Show extends Component
         $expired = $this->expired($shift);
 
         // Conflict: courier already has a confirmed partnership on an overlapping shift.
-        $conflict = null;
-        if ($shift && $courierId) {
-            // A confirmed partnership usually marks the shift as "filled", so we
-            // must NOT exclude filled shifts here (matches the React behaviour).
-            $conflict = Shift::where('id', '!=', $shift->id)
-                ->whereBetween('date', [$shift->date->copy()->subDay()->toDateString(), $shift->date->copy()->addDay()->toDateString()])
-                ->whereHas('applications', fn ($q) => $q->where('user_id', $courierId)
-                    ->where('status', Application::STATUS_ACCEPTED)->where('confirmed', true))
-                ->get()
-                ->first(fn ($v) => $shift->overlaps($v));
-        }
+        $conflict = ($shift && $courierId) ? Partnerships::confirmedConflict($shift, $courierId) : null;
 
         $alreadyReviewed = $shift && $otherId && Reviews::hasReviewed($shift, $me, $otherId);
         $canReview = $shift && $otherId && ! $alreadyReviewed && Reviews::canReview($shift, $me, $otherId);

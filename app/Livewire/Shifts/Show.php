@@ -7,6 +7,7 @@ use App\Models\Chat;
 use App\Models\Profile;
 use App\Models\Shift;
 use App\Support\Catalog;
+use App\Support\Partnerships;
 use App\Support\Reviews;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -149,6 +150,37 @@ class Show extends Component
         }
 
         return $this->redirect(route('chats.show', $chat->id), navigate: true);
+    }
+
+    /**
+     * The accepted courier's own half of "Confirmar Parceria", right from the shift page
+     * (the creator already confirmed when accepting). Same rules the chat applies, but
+     * enforced here on the server instead of only by a disabled button.
+     */
+    public function confirmPartnership(): void
+    {
+        $shift = $this->shift();
+        $userId = Auth::id();
+        $app = $shift->applications->firstWhere('user_id', $userId);
+
+        if (! $app || $app->status !== Application::STATUS_ACCEPTED || $app->confirmed) {
+            return;
+        }
+        if ($this->expired($shift)) {
+            $this->dispatch('toast', message: 'Esse turno já passou.', type: 'error');
+
+            return;
+        }
+        if (Partnerships::confirmedConflict($shift, $userId)) {
+            $this->dispatch('toast', message: 'Você já tem uma parceria confirmada nesse horário.', type: 'error');
+
+            return;
+        }
+
+        Partnerships::confirm($shift, $userId, $userId);
+
+        unset($this->shift);
+        $this->dispatch('toast', message: 'Parceria confirmada!');
     }
 
     public function setRating(int $value): void
@@ -309,6 +341,9 @@ class Show extends Component
             'interested' => $interested,
             'contact' => in_array($userId, $acceptedIds, true) ? $shift->contact : null,
             'applicationStep' => $applicationStep,
+            'awaitingMyConfirmation' => $applicationStep === 4,
+            'confirmConflict' => $applicationStep === 4 ? Partnerships::confirmedConflict($shift, $userId) : null,
+            'myConfirmed' => $applicationStep === 5,
             'chatId' => $applicationStep ? Chat::findBetween($shift->id, $shift->creator_id, $userId)?->id : null,
             'applicationStepLabels' => [
                 1 => 'Interesse enviado',

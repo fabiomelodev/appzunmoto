@@ -271,6 +271,75 @@ class ShiftFlowTest extends TestCase
         }
     }
 
+    public function test_accepted_courier_confirms_the_partnership_from_the_shift_page(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator, ['status' => 'reserved']);
+        Application::create([
+            'shift_id' => $shift->id, 'user_id' => $courier->id,
+            'status' => Application::STATUS_ACCEPTED, 'confirmed' => false, 'confirmations' => [$creator->id],
+        ]);
+
+        $this->actingAs($courier);
+        $component = Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('Falta só a sua confirmação')
+            ->assertSee('Confirmar parceria')
+            ->assertDontSee('Parceria confirmada!');
+
+        $component->call('confirmPartnership')
+            ->assertDispatched('toast', message: 'Parceria confirmada!')
+            ->assertDontSee('Falta só a sua confirmação')
+            ->assertSee('Parceria confirmada!');
+
+        $this->assertDatabaseHas('applications', ['shift_id' => $shift->id, 'user_id' => $courier->id, 'confirmed' => true]);
+        $this->assertSame('filled', $shift->fresh()->status);
+        // The creator is told, same as when confirming through the chat.
+        $this->assertTrue(Notification::where('user_id', $creator->id)->where('title', 'Parceria confirmada!')->exists());
+    }
+
+    public function test_confirming_from_the_shift_page_is_blocked_by_a_time_conflict_and_an_ended_shift(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+
+        $busy = $this->shift($creator, ['venue' => 'Ja Confirmada', 'date' => '2099-05-10', 'start_time' => '18:00', 'end_time' => '23:00', 'status' => 'filled']);
+        Application::create(['shift_id' => $busy->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        $clash = $this->shift($creator, ['venue' => 'Mesmo Horario', 'date' => '2099-05-10', 'start_time' => '20:00', 'end_time' => '23:30', 'status' => 'reserved']);
+        Application::create(['shift_id' => $clash->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => false, 'confirmations' => [$creator->id]]);
+
+        $this->actingAs($courier);
+        Livewire::test(Show::class, ['id' => $clash->id])
+            ->assertSee('Você já tem uma parceria confirmada nesse horário em')
+            ->assertSee('Ja Confirmada')
+            ->call('confirmPartnership')
+            ->assertDispatched('toast', message: 'Você já tem uma parceria confirmada nesse horário.', type: 'error');
+        $this->assertDatabaseHas('applications', ['shift_id' => $clash->id, 'user_id' => $courier->id, 'confirmed' => false]);
+
+        $ended = $this->shift($creator, ['venue' => 'Ja Passou', 'date' => now('America/Sao_Paulo')->subDay()->toDateString(), 'status' => 'reserved']);
+        Application::create(['shift_id' => $ended->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => false, 'confirmations' => [$creator->id]]);
+        Livewire::test(Show::class, ['id' => $ended->id])
+            ->call('confirmPartnership')
+            ->assertDispatched('toast', message: 'Esse turno já passou.', type: 'error');
+        $this->assertDatabaseHas('applications', ['shift_id' => $ended->id, 'user_id' => $courier->id, 'confirmed' => false]);
+    }
+
+    public function test_only_the_accepted_unconfirmed_courier_can_use_the_confirm_action(): void
+    {
+        $creator = $this->user('Dono');
+        $interested = $this->user('Interessado');
+        $stranger = $this->user('Estranho');
+        $shift = $this->shift($creator);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $interested->id, 'status' => Application::STATUS_INTERESTED]);
+
+        foreach ([$interested, $stranger, $creator] as $user) {
+            $this->actingAs($user);
+            Livewire::test(Show::class, ['id' => $shift->id])->call('confirmPartnership')->assertNotDispatched('toast');
+        }
+
+        $this->assertDatabaseHas('applications', ['user_id' => $interested->id, 'status' => 'interested', 'confirmed' => false]);
+    }
+
     public function test_application_step_is_hidden_for_the_creator_and_for_non_applicants(): void
     {
         $creator = $this->user('Dono');
