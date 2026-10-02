@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 class Chat extends Model
 {
@@ -21,6 +22,8 @@ class Chat extends Model
 
     protected $casts = [
         'created_at' => 'datetime',
+        'user_a_read_at' => 'datetime',
+        'user_b_read_at' => 'datetime',
     ];
 
     public function shift(): BelongsTo
@@ -52,6 +55,45 @@ class Chat extends Model
             'user_a' => $pair[0],
             'user_b' => $pair[1],
         ]);
+    }
+
+    /** Same lookup as findOrCreateBetween(), but never creates one. */
+    public static function findBetween(string $shiftId, string $first, string $second): ?self
+    {
+        $pair = collect([$first, $second])->sort()->values();
+
+        return static::where('shift_id', $shiftId)->where('user_a', $pair[0])->where('user_b', $pair[1])->first();
+    }
+
+    private function readColumnFor(string $userId): string
+    {
+        return $this->user_a === $userId ? 'user_a_read_at' : 'user_b_read_at';
+    }
+
+    /** Marks everything in this conversation as read by $userId, as of now. */
+    public function markReadBy(string $userId): void
+    {
+        $this->forceFill([$this->readColumnFor($userId) => now()])->saveQuietly();
+    }
+
+    /**
+     * Unread messages per chat for $userId (messages from the other person written after
+     * this user's read marker), keyed by chat id. Chats with nothing unread are omitted.
+     *
+     * @param  array<int, string>|null  $chatIds  limit to these chats (null = all of the user's)
+     * @return Collection<string, int>
+     */
+    public static function unreadCountsFor(string $userId, ?array $chatIds = null): Collection
+    {
+        return Message::query()
+            ->join('chats', 'chats.id', '=', 'messages.chat_id')
+            ->where(fn ($q) => $q->where('chats.user_a', $userId)->orWhere('chats.user_b', $userId))
+            ->where('messages.author_id', '!=', $userId)
+            ->whereRaw("messages.created_at > COALESCE(CASE WHEN chats.user_a = ? THEN chats.user_a_read_at ELSE chats.user_b_read_at END, '1970-01-01')", [$userId])
+            ->when($chatIds !== null, fn ($q) => $q->whereIn('messages.chat_id', $chatIds))
+            ->groupBy('messages.chat_id')
+            ->selectRaw('messages.chat_id, COUNT(*) as unread')
+            ->pluck('unread', 'chat_id');
     }
 
     public function hasParticipant(string $userId): bool

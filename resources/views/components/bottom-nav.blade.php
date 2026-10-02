@@ -17,9 +17,12 @@
             @foreach ($items as $item)
                 @php $active = request()->routeIs($item['pattern']); @endphp
                 <a href="{{ route($item['route']) }}" wire:navigate
-                    class="tap flex flex-col items-center justify-center gap-0.5 py-3 text-[10px] transition {{ $active ? 'text-primary' : 'text-muted-foreground hover:text-foreground' }} {{ $item['class'] ?? '' }}">
+                    class="tap relative flex flex-col items-center justify-center gap-0.5 py-3 text-[10px] transition {{ $active ? 'text-primary' : 'text-muted-foreground hover:text-foreground' }} {{ $item['class'] ?? '' }}">
                     <x-ui.icon :name="$item['icon']" :stroke="$active ? 2.4 : 1.8" class="h-5 w-5" />
                     <span class="font-medium">{{ $item['label'] }}</span>
+                    @if ($item['route'] === 'chats.index')
+                        <livewire:chat-unread-badge class="absolute left-1/2 top-1.5 ml-1.5" />
+                    @endif
                 </a>
             @endforeach
 

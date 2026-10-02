@@ -9,6 +9,7 @@
     $confirmedCount = $accepted->where('confirmed', true)->count();
     $ordered = $accepted->concat($interested);
     $isOpen = $openShift === $shift->id;
+    $unreadShift = ($unread['byShift'][$shift->id] ?? 0);
     $badge = $needed > 1 ? $acceptedCount.'/'.$needed : $interested->count();
 @endphp
 <div wire:key="shiftrow-{{ $shift->id }}" class="overflow-hidden rounded-2xl border border-border bg-card {{ $expired ? 'opacity-70' : '' }}">
@@ -19,6 +20,7 @@
             <div class="truncate text-sm font-semibold">{{ $shift->venue }}</div>
             <div class="text-[11px] text-muted-foreground">{{ $shift->region }} · {{ $shift->timeRange() }}@if ($expired) · Encerrada @endif</div>
         </div>
+        <x-count-badge :count="$unreadShift" title="Mensagens não lidas" />
         <span class="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">{{ $badge }}</span>
         <x-ui.icon name="chevron-right" class="h-4 w-4 text-muted-foreground transition {{ $isOpen ? 'rotate-90' : '' }}" />
     </button>
@@ -92,6 +94,7 @@
                         <button type="button" wire:click="openChatWith('{{ $shift->id }}', '{{ $app->user_id }}')"
                             class="flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition hover:bg-primary/20">
                             <x-ui.icon name="message-circle" class="h-3.5 w-3.5" /> Conversar com {{ $first }}
+                            <x-count-badge :count="$unread['byCandidate'][$shift->id.'|'.$app->user_id] ?? 0" class="ml-1" />
                         </button>
                     @endif
                 </div>

@@ -25,6 +25,81 @@
         </button>
     </div>
 
+    {{-- Courier's own application progress — same visual language as the
+    onboarding step indicator, scaled down to fit 5 steps on mobile. --}}
+    @if ($applicationStep)
+        <div class="mt-4 flex items-start justify-center rounded-2xl border border-border bg-card px-1.5 py-4">
+            @foreach ($applicationStepLabels as $num => $label)
+                @if (! $loop->first)
+                    <div class="mt-3 h-0.5 w-2 shrink-0 {{ $applicationStep > $num - 1 ? 'bg-primary' : 'bg-border' }}"></div>
+                @endif
+                <div class="flex w-12 flex-col items-center gap-1 text-center">
+                    <div class="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[11px] font-bold {{ $applicationStep >= $num ? 'bg-primary text-primary-foreground' : 'border border-border bg-surface text-muted-foreground' }}">
+                        {{ $num }}
+                    </div>
+                    <span class="text-[9px] font-semibold leading-tight {{ $applicationStep === $num ? 'text-foreground' : 'text-muted-foreground' }}">{{ $label }}</span>
+                </div>
+            @endforeach
+        </div>
+
+        {{-- Same conditions as the sticky bar's "already interested" branch (see below):
+        pending interest on a shift that is still open to this courier. --}}
+        @if ($alreadyInterested && ! $wasAccepted && ! $expired && $shift->active && $shift->status !== 'filled' && ! $full)
+            {{-- Always side by side, even on the narrowest phones (tighter padding + smaller text there).
+            Soft tinted pair: green = status, red = the (reversible) action. --}}
+            <div class="mt-3 grid grid-cols-2 gap-2">
+                <div class="flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-green-600/40 bg-green-600/10 px-1 text-[11px] font-semibold text-green-500 sm:gap-2 sm:px-3 sm:text-sm">
+                    <span class="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-green-600 text-white sm:h-5 sm:w-5">
+                        {{-- Inline (not x-ui.icon): that component always adds h-5 w-5, which beat the smaller size here. --}}
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="h-2.5 w-2.5 sm:h-3 sm:w-3">
+                            <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                    </span>
+                    <span class="truncate">Interesse registrado</span>
+                </div>
+                <button type="button" wire:click="withdrawInterest" wire:loading.attr="disabled" wire:target="withdrawInterest"
+                    class="tap flex h-11 min-w-0 items-center justify-center gap-1.5 rounded-xl border border-destructive/40 bg-destructive/10 px-1 text-[11px] font-semibold text-destructive transition hover:bg-destructive/20 active:scale-[.98] disabled:opacity-50 sm:gap-2 sm:px-3 sm:text-sm">
+                    <x-ui.icon name="arrow-left" class="h-4 w-4 shrink-0" />
+                    <span class="truncate">Remover interesse</span>
+                </button>
+            </div>
+        @endif
+
+        {{-- Accepted, waiting on this courier: say so and let them confirm right here
+        (the chat's "Confirmar Parceria" still works, it just isn't the only way anymore). --}}
+        @if ($awaitingMyConfirmation)
+            <div class="mt-3 rounded-2xl border border-primary/40 bg-primary/10 p-4">
+                <p class="text-sm font-bold">🎉 Você foi aceito! Falta só a sua confirmação</p>
+                <p class="mt-1 text-xs text-muted-foreground">
+                    Quem publicou a vaga já confirmou. Confirme que você vai realizar esse turno para fechar a parceria.
+                </p>
+                @if ($confirmConflict)
+                    <p class="mt-2 flex items-start gap-1.5 rounded-lg bg-amber-500/10 px-3 py-2 text-[11px] font-medium text-amber-300">
+                        <x-ui.icon name="alert-triangle" class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        Você já tem uma parceria confirmada nesse horário em "{{ $confirmConflict->venue }}".
+                    </p>
+                @elseif ($expired)
+                    <p class="mt-2 text-[11px] font-medium text-muted-foreground">Esse turno já passou, não dá mais para confirmar.</p>
+                @endif
+                <x-ui.button size="lg" class="mt-3 w-full glow-orange" wire:click="confirmPartnership"
+                    wire:loading.attr="disabled" wire:target="confirmPartnership" :disabled="$confirmConflict || $expired">
+                    <x-ui.icon name="handshake" class="mr-2 h-4 w-4" /> Confirmar parceria
+                </x-ui.button>
+                <x-ui.button variant="outline" size="lg" class="mt-2 w-full" wire:click="openChat">
+                    <x-ui.icon name="message-circle" class="mr-2 h-4 w-4" /> Conversar com quem publicou
+                </x-ui.button>
+            </div>
+        @endif
+
+        {{-- Reply to a message the creator already sent (accepted couriers get their own
+        "Abrir conversa" in the sticky bar). The courier can't start a chat from here. --}}
+        @if ($chatId && ! $wasAccepted)
+            <a href="{{ route('chats.show', $chatId) }}" wire:navigate class="mt-2 block">
+                <x-ui.button variant="outline" size="lg" class="w-full"><x-ui.icon name="message-circle" class="mr-2 h-4 w-4" /> Abrir conversa</x-ui.button>
+            </a>
+        @endif
+    @endif
+
     {{-- Title --}}
     <div class="mt-5">
         <span class="inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase {{ $shift->status !== 'available' ? 'bg-muted text-muted-foreground' : 'bg-success/15 text-success' }}">
@@ -62,7 +137,7 @@
             <x-ui.icon name="refresh-cw" class="h-4 w-4" /> Vaga de cobertura criada por um colega motoboy
         </div>
     @else
-        <div class="mt-4 flex items-center gap-2 rounded-xl border border-cyan-400/40 bg-cyan-400/10 p-3 text-xs font-semibold text-cyan-300">
+        <div class="mt-4 flex items-center gap-2 rounded-xl border border-blue-700 bg-blue-900 p-3 text-xs font-semibold text-white">
             <x-ui.icon name="store" class="h-4 w-4" /> Vaga publicada por um estabelecimento
         </div>
     @endif
@@ -204,7 +279,7 @@
             <div class="mb-2 flex items-center justify-between">
                 <h3 class="text-sm font-semibold">Motoboys interessados <span class="text-muted-foreground">({{ $interested->count() }})</span></h3>
                 @if ($interested->count() > 0)
-                    <a href="{{ route('chats.index') }}" wire:navigate class="flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-semibold text-primary transition hover:bg-primary/25">
+                    <a href="{{ route('chats.index', ['tab' => 'publicadas', 'vagaId' => $shift->id]) }}" wire:navigate class="flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-semibold text-primary transition hover:bg-primary/25">
                         <x-ui.icon name="users" class="h-3 w-3" /> Gerenciar
                     </a>
                 @endif
@@ -283,12 +358,14 @@
     layouts/app.blade.php for the same adjustment. --}}
     <div class="app-shell fixed bottom-20 left-1/2 z-30 -translate-x-1/2 px-4 lg:bottom-6 lg:left-[calc(50%+8rem)]">
         @if ($isCreator)
-            <a href="{{ route('chats.index') }}" wire:navigate>
+            <a href="{{ route('chats.index', ['tab' => 'publicadas', 'vagaId' => $shift->id]) }}" wire:navigate>
                 <x-ui.button variant="outline" size="lg" class="w-full"><x-ui.icon name="message-circle" class="mr-2 h-4 w-4" /> Ver conversas</x-ui.button>
             </a>
+        @elseif ($wasAccepted && $awaitingMyConfirmation)
+            {{-- The confirmation card under the stepper at the top covers this state. --}}
         @elseif ($wasAccepted)
             <div class="space-y-2">
-                <div class="rounded-xl border border-success/30 bg-success/15 p-3 text-center text-sm font-bold text-success">🎉 Você foi aceito nessa vaga!</div>
+                <div class="rounded-xl border border-success/30 bg-success/15 p-3 text-center text-sm font-bold text-success">✅ Parceria confirmada!</div>
                 <x-ui.button size="lg" class="w-full glow-orange" wire:click="openChat">💬 Abrir conversa</x-ui.button>
             </div>
         @elseif ($expired)
@@ -298,15 +375,7 @@
         @elseif ($shift->status === 'filled' || $full)
             <x-ui.button size="lg" class="w-full" disabled>{{ $shift->status === 'filled' ? 'Vaga preenchida' : 'Vagas esgotadas' }}</x-ui.button>
         @elseif ($alreadyInterested)
-            <div class="space-y-2">
-                <div class="flex items-center justify-center gap-1.5 rounded-md bg-green-600 p-3 text-center text-sm font-semibold text-white">
-                    <x-ui.icon name="check" class="h-4 w-4" /> Interesse registrado
-                </div>
-                <x-ui.button size="lg" variant="destructive" class="w-full" wire:click="withdrawInterest"
-                    wire:loading.attr="disabled" wire:target="withdrawInterest">
-                    Remover interesse
-                </x-ui.button>
-            </div>
+            {{-- "Interesse registrado" / "Remover interesse" render inline under the stepper at the top. --}}
         @elseif ($isBusinessProfile)
             <div class="space-y-2">
                 <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="lock" class="mr-2 h-4 w-4" /> Disponível apenas para motoboys</x-ui.button>

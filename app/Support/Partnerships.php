@@ -106,6 +106,20 @@ class Partnerships
         return $filled;
     }
 
+    /**
+     * A shift the courier has already confirmed that overlaps this one. A confirmed
+     * partnership usually marks its shift as "filled", so filled shifts are NOT excluded.
+     */
+    public static function confirmedConflict(Shift $shift, string $courierId): ?Shift
+    {
+        return Shift::where('id', '!=', $shift->id)
+            ->whereBetween('date', [$shift->date->copy()->subDay()->toDateString(), $shift->date->copy()->addDay()->toDateString()])
+            ->whereHas('applications', fn ($q) => $q->where('user_id', $courierId)
+                ->where('status', Application::STATUS_ACCEPTED)->where('confirmed', true))
+            ->get()
+            ->first(fn ($v) => $shift->overlaps($v));
+    }
+
     protected static function resolveCourier(Shift $shift, string $userId): ?string
     {
         if ($userId !== $shift->creator_id) {

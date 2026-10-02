@@ -116,6 +116,96 @@ class ChatFlowTest extends TestCase
         }
     }
 
+    public function test_courier_defaults_to_the_interessadas_tab_and_creator_to_publicadas(): void
+    {
+        $courier = $this->user('Moto');
+        $this->actingAs($courier);
+        Livewire::test(ChatsIndex::class)->assertSet('tab', 'interessadas');
+
+        $business = $this->user('Dono');
+        $business->profile->update(['role' => 'business']);
+        $this->actingAs($business);
+        Livewire::test(ChatsIndex::class)->assertSet('tab', 'publicadas');
+    }
+
+    public function test_publicadas_tab_lists_shifts_as_open_or_closed(): void
+    {
+        $creator = $this->user('Dono');
+        $this->shift($creator, ['venue' => 'Vaga Aberta']);
+        $this->shift($creator, ['venue' => 'Vaga Encerrada', 'status' => 'filled']);
+
+        $this->actingAs($creator);
+        Livewire::test(ChatsIndex::class)
+            ->call('setTab', 'publicadas')
+            ->assertSee('Vagas abertas')
+            ->assertSee('Vaga Aberta')
+            ->assertSee('Vagas encerradas')
+            ->assertSee('Vaga Encerrada');
+    }
+
+    public function test_interessadas_tab_follows_every_application_through_its_stages(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $other = $this->user('Outro');
+        $pending = $this->shift($creator, ['venue' => 'Aguardando Analise']);
+        $accepted = $this->shift($creator, ['venue' => 'Ja Aceita']);
+        $done = $this->shift($creator, ['venue' => 'Ja Confirmada']);
+        $notMine = $this->shift($creator, ['venue' => 'De Outro Motoboy']);
+        Application::create(['shift_id' => $pending->id, 'user_id' => $courier->id, 'status' => 'interested']);
+        Application::create(['shift_id' => $accepted->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => false]);
+        Application::create(['shift_id' => $done->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        Application::create(['shift_id' => $notMine->id, 'user_id' => $other->id, 'status' => 'interested']);
+
+        $this->actingAs($courier);
+        Livewire::test(ChatsIndex::class)
+            ->call('setTab', 'interessadas')
+            ->assertSee('Aguardando Analise')->assertSee('Em análise')
+            // Accepted shifts stay: the courier still has to confirm (stepper steps 3-4).
+            ->assertSee('Ja Aceita')->assertSee('Confirme')
+            ->assertSee('Ja Confirmada')->assertSee('Concluída')
+            ->assertDontSee('De Outro Motoboy');
+    }
+
+    public function test_interested_courier_can_reply_in_an_existing_chat_but_not_start_one(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+        $this->actingAs($courier);
+
+        // No chat yet: no button, and openChat() must not create one.
+        Livewire::test(\App\Livewire\Shifts\Show::class, ['id' => $shift->id])
+            ->assertDontSee('Abrir conversa')
+            ->call('openChat')
+            ->assertNoRedirect();
+        $this->assertDatabaseCount('chats', 0);
+
+        // The creator writes first → the courier gets the button and can open it.
+        $chat = Chat::findOrCreateBetween($shift->id, $creator->id, $courier->id);
+        Livewire::test(\App\Livewire\Shifts\Show::class, ['id' => $shift->id])
+            ->assertSee('Abrir conversa')
+            ->assertSeeHtml(route('chats.show', $chat->id))
+            ->call('openChat')
+            ->assertRedirect(route('chats.show', $chat->id));
+    }
+
+
+    public function test_a_vaga_id_query_param_opens_the_publicadas_tab_for_that_shift(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator, ['venue' => 'Vaga Alvo']);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+
+        $this->actingAs($creator);
+        $this->get(route('chats.index', ['vagaId' => $shift->id]))
+            ->assertOk()
+            ->assertSee('Vagas publicadas')
+            ->assertSee('Moto');
+    }
+
     public function test_decline_removes_application(): void
     {
         $creator = $this->user('Dono');

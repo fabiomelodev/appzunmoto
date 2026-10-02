@@ -58,7 +58,7 @@ class Notification extends Model
         }
         if ($this->type === 'vaga') {
             if (! empty($payload['shift_id'])) {
-                return route('chats.index', ['tab' => 'candidaturas', 'vagaId' => $payload['shift_id']]);
+                return route('chats.index', ['tab' => 'publicadas', 'vagaId' => $payload['shift_id']]);
             }
 
             return route('shifts.index');
