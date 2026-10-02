@@ -3,6 +3,8 @@
     $interestedShifts = $this->interestedShifts;
     $historyShifts = $this->historyShifts;
     $myApplications = $this->myApplicationsByShift;
+    $interestedChats = $this->interestedChats;
+    $publishedUnread = $this->publishedUnread;
 @endphp
 
 <div class="px-4 pb-6 pt-6">
@@ -33,7 +35,7 @@
                 <x-section-title :count="$myShifts['active']->count()">Vagas abertas</x-section-title>
                 <div class="mt-2 space-y-2">
                     @forelse ($myShifts['active'] as $shift)
-                        @include('livewire.chats.partials.shift-row', ['shift' => $shift, 'expired' => false, 'openShift' => $openShift])
+                        @include('livewire.chats.partials.shift-row', ['shift' => $shift, 'expired' => false, 'openShift' => $openShift, 'unread' => $publishedUnread])
                     @empty
                         <x-empty-state icon="users" text="Você ainda não publicou nenhuma vaga aberta." />
                     @endforelse
@@ -45,7 +47,7 @@
                     <x-section-title :count="$myShifts['expired']->count()">Vagas encerradas</x-section-title>
                     <div class="mt-2 space-y-2">
                         @foreach ($myShifts['expired'] as $shift)
-                            @include('livewire.chats.partials.shift-row', ['shift' => $shift, 'expired' => true, 'openShift' => $openShift])
+                            @include('livewire.chats.partials.shift-row', ['shift' => $shift, 'expired' => true, 'openShift' => $openShift, 'unread' => $publishedUnread])
                         @endforeach
                     </div>
                 </section>
@@ -54,7 +56,7 @@
     @elseif ($tab === 'interessadas')
         <div class="mt-4 space-y-2">
             @forelse ($interestedShifts as $v)
-                @include('livewire.chats.partials.shift-status-row', ['v' => $v, 'mode' => 'interested', 'myApplications' => $myApplications])
+                @include('livewire.chats.partials.shift-status-row', ['v' => $v, 'mode' => 'interested', 'myApplications' => $myApplications, 'chat' => $interestedChats[$v->id] ?? null])
             @empty
                 <x-empty-state icon="bike" text="Você ainda não demonstrou interesse em nenhuma vaga." />
             @endforelse

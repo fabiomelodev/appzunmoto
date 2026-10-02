@@ -159,6 +159,31 @@ class ChatFlowTest extends TestCase
             ->assertDontSee('Ja Aceita');
     }
 
+    public function test_interested_courier_can_reply_in_an_existing_chat_but_not_start_one(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+        $this->actingAs($courier);
+
+        // No chat yet: no button, and openChat() must not create one.
+        Livewire::test(\App\Livewire\Shifts\Show::class, ['id' => $shift->id])
+            ->assertDontSee('Abrir conversa')
+            ->call('openChat')
+            ->assertNoRedirect();
+        $this->assertDatabaseCount('chats', 0);
+
+        // The creator writes first → the courier gets the button and can open it.
+        $chat = Chat::findOrCreateBetween($shift->id, $creator->id, $courier->id);
+        Livewire::test(\App\Livewire\Shifts\Show::class, ['id' => $shift->id])
+            ->assertSee('Abrir conversa')
+            ->assertSeeHtml(route('chats.show', $chat->id))
+            ->call('openChat')
+            ->assertRedirect(route('chats.show', $chat->id));
+    }
+
+
     public function test_a_vaga_id_query_param_opens_the_publicadas_tab_for_that_shift(): void
     {
         $creator = $this->user('Dono');

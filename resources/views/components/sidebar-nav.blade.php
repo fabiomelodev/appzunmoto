@@ -27,6 +27,9 @@
                 class="tap flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition {{ $active ? 'bg-accent text-primary' : 'text-muted-foreground hover:bg-surface-elevated hover:text-foreground' }}">
                 <x-ui.icon :name="$item['icon']" :stroke="$active ? 2.4 : 1.8" class="h-5 w-5" />
                 {{ $item['label'] }}
+                @if ($item['route'] === 'chats.index')
+                    <livewire:chat-unread-badge class="ml-auto" />
+                @endif
             </a>
         @endforeach
     </nav>

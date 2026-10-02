@@ -132,16 +132,21 @@ class Show extends Component
         $shift = $this->shift();
         $userId = Auth::id();
 
-        // Only a courier who was accepted on this shift may open the chat.
+        // An accepted courier may open (or start) the chat. A courier who is still
+        // only interested can just reply: the chat must already exist, i.e. the
+        // creator wrote first — they can't start one themselves.
         $accepted = $shift->applications()
             ->where('user_id', $userId)
             ->where('status', Application::STATUS_ACCEPTED)
             ->exists();
-        if (! $accepted) {
+        $chat = $accepted
+            ? Chat::findOrCreateBetween($shift->id, $shift->creator_id, $userId)
+            : ($shift->applications()->where('user_id', $userId)->exists()
+                ? Chat::findBetween($shift->id, $shift->creator_id, $userId)
+                : null);
+        if (! $chat) {
             return null;
         }
-
-        $chat = Chat::findOrCreateBetween($shift->id, $shift->creator_id, $userId);
 
         return $this->redirect(route('chats.show', $chat->id), navigate: true);
     }
@@ -304,6 +309,7 @@ class Show extends Component
             'interested' => $interested,
             'contact' => in_array($userId, $acceptedIds, true) ? $shift->contact : null,
             'applicationStep' => $applicationStep,
+            'chatId' => $applicationStep ? Chat::findBetween($shift->id, $shift->creator_id, $userId)?->id : null,
             'applicationStepLabels' => [
                 1 => 'Interesse enviado',
                 2 => 'Em análise',

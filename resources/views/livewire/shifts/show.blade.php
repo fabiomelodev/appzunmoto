@@ -64,6 +64,14 @@
                 </button>
             </div>
         @endif
+
+        {{-- Reply to a message the creator already sent (accepted couriers get their own
+        "Abrir conversa" in the sticky bar). The courier can't start a chat from here. --}}
+        @if ($chatId && ! $wasAccepted)
+            <a href="{{ route('chats.show', $chatId) }}" wire:navigate class="mt-2 block">
+                <x-ui.button variant="outline" size="lg" class="w-full"><x-ui.icon name="message-circle" class="mr-2 h-4 w-4" /> Abrir conversa</x-ui.button>
+            </a>
+        @endif
     @endif
 
     {{-- Title --}}

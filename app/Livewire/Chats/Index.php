@@ -53,7 +53,7 @@ class Index extends Component
     /** New message/application → recompute the lists (order depends on latest activity). */
     public function onSignal(): void
     {
-        unset($this->myShifts, $this->interestedShifts, $this->historyShifts);
+        unset($this->myShifts, $this->interestedShifts, $this->historyShifts, $this->interestedChats, $this->publishedUnread);
     }
 
     public function setTab(string $tab): void
@@ -168,6 +168,52 @@ class Index extends Component
             ->where('creator_id', '!=', $id)
             ->orderByDesc('date')
             ->get();
+    }
+
+
+    /**
+     * Chats the creator already opened with this courier, per interested shift (reply-only: the
+     * courier can't start one), with how many of their messages are still unread.
+     *
+     * @return \Illuminate\Support\Collection<string, array{id: string, unread: int}> keyed by shift id
+     */
+    #[Computed]
+    public function interestedChats()
+    {
+        $me = Auth::id();
+        $chats = Chat::whereIn('shift_id', $this->interestedShifts->pluck('id'))
+            ->where(fn ($q) => $q->where('user_a', $me)->orWhere('user_b', $me))
+            ->get();
+        $unread = Chat::unreadCountsFor($me, $chats->pluck('id')->all());
+
+        return $chats->mapWithKeys(fn ($c) => [$c->shift_id => ['id' => $c->id, 'unread' => (int) ($unread[$c->id] ?? 0)]]);
+    }
+
+    /**
+     * Unread counts for the creator's own shifts: total per shift, and per candidate
+     * (key "shiftId|courierId") for the "Conversar com…" buttons.
+     *
+     * @return array{byShift: array<string, int>, byCandidate: array<string, int>}
+     */
+    #[Computed]
+    public function publishedUnread(): array
+    {
+        $me = Auth::id();
+        $shiftIds = $this->myShifts['active']->merge($this->myShifts['expired'])->pluck('id');
+        $chats = Chat::whereIn('shift_id', $shiftIds)
+            ->where(fn ($q) => $q->where('user_a', $me)->orWhere('user_b', $me))
+            ->get();
+        $unread = Chat::unreadCountsFor($me, $chats->pluck('id')->all());
+
+        $byShift = [];
+        $byCandidate = [];
+        foreach ($chats as $c) {
+            $n = (int) ($unread[$c->id] ?? 0);
+            $byShift[$c->shift_id] = ($byShift[$c->shift_id] ?? 0) + $n;
+            $byCandidate[$c->shift_id.'|'.$c->otherParticipant($me)] = $n;
+        }
+
+        return compact('byShift', 'byCandidate');
     }
 
     /** "Histórico de turnos" tab — ported as-is from the old standalone History page. */
