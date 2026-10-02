@@ -19,7 +19,6 @@
     $items = [
         ...$items,
         ['route' => 'addresses', 'icon' => 'map-pin', 'label' => 'Meus Endereços', 'hint' => 'Salve endereços para acelerar suas vagas'],
-        ['route' => 'history', 'icon' => 'history', 'label' => 'Histórico de Turnos', 'hint' => 'Vagas realizadas e substituições'],
         ['route' => 'settings', 'icon' => 'settings', 'label' => 'Configurações', 'hint' => 'Tema, notificações e preferências'],
         ['route' => 'help', 'icon' => 'help-circle', 'label' => 'Ajuda e Suporte', 'hint' => 'FAQ e contato com o suporte'],
     ];

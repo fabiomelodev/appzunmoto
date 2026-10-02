@@ -142,7 +142,7 @@ class RealtimeBroadcastTest extends TestCase
             $make('mensagem', ['chat_id' => $chat->id])->resolveUrl(),
         );
         $this->assertSame(
-            route('chats.index', ['tab' => 'candidaturas', 'vagaId' => $shift->id]),
+            route('chats.index', ['tab' => 'publicadas', 'vagaId' => $shift->id]),
             $make('vaga', ['shift_id' => $shift->id])->resolveUrl(),
         );
         $this->assertSame(route('shifts.index'), $make('vaga')->resolveUrl());

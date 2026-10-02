@@ -5,6 +5,7 @@ namespace App\Livewire\Chats;
 use App\Models\Application;
 use App\Models\Chat;
 use App\Models\Message;
+use App\Models\Notification;
 use App\Models\Profile;
 use App\Models\Shift;
 use App\Support\Partnerships;
@@ -33,6 +34,13 @@ class Show extends Component
         $chat = Chat::findOrFail($id);
         abort_unless($chat->hasParticipant(Auth::id()), 403);
         $this->chatId = $id;
+
+        // Opening the conversation is reading it: moves the chat's read marker
+        // (drives the unread counters) and clears its "Nova mensagem" notifications.
+        $chat->markReadBy(Auth::id());
+        Notification::where('user_id', Auth::id())->where('type', 'mensagem')->where('read', false)
+            ->get()->filter(fn ($n) => ($n->payload['chat_id'] ?? null) === $id)
+            ->each->update(['read' => true]);
     }
 
     /** Listen on this chat's private channel for new messages (replaces polling). */
@@ -138,6 +146,14 @@ class Show extends Component
         $messages = Message::where('chat_id', $this->chatId)->orderBy('created_at')->get();
         $other = Profile::publicColumns()->find($otherId);
 
+        // Messages that arrive while the conversation is open (websocket or the 30s poll)
+        // are read as they land — otherwise leaving it would show them as new.
+        $readAt = $chat->{$chat->user_a === $me ? 'user_a_read_at' : 'user_b_read_at'};
+        if ($messages->contains(fn ($m) => $m->author_id !== $me && (! $readAt || $m->created_at->gt($readAt)))) {
+            $chat->markReadBy($me);
+            $this->dispatch('chats-read');
+        }
+
         $courierApp = ($shift && $courierId)
             ? Application::where('shift_id', $shift->id)->where('user_id', $courierId)->first()
             : null;
@@ -147,17 +163,7 @@ class Show extends Component
         $expired = $this->expired($shift);
 
         // Conflict: courier already has a confirmed partnership on an overlapping shift.
-        $conflict = null;
-        if ($shift && $courierId) {
-            // A confirmed partnership usually marks the shift as "filled", so we
-            // must NOT exclude filled shifts here (matches the React behaviour).
-            $conflict = Shift::where('id', '!=', $shift->id)
-                ->whereBetween('date', [$shift->date->copy()->subDay()->toDateString(), $shift->date->copy()->addDay()->toDateString()])
-                ->whereHas('applications', fn ($q) => $q->where('user_id', $courierId)
-                    ->where('status', Application::STATUS_ACCEPTED)->where('confirmed', true))
-                ->get()
-                ->first(fn ($v) => $shift->overlaps($v));
-        }
+        $conflict = ($shift && $courierId) ? Partnerships::confirmedConflict($shift, $courierId) : null;
 
         $alreadyReviewed = $shift && $otherId && Reviews::hasReviewed($shift, $me, $otherId);
         $canReview = $shift && $otherId && ! $alreadyReviewed && Reviews::canReview($shift, $me, $otherId);
