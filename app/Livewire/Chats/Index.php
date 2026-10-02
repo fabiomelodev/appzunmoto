@@ -2,12 +2,11 @@
 
 namespace App\Livewire\Chats;
 
+use App\Models\Application;
 use App\Models\Chat;
-use App\Models\Message;
 use App\Models\Profile;
 use App\Models\Shift;
 use App\Support\Partnerships;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -18,8 +17,13 @@ use Livewire\Component;
 #[Title('Parcerias — ZunMoto')]
 class Index extends Component
 {
-    /** 'conversas' | 'candidaturas' */
-    public string $tab = 'conversas';
+    protected const TABS = ['publicadas', 'historico', 'interessadas'];
+
+    /** 'publicadas' | 'historico' | 'interessadas' */
+    public string $tab = 'publicadas';
+
+    /** Sub-tab inside "Histórico de turnos": 'published' (Publiquei) | 'worked' (Trabalhei) — same split the old standalone History page used. */
+    public string $historyTab = 'published';
 
     public ?string $openShift = null;
 
@@ -28,10 +32,16 @@ class Index extends Component
 
     public function mount(): void
     {
-        $this->tab = request('tab') === 'candidaturas' ? 'candidaturas' : 'conversas';
+        $requested = request('tab');
+        $this->tab = in_array($requested, self::TABS, true)
+            ? $requested
+            // No shift to manage yet for a courier who never published one —
+            // land them on their own interest list instead.
+            : (Auth::user()->profile?->isBusiness() ? 'publicadas' : 'interessadas');
+
         $this->openShift = request('vagaId');
         if ($this->openShift) {
-            $this->tab = 'candidaturas';
+            $this->tab = 'publicadas';
         }
     }
 
@@ -43,12 +53,17 @@ class Index extends Component
     /** New message/application → recompute the lists (order depends on latest activity). */
     public function onSignal(): void
     {
-        unset($this->conversations, $this->myShifts);
+        unset($this->myShifts, $this->interestedShifts, $this->historyShifts);
     }
 
     public function setTab(string $tab): void
     {
-        $this->tab = $tab === 'candidaturas' ? 'candidaturas' : 'conversas';
+        $this->tab = in_array($tab, self::TABS, true) ? $tab : 'publicadas';
+    }
+
+    public function setHistoryTab(string $tab): void
+    {
+        $this->historyTab = $tab === 'worked' ? 'worked' : 'published';
     }
 
     public function toggleShift(string $shiftId): void
@@ -126,46 +141,7 @@ class Index extends Component
         return $shift->hasEnded();
     }
 
-    #[Computed]
-    public function conversations(): array
-    {
-        $me = Auth::id();
-
-        $chats = Chat::where(fn ($q) => $q->where('user_a', $me)->orWhere('user_b', $me))
-            ->with('shift')
-            ->get();
-
-        $otherIds = $chats->map(fn ($c) => $c->otherParticipant($me))->unique()->values();
-        $profiles = Profile::publicColumns()->whereIn('id', $otherIds)->get()->keyBy('id');
-
-        // Fetch only the latest message per chat (avoids loading every message).
-        $latest = Message::whereIn('chat_id', $chats->pluck('id'))
-            ->selectRaw('chat_id, MAX(created_at) as last_at')
-            ->groupBy('chat_id')
-            ->get();
-
-        $lastByChat = $latest->isEmpty()
-            ? collect()
-            : Message::where(function ($q) use ($latest) {
-                foreach ($latest as $row) {
-                    $q->orWhere(fn ($w) => $w->where('chat_id', $row->chat_id)->where('created_at', $row->last_at));
-                }
-            })->get()->keyBy('chat_id');
-
-        $items = $chats->map(fn ($c) => [
-            'chat' => $c,
-            'other' => $profiles[$c->otherParticipant($me)] ?? null,
-            'last' => $lastByChat[$c->id] ?? null,
-            'shift' => $c->shift,
-            'expired' => $this->expired($c->shift),
-        ]);
-
-        return [
-            'active' => $items->where('expired', false)->values(),
-            'expired' => $items->where('expired', true)->values(),
-        ];
-    }
-
+    /** "Vagas publicadas" tab: shifts this account created, open vs. closed. */
     #[Computed]
     public function myShifts(): array
     {
@@ -180,6 +156,39 @@ class Index extends Component
             'active' => $shifts->reject($isExpiredOrFilled)->values(),
             'expired' => $shifts->filter($isExpiredOrFilled)->values(),
         ];
+    }
+
+    /** "Vagas interessadas" tab: shifts this courier applied to and is still waiting on (not accepted yet). */
+    #[Computed]
+    public function interestedShifts()
+    {
+        $id = Auth::id();
+
+        return Shift::whereHas('applications', fn ($q) => $q->where('user_id', $id)->where('status', Application::STATUS_INTERESTED))
+            ->where('creator_id', '!=', $id)
+            ->orderByDesc('date')
+            ->get();
+    }
+
+    /** "Histórico de turnos" tab — ported as-is from the old standalone History page. */
+    #[Computed]
+    public function historyShifts()
+    {
+        $id = Auth::id();
+
+        return $this->historyTab === 'published'
+            ? Shift::where('creator_id', $id)->orderByDesc('date')->get()
+            : Shift::whereHas('applications', fn ($q) => $q->where('user_id', $id)->where('status', Application::STATUS_ACCEPTED))
+                ->where('creator_id', '!=', $id)
+                ->orderByDesc('date')
+                ->get();
+    }
+
+    /** Keyed by shift_id, used by the "Histórico" / "Trabalhei" row to tell confirmed (concluded) apart from merely accepted. */
+    #[Computed]
+    public function myApplicationsByShift()
+    {
+        return Application::where('user_id', Auth::id())->get()->keyBy('shift_id');
     }
 
     public function render()

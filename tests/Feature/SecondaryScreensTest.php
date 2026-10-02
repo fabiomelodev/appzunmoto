@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\History;
+use App\Livewire\Chats\Index as ChatsIndex;
 use App\Livewire\MapPage;
 use App\Models\Application;
 use App\Models\Contact;
@@ -58,12 +58,15 @@ class SecondaryScreensTest extends TestCase
         Application::create(['shift_id' => $worked->id, 'user_id' => $courier->id, 'status' => 'accepted']);
 
         $this->actingAs($owner);
-        Livewire::test(History::class)->assertSee('Publicada');
+        Livewire::test(ChatsIndex::class)
+            ->call('setTab', 'historico')
+            ->assertSee('Publicada');
 
         $this->actingAs($courier);
-        Livewire::test(History::class)
+        Livewire::test(ChatsIndex::class)
+            ->call('setTab', 'historico')
             ->assertDontSee('Publicada')
-            ->call('setTab', 'worked')
+            ->call('setHistoryTab', 'worked')
             ->assertSee('Trabalhada');
     }
 
@@ -83,7 +86,7 @@ class SecondaryScreensTest extends TestCase
 
         $this->actingAs($this->user('Dono'));
 
-        $this->get(route('history'))->assertOk()->assertSee('Histórico de Turnos');
+        $this->get(route('chats.index'))->assertOk()->assertSee('Histórico');
         $this->get(route('help'))->assertOk()->assertSee('Perguntas frequentes');
         $this->get(route('map'))->assertOk()->assertSee('vagas no mapa');
     }

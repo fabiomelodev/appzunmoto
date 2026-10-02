@@ -1,6 +1,8 @@
 @php
-    $conversations = $this->conversations;
     $myShifts = $this->myShifts;
+    $interestedShifts = $this->interestedShifts;
+    $historyShifts = $this->historyShifts;
+    $myApplications = $this->myApplicationsByShift;
 @endphp
 
 <div class="px-4 pb-6 pt-6">
@@ -16,53 +18,31 @@
     </div>
 
     {{-- Tabs --}}
-    <div class="mt-5 grid h-11 w-full grid-cols-2 gap-1 rounded-xl bg-surface p-1">
-        <button wire:click="setTab('conversas')"
-            class="rounded-lg text-sm font-semibold transition {{ $tab === 'conversas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Conversas</button>
-        <button wire:click="setTab('candidaturas')"
-            class="rounded-lg text-sm font-semibold transition {{ $tab === 'candidaturas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Candidaturas</button>
+    <div class="mt-5 grid h-auto w-full grid-cols-3 gap-1 rounded-xl bg-surface p-1">
+        <button wire:click="setTab('publicadas')"
+            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'publicadas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Vagas publicadas</button>
+        <button wire:click="setTab('interessadas')"
+            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'interessadas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Vagas interessadas</button>
+        <button wire:click="setTab('historico')"
+            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'historico' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Histórico de turnos</button>
     </div>
 
-    @if ($tab === 'conversas')
+    @if ($tab === 'publicadas')
         <div class="mt-4 space-y-4">
             <section>
-                <x-section-title :count="$conversations['active']->count()">Conversas ativas</x-section-title>
-                <div class="mt-2 space-y-2">
-                    @forelse ($conversations['active'] as $item)
-                        @include('livewire.chats.partials.conversation-row', ['item' => $item])
-                    @empty
-                        <x-empty-state icon="message-circle" text="Nenhuma conversa ativa." />
-                    @endforelse
-                </div>
-            </section>
-
-            @if ($conversations['expired']->isNotEmpty())
-                <section>
-                    <x-section-title :count="$conversations['expired']->count()">Histórico / Encerradas</x-section-title>
-                    <div class="mt-2 space-y-2">
-                        @foreach ($conversations['expired'] as $item)
-                            @include('livewire.chats.partials.conversation-row', ['item' => $item])
-                        @endforeach
-                    </div>
-                </section>
-            @endif
-        </div>
-    @else
-        <div class="mt-4 space-y-4">
-            <section>
-                <x-section-title :count="$myShifts['active']->count()">Vagas ativas</x-section-title>
+                <x-section-title :count="$myShifts['active']->count()">Vagas abertas</x-section-title>
                 <div class="mt-2 space-y-2">
                     @forelse ($myShifts['active'] as $shift)
                         @include('livewire.chats.partials.shift-row', ['shift' => $shift, 'expired' => false, 'openShift' => $openShift])
                     @empty
-                        <x-empty-state icon="users" text="Sem vagas ativas no momento." />
+                        <x-empty-state icon="users" text="Você ainda não publicou nenhuma vaga aberta." />
                     @endforelse
                 </div>
             </section>
 
             @if ($myShifts['expired']->isNotEmpty())
                 <section>
-                    <x-section-title :count="$myShifts['expired']->count()">Expiradas / Concluídas</x-section-title>
+                    <x-section-title :count="$myShifts['expired']->count()">Vagas encerradas</x-section-title>
                     <div class="mt-2 space-y-2">
                         @foreach ($myShifts['expired'] as $shift)
                             @include('livewire.chats.partials.shift-row', ['shift' => $shift, 'expired' => true, 'openShift' => $openShift])
@@ -70,6 +50,33 @@
                     </div>
                 </section>
             @endif
+        </div>
+    @elseif ($tab === 'interessadas')
+        <div class="mt-4 space-y-2">
+            @forelse ($interestedShifts as $v)
+                @include('livewire.chats.partials.shift-status-row', ['v' => $v, 'mode' => 'interested', 'myApplications' => $myApplications])
+            @empty
+                <x-empty-state icon="bike" text="Você ainda não demonstrou interesse em nenhuma vaga." />
+            @endforelse
+        </div>
+    @else
+        <div class="mt-4">
+            <div class="grid grid-cols-2 gap-1 rounded-xl border border-border bg-surface p-1">
+                @foreach (['published' => 'Publiquei', 'worked' => 'Trabalhei'] as $value => $label)
+                    <button wire:click="setHistoryTab('{{ $value }}')"
+                        class="rounded-lg px-3 py-2 text-xs font-semibold transition {{ $historyTab === $value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground' }}">
+                        {{ $label }}
+                    </button>
+                @endforeach
+            </div>
+
+            <div class="mt-3 space-y-2">
+                @forelse ($historyShifts as $v)
+                    @include('livewire.chats.partials.shift-status-row', ['v' => $v, 'mode' => $historyTab, 'myApplications' => $myApplications])
+                @empty
+                    <x-empty-state icon="calendar" :text="$historyTab === 'published' ? 'Você ainda não publicou nenhuma vaga.' : 'Você ainda não trabalhou em nenhuma vaga.'" />
+                @endforelse
+            </div>
         </div>
     @endif
 

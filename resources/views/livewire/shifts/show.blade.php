@@ -41,6 +41,20 @@
                 </div>
             @endforeach
         </div>
+
+        {{-- Same conditions as the sticky bar's "already interested" branch (see below):
+        pending interest on a shift that is still open to this courier. --}}
+        @if ($alreadyInterested && ! $wasAccepted && ! $expired && $shift->active && $shift->status !== 'filled' && ! $full)
+            <div class="mt-3 space-y-2">
+                <div class="flex items-center justify-center gap-1.5 rounded-md bg-green-600 p-3 text-center text-sm font-semibold text-white">
+                    <x-ui.icon name="check" class="h-4 w-4" /> Interesse registrado
+                </div>
+                <x-ui.button size="lg" variant="destructive" class="w-full" wire:click="withdrawInterest"
+                    wire:loading.attr="disabled" wire:target="withdrawInterest">
+                    Remover interesse
+                </x-ui.button>
+            </div>
+        @endif
     @endif
 
     {{-- Title --}}
@@ -222,7 +236,7 @@
             <div class="mb-2 flex items-center justify-between">
                 <h3 class="text-sm font-semibold">Motoboys interessados <span class="text-muted-foreground">({{ $interested->count() }})</span></h3>
                 @if ($interested->count() > 0)
-                    <a href="{{ route('chats.index') }}" wire:navigate class="flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-semibold text-primary transition hover:bg-primary/25">
+                    <a href="{{ route('chats.index', ['tab' => 'publicadas', 'vagaId' => $shift->id]) }}" wire:navigate class="flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-semibold text-primary transition hover:bg-primary/25">
                         <x-ui.icon name="users" class="h-3 w-3" /> Gerenciar
                     </a>
                 @endif
@@ -301,7 +315,7 @@
     layouts/app.blade.php for the same adjustment. --}}
     <div class="app-shell fixed bottom-20 left-1/2 z-30 -translate-x-1/2 px-4 lg:bottom-6 lg:left-[calc(50%+8rem)]">
         @if ($isCreator)
-            <a href="{{ route('chats.index') }}" wire:navigate>
+            <a href="{{ route('chats.index', ['tab' => 'publicadas', 'vagaId' => $shift->id]) }}" wire:navigate>
                 <x-ui.button variant="outline" size="lg" class="w-full"><x-ui.icon name="message-circle" class="mr-2 h-4 w-4" /> Ver conversas</x-ui.button>
             </a>
         @elseif ($wasAccepted)
@@ -316,15 +330,7 @@
         @elseif ($shift->status === 'filled' || $full)
             <x-ui.button size="lg" class="w-full" disabled>{{ $shift->status === 'filled' ? 'Vaga preenchida' : 'Vagas esgotadas' }}</x-ui.button>
         @elseif ($alreadyInterested)
-            <div class="space-y-2">
-                <div class="flex items-center justify-center gap-1.5 rounded-md bg-green-600 p-3 text-center text-sm font-semibold text-white">
-                    <x-ui.icon name="check" class="h-4 w-4" /> Interesse registrado
-                </div>
-                <x-ui.button size="lg" variant="destructive" class="w-full" wire:click="withdrawInterest"
-                    wire:loading.attr="disabled" wire:target="withdrawInterest">
-                    Remover interesse
-                </x-ui.button>
-            </div>
+            {{-- "Interesse registrado" / "Remover interesse" render inline under the stepper at the top. --}}
         @elseif ($isBusinessProfile)
             <div class="space-y-2">
                 <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="lock" class="mr-2 h-4 w-4" /> Disponível apenas para motoboys</x-ui.button>

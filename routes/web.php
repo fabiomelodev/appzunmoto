@@ -10,7 +10,6 @@ use App\Livewire\Auth\Login;
 use App\Livewire\Auth\ResetPassword;
 use App\Livewire\Chats\Index as ChatsIndex;
 use App\Livewire\Chats\Show as ChatsShow;
-use App\Livewire\History;
 use App\Livewire\MapPage;
 use App\Livewire\Menu;
 use App\Livewire\Notifications\Page as NotificationsPage;
@@ -111,9 +110,8 @@ Route::middleware(['auth', 'onboarded'])->group(function () {
     // Addresses (management list)
     Route::get('/addresses', AddressesIndex::class)->name('addresses');
 
-    // Map, history & help
+    // Map & help (shift history/applications now live under "Parcerias", see chats.index)
     Route::get('/map', MapPage::class)->name('map');
-    Route::get('/history', History::class)->name('history');
     Route::get('/ajuda-e-suporte', function () {
         return view('help', [
             'faqs' => Faq::active()->get(),
