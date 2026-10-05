@@ -141,7 +141,12 @@ class Index extends Component
         return $shift->hasEnded();
     }
 
-    /** "Vagas publicadas" tab: shifts this account created, open vs. closed. */
+    /**
+     * "Vagas publicadas" tab: shifts this account created, split into
+     * open (nobody confirmed yet), in progress (at least one courier confirmed the
+     * partnership and the shift hasn't happened yet — for multi-courier shifts the
+     * row still lets the creator accept the remaining slots) and closed (already over).
+     */
     #[Computed]
     public function myShifts(): array
     {
@@ -150,11 +155,14 @@ class Index extends Component
             ->latest()
             ->get();
 
-        $isExpiredOrFilled = fn ($s) => $s->status === Shift::STATUS_FILLED || $this->expired($s);
+        [$ended, $upcoming] = $shifts->partition(fn ($s) => $this->expired($s));
+        [$inProgress, $open] = $upcoming->partition(fn ($s) => $s->status === Shift::STATUS_FILLED
+            || $s->applications->contains(fn ($a) => $a->status === Application::STATUS_ACCEPTED && $a->confirmed));
 
         return [
-            'active' => $shifts->reject($isExpiredOrFilled)->values(),
-            'expired' => $shifts->filter($isExpiredOrFilled)->values(),
+            'active' => $open->values(),
+            'inProgress' => $inProgress->values(),
+            'expired' => $ended->values(),
         ];
     }
 
@@ -199,7 +207,7 @@ class Index extends Component
     public function publishedUnread(): array
     {
         $me = Auth::id();
-        $shiftIds = $this->myShifts['active']->merge($this->myShifts['expired'])->pluck('id');
+        $shiftIds = $this->myShifts['active']->merge($this->myShifts['inProgress'])->merge($this->myShifts['expired'])->pluck('id');
         $chats = Chat::whereIn('shift_id', $shiftIds)
             ->where(fn ($q) => $q->where('user_a', $me)->orWhere('user_b', $me))
             ->get();
