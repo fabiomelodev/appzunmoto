@@ -143,8 +143,9 @@ class Index extends Component
 
     /**
      * "Vagas publicadas" tab: shifts this account created, split into
-     * open (still looking / not every slot confirmed), in progress (every courier
-     * confirmed, the shift hasn't happened yet) and closed (already over).
+     * open (nobody confirmed yet), in progress (at least one courier confirmed the
+     * partnership and the shift hasn't happened yet — for multi-courier shifts the
+     * row still lets the creator accept the remaining slots) and closed (already over).
      */
     #[Computed]
     public function myShifts(): array
@@ -155,7 +156,8 @@ class Index extends Component
             ->get();
 
         [$ended, $upcoming] = $shifts->partition(fn ($s) => $this->expired($s));
-        [$inProgress, $open] = $upcoming->partition(fn ($s) => $s->status === Shift::STATUS_FILLED);
+        [$inProgress, $open] = $upcoming->partition(fn ($s) => $s->status === Shift::STATUS_FILLED
+            || $s->applications->contains(fn ($a) => $a->status === Application::STATUS_ACCEPTED && $a->confirmed));
 
         return [
             'active' => $open->values(),

@@ -134,8 +134,12 @@ class ChatFlowTest extends TestCase
         $this->shift($creator, ['venue' => 'Vaga Aberta']);
         // Every slot confirmed but the shift hasn't happened yet → in progress.
         $this->shift($creator, ['venue' => 'Vaga Andamento', 'status' => 'filled']);
-        // Partially confirmed multi-courier shift is still looking → open.
-        $this->shift($creator, ['venue' => 'Vaga Parcial', 'couriers_needed' => 2, 'status' => 'reserved']);
+        // Multi-courier shift with one courier confirmed (status not yet filled) → in progress too.
+        $partial = $this->shift($creator, ['venue' => 'Vaga Parcial', 'couriers_needed' => 2, 'status' => 'reserved']);
+        Application::create(['shift_id' => $partial->id, 'user_id' => $this->user('Moto')->id, 'status' => 'accepted', 'confirmed' => true]);
+        // Accepted but not confirmed by the courier yet → still open.
+        $waiting = $this->shift($creator, ['venue' => 'Vaga Aguardando', 'status' => 'reserved']);
+        Application::create(['shift_id' => $waiting->id, 'user_id' => $this->user('Moto2')->id, 'status' => 'accepted', 'confirmed' => false]);
         // Already over (even if it was filled) → closed.
         $this->shift($creator, ['venue' => 'Vaga Encerrada', 'status' => 'filled', 'date' => now('America/Sao_Paulo')->subDays(2)->toDateString()]);
 
@@ -147,8 +151,8 @@ class ChatFlowTest extends TestCase
             ->assertSee('Parceria confirmada')
             ->instance()->myShifts;
 
-        $this->assertSame(['Vaga Aberta', 'Vaga Parcial'], $shifts['active']->pluck('venue')->sort()->values()->all());
-        $this->assertSame(['Vaga Andamento'], $shifts['inProgress']->pluck('venue')->all());
+        $this->assertSame(['Vaga Aberta', 'Vaga Aguardando'], $shifts['active']->pluck('venue')->sort()->values()->all());
+        $this->assertSame(['Vaga Andamento', 'Vaga Parcial'], $shifts['inProgress']->pluck('venue')->sort()->values()->all());
         $this->assertSame(['Vaga Encerrada'], $shifts['expired']->pluck('venue')->all());
     }
 
