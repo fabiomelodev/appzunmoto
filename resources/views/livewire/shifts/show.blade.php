@@ -381,6 +381,14 @@
                 <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="lock" class="mr-2 h-4 w-4" /> Disponível apenas para motoboys</x-ui.button>
                 <p class="text-center text-[11px] font-medium text-muted-foreground">Você está no perfil Estabelecimento. Mude para Motoboy para se candidatar.</p>
             </div>
+        @elseif ($registerConflict)
+            <div class="space-y-2">
+                <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="lock" class="mr-2 h-4 w-4" /> Horário indisponível</x-ui.button>
+                <div class="flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-[11px] font-medium">
+                    <x-ui.icon name="alert-triangle" class="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                    <p class="text-foreground/90">Você já tem uma parceria confirmada nesse mesmo dia e horário em "{{ $registerConflict->venue }}" ({{ $registerConflict->timeRange() }}). Não é possível se interessar por outra vaga que se sobreponha a ela.</p>
+                </div>
+            </div>
         @elseif (! $compatible)
             <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="lock" class="mr-2 h-4 w-4" /> Vaga exclusiva para {{ $requiredTypeLabel }}</x-ui.button>
         @elseif ($blockedByBag)
@@ -398,8 +406,8 @@
             <x-ui.button size="lg" class="w-full glow-orange" wire:click="$set('confirmOpen', true)">Aceitar Vaga</x-ui.button>
         @endif
     </div>
-    {{-- The accepted-courier bar (banner + chat button) is taller than the others. --}}
-    <div class="{{ $wasAccepted && ! $isCreator ? 'h-32' : 'h-16' }}"></div>
+    {{-- The accepted-courier and schedule-clash bars (banner + button) are taller than the others. --}}
+    <div class="{{ ($wasAccepted && ! $isCreator) || $registerConflict ? 'h-32' : 'h-16' }}"></div>
 
     {{-- Confirm dialog --}}
     @if ($confirmOpen)

@@ -35,6 +35,15 @@ class Show extends Component
 
     public bool $confirmDeleteOpen = false;
 
+    /** Live refresh when something about this shift happens (e.g. the creator accepts the courier). */
+    public function getListeners(): array
+    {
+        return ['echo-private:user.'.Auth::id().',.notification.received' => 'onNotification'];
+    }
+
+    /** A round-trip re-runs render(), which reloads the application state and stepper. */
+    public function onNotification(): void {}
+
     public function mount(string $id): void
     {
         $this->shiftId = $id;
@@ -56,6 +65,12 @@ class Show extends Component
 
         if (! $this->canRegister($shift, $userId)) {
             $this->confirmOpen = false;
+
+            // Say why when it's a schedule clash (the page already shows it, this covers a stale tab).
+            if ($shift->creator_id !== $userId && ! $shift->applications->firstWhere('user_id', $userId)
+                && Partnerships::confirmedConflict($shift, $userId)) {
+                $this->dispatch('toast', message: 'Você já tem uma parceria confirmada nesse horário.', type: 'error');
+            }
 
             return;
         }
@@ -238,6 +253,11 @@ class Show extends Component
             return false; // already applied
         }
 
+        // Already committed (confirmed) to another shift that overlaps this one.
+        if (Partnerships::confirmedConflict($shift, $userId)) {
+            return false;
+        }
+
         return ! $this->expired($shift) && $this->compatible($shift) && ! $this->blockedByBag($shift);
     }
 
@@ -344,6 +364,8 @@ class Show extends Component
             'awaitingMyConfirmation' => $applicationStep === 4,
             'confirmConflict' => $applicationStep === 4 ? Partnerships::confirmedConflict($shift, $userId) : null,
             'myConfirmed' => $applicationStep === 5,
+            // Only matters before applying: once interested/accepted the stepper takes over.
+            'registerConflict' => (! $myApp && $shift->creator_id !== $userId) ? Partnerships::confirmedConflict($shift, $userId) : null,
             'chatId' => $applicationStep ? Chat::findBetween($shift->id, $shift->creator_id, $userId)?->id : null,
             'applicationStepLabels' => [
                 1 => 'Interesse enviado',

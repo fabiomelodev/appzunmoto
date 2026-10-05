@@ -324,6 +324,38 @@ class ShiftFlowTest extends TestCase
         $this->assertDatabaseHas('applications', ['shift_id' => $ended->id, 'user_id' => $courier->id, 'confirmed' => false]);
     }
 
+    public function test_courier_cannot_show_interest_in_a_shift_that_overlaps_a_confirmed_partnership(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $courier->profile->update(['vehicle' => 'moto', 'has_bag' => true]);
+
+        $busy = $this->shift($creator, ['venue' => 'Ja Confirmada', 'date' => '2099-05-10', 'start_time' => '18:00', 'end_time' => '23:00', 'status' => 'filled']);
+        Application::create(['shift_id' => $busy->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        $clash = $this->shift($creator, ['venue' => 'Mesmo Horario', 'date' => '2099-05-10', 'start_time' => '20:00', 'end_time' => '23:30']);
+        $free = $this->shift($creator, ['venue' => 'Outro Dia', 'date' => '2099-05-12', 'start_time' => '20:00', 'end_time' => '23:30']);
+
+        $this->actingAs($courier);
+
+        // The page explains why and offers no way to apply.
+        Livewire::test(Show::class, ['id' => $clash->id])
+            ->assertSee('Horário indisponível')
+            ->assertSee('Você já tem uma parceria confirmada nesse mesmo dia e horário em')
+            ->assertSee('Ja Confirmada')
+            ->assertDontSee('Aceitar Vaga')
+            // A stale tab / forged call is refused on the server too.
+            ->call('registerInterest')
+            ->assertDispatched('toast', message: 'Você já tem uma parceria confirmada nesse horário.', type: 'error');
+        $this->assertDatabaseMissing('applications', ['shift_id' => $clash->id, 'user_id' => $courier->id]);
+
+        // A shift that doesn't overlap is unaffected.
+        Livewire::test(Show::class, ['id' => $free->id])
+            ->assertDontSee('Horário indisponível')
+            ->call('registerInterest')
+            ->assertDispatched('toast', message: 'Interesse enviado!');
+        $this->assertDatabaseHas('applications', ['shift_id' => $free->id, 'user_id' => $courier->id, 'status' => 'interested']);
+    }
+
     public function test_only_the_accepted_unconfirmed_courier_can_use_the_confirm_action(): void
     {
         $creator = $this->user('Dono');

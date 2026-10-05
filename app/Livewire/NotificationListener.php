@@ -29,6 +29,7 @@ class NotificationListener extends Component
             title: $event['title'] ?? '',
             description: $event['description'] ?? '',
             url: $event['url'] ?? null,
+            actionLabel: $event['action_label'] ?? null,
         );
     }
 
