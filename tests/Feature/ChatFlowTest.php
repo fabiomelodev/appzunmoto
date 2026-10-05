@@ -128,19 +128,40 @@ class ChatFlowTest extends TestCase
         Livewire::test(ChatsIndex::class)->assertSet('tab', 'publicadas');
     }
 
-    public function test_publicadas_tab_lists_shifts_as_open_or_closed(): void
+    public function test_publicadas_tab_splits_shifts_into_open_in_progress_and_closed(): void
     {
         $creator = $this->user('Dono');
         $this->shift($creator, ['venue' => 'Vaga Aberta']);
-        $this->shift($creator, ['venue' => 'Vaga Encerrada', 'status' => 'filled']);
+        // Every slot confirmed but the shift hasn't happened yet → in progress.
+        $this->shift($creator, ['venue' => 'Vaga Andamento', 'status' => 'filled']);
+        // Partially confirmed multi-courier shift is still looking → open.
+        $this->shift($creator, ['venue' => 'Vaga Parcial', 'couriers_needed' => 2, 'status' => 'reserved']);
+        // Already over (even if it was filled) → closed.
+        $this->shift($creator, ['venue' => 'Vaga Encerrada', 'status' => 'filled', 'date' => now('America/Sao_Paulo')->subDays(2)->toDateString()]);
 
         $this->actingAs($creator);
-        Livewire::test(ChatsIndex::class)
-            ->call('setTab', 'publicadas')
+        $shifts = Livewire::test(ChatsIndex::class)->call('setTab', 'publicadas')
             ->assertSee('Vagas abertas')
-            ->assertSee('Vaga Aberta')
+            ->assertSee('Vagas em andamento')
             ->assertSee('Vagas encerradas')
-            ->assertSee('Vaga Encerrada');
+            ->assertSee('Parceria confirmada')
+            ->instance()->myShifts;
+
+        $this->assertSame(['Vaga Aberta', 'Vaga Parcial'], $shifts['active']->pluck('venue')->sort()->values()->all());
+        $this->assertSame(['Vaga Andamento'], $shifts['inProgress']->pluck('venue')->all());
+        $this->assertSame(['Vaga Encerrada'], $shifts['expired']->pluck('venue')->all());
+    }
+
+    public function test_publicadas_tab_hides_the_in_progress_section_when_empty(): void
+    {
+        $creator = $this->user('Dono');
+        $this->shift($creator, ['venue' => 'Vaga Aberta']);
+
+        $this->actingAs($creator);
+        Livewire::test(ChatsIndex::class)->call('setTab', 'publicadas')
+            ->assertSee('Vagas abertas')
+            ->assertDontSee('Vagas em andamento')
+            ->assertDontSee('Vagas encerradas');
     }
 
     public function test_interessadas_tab_follows_every_application_through_its_stages(): void
