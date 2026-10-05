@@ -42,6 +42,17 @@
                 </div>
             </section>
 
+            @if ($myShifts['inProgress']->isNotEmpty())
+                <section>
+                    <x-section-title :count="$myShifts['inProgress']->count()">Vagas em andamento</x-section-title>
+                    <div class="mt-2 space-y-2">
+                        @foreach ($myShifts['inProgress'] as $shift)
+                            @include('livewire.chats.partials.shift-row', ['shift' => $shift, 'expired' => false, 'inProgress' => true, 'openShift' => $openShift, 'unread' => $publishedUnread])
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
             @if ($myShifts['expired']->isNotEmpty())
                 <section>
                     <x-section-title :count="$myShifts['expired']->count()">Vagas encerradas</x-section-title>
