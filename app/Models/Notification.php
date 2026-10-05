@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Observers\NotificationObserver;
+use App\Support\Partnerships;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -49,6 +50,12 @@ class Notification extends Model
      * the browser push notification (NotificationObserver) and the realtime
      * floating toast (NotificationReceived::broadcastWith()).
      */
+    /** Label of the call-to-action on the floating toast (null → the generic "Ver agora"). */
+    public function actionLabel(): ?string
+    {
+        return $this->title === Partnerships::ACCEPTED_TITLE ? 'Confirmar parceria' : null;
+    }
+
     public function resolveUrl(): ?string
     {
         $payload = $this->payload ?? [];

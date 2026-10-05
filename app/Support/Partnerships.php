@@ -14,6 +14,9 @@ use Illuminate\Support\Collection;
  */
 class Partnerships
 {
+    /** Title of the "you were accepted" notification — the observer pushes it, the toast offers "Confirmar parceria". */
+    public const ACCEPTED_TITLE = 'Você foi aceito em uma vaga!';
+
     /** Creator accepts a courier. Returns the chat between them, or null if the shift is full. */
     public static function accept(Shift $shift, string $courierId): ?Chat
     {
@@ -52,7 +55,7 @@ class Partnerships
         Notification::create([
             'user_id' => $courierId,
             'type' => 'turno',
-            'title' => 'Você foi aceito em uma vaga!',
+            'title' => self::ACCEPTED_TITLE,
             'description' => 'Sua candidatura em "'.$shift->venue.'" foi aceita. Confirme sua presença.',
             'payload' => ['shift_id' => $shift->id],
         ]);
