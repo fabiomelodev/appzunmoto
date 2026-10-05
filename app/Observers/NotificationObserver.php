@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Events\NotificationReceived;
 use App\Models\Notification;
 use App\Notifications\PushNotification;
+use App\Support\Partnerships;
 
 /**
  * Broadcasts every new in-app notification to its recipient's private channel.
@@ -17,11 +18,11 @@ class NotificationObserver
     protected const PUSH_TYPES = ['vaga', 'nova_vaga', 'mensagem', 'avaliacao'];
 
     /**
-     * "turno" covers both "você foi aceito" and "parceria confirmada" (see
-     * Partnerships.php) — only the latter pushes for now, matched by title
-     * since the Notification model has no subtype column.
+     * "turno" covers "você foi aceito" and "parceria confirmada" (see
+     * Partnerships.php) — both push, matched by title since the Notification
+     * model has no subtype column.
      */
-    protected const PUSH_TITLES = ['Parceria confirmada!'];
+    protected const PUSH_TITLES = [Partnerships::ACCEPTED_TITLE, 'Parceria confirmada!'];
 
     public function created(Notification $notification): void
     {

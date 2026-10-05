@@ -138,7 +138,7 @@ class WebPushTest extends TestCase
         NotificationFacade::assertNotSentTo($creator, PushNotification::class);
     }
 
-    public function test_accepting_a_courier_does_not_send_a_push(): void
+    public function test_accepting_a_courier_sends_a_push_pointing_to_the_shift_page(): void
     {
         NotificationFacade::fake();
 
@@ -149,7 +149,12 @@ class WebPushTest extends TestCase
 
         Partnerships::accept($shift->fresh()->load('applications'), $courier->id);
 
-        NotificationFacade::assertNotSentTo($courier, PushNotification::class);
+        NotificationFacade::assertSentTo($courier, PushNotification::class, function (PushNotification $n) use ($courier, $shift) {
+            $data = $n->toWebPush($courier, $n)->toArray();
+
+            return $data['title'] === 'Você foi aceito em uma vaga!'
+                && $data['data']['url'] === route('shifts.show', $shift->id);
+        });
     }
 
     public function test_confirmed_partnership_sends_a_push_to_both_sides(): void

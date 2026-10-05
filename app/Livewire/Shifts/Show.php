@@ -35,6 +35,15 @@ class Show extends Component
 
     public bool $confirmDeleteOpen = false;
 
+    /** Live refresh when something about this shift happens (e.g. the creator accepts the courier). */
+    public function getListeners(): array
+    {
+        return ['echo-private:user.'.Auth::id().',.notification.received' => 'onNotification'];
+    }
+
+    /** A round-trip re-runs render(), which reloads the application state and stepper. */
+    public function onNotification(): void {}
+
     public function mount(string $id): void
     {
         $this->shiftId = $id;

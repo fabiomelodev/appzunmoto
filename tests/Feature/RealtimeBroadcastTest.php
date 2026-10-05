@@ -12,6 +12,7 @@ use App\Models\Message;
 use App\Models\Notification;
 use App\Models\Shift;
 use App\Models\User;
+use App\Support\Partnerships;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
@@ -181,5 +182,29 @@ class RealtimeBroadcastTest extends TestCase
                 'url' => '/shifts',
             ])
             ->assertDispatched('notification-toast', id: 'abc-123', title: 'Nova candidatura', description: 'Alguém se candidatou à sua vaga.', url: '/shifts');
+    }
+
+    public function test_accepted_notification_toast_offers_to_confirm_the_partnership(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+
+        Partnerships::accept($shift->fresh()->load('applications'), $courier->id);
+
+        $notification = Notification::where('user_id', $courier->id)->where('title', Partnerships::ACCEPTED_TITLE)->firstOrFail();
+        $payload = (new NotificationReceived($notification))->broadcastWith();
+        $this->assertSame(route('shifts.show', $shift->id), $payload['url']);
+        $this->assertSame('Confirmar parceria', $payload['action_label']);
+
+        // Other notifications keep the generic call-to-action.
+        $other = Notification::create(['user_id' => $courier->id, 'type' => 'turno', 'title' => 'Parceria confirmada!', 'payload' => ['shift_id' => $shift->id]]);
+        $this->assertNull((new NotificationReceived($other))->broadcastWith()['action_label']);
+
+        $this->actingAs($courier);
+        Livewire::test(NotificationListener::class)
+            ->call('onNotification', $payload)
+            ->assertDispatched('notification-toast', url: $payload['url'], actionLabel: 'Confirmar parceria');
     }
 }

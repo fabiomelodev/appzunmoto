@@ -71,7 +71,7 @@
             would just cover the keyboard/composer. --}}
             if ($event.detail.url && new URL($event.detail.url, location.origin).pathname === location.pathname) return;
             const id = (window.__notifToastId = (window.__notifToastId || 0) + 1);
-            toasts.push({ id, title: $event.detail.title, description: $event.detail.description, url: $event.detail.url });
+            toasts.push({ id, title: $event.detail.title, description: $event.detail.description, url: $event.detail.url, actionLabel: $event.detail.actionLabel });
             setTimeout(() => { toasts = toasts.filter(t => t.id !== id); }, 8000);
         "
         class="pointer-events-none fixed bottom-24 right-4 z-[60] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2 lg:bottom-6">
@@ -94,7 +94,7 @@
                 <template x-if="t.url">
                     <a :href="t.url" wire:navigate x-on:click="toasts = toasts.filter(x => x.id !== t.id)"
                         class="tap block border-t border-border px-4 py-2.5 text-center text-sm font-semibold text-primary transition hover:bg-surface">
-                        Ver agora
+                        <span x-text="t.actionLabel || 'Ver agora'"></span>
                     </a>
                 </template>
             </div>

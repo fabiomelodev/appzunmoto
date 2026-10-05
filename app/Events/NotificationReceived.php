@@ -41,6 +41,7 @@ class NotificationReceived implements ShouldBroadcastNow
             'read' => false,
             'created_at' => ($this->notification->created_at ?? now())->toIso8601String(),
             'url' => $this->notification->resolveUrl(),
+            'action_label' => $this->notification->actionLabel(),
         ];
     }
 }
