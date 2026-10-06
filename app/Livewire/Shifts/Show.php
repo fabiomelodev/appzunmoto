@@ -211,6 +211,7 @@ class Show extends Component
         }
 
         $shift->update(['active' => ! $shift->active]);
+        Partnerships::notifyPauseChange($shift);
         unset($this->shift);
         $this->dispatch('toast', message: $shift->active ? 'Vaga reativada' : 'Vaga pausada');
     }

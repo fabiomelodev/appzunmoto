@@ -44,7 +44,13 @@
 
         {{-- Same conditions as the sticky bar's "already interested" branch (see below):
         pending interest on a shift that is still open to this courier. --}}
-        @if ($alreadyInterested && ! $wasAccepted && ! $expired && $shift->active && $shift->status !== 'filled' && ! $full)
+        @if ($alreadyInterested && ! $wasAccepted && ! $expired && $shift->status !== 'filled' && ! $full)
+            @unless ($shift->active)
+                <div class="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-[11px] font-medium">
+                    <x-ui.icon name="pause" class="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                    <p class="text-foreground/90">Esta vaga foi pausada pelo estabelecimento. Seu interesse continua registrado e você pode removê-lo se quiser. Avisaremos quando ela voltar.</p>
+                </div>
+            @endunless
             {{-- Always side by side, even on the narrowest phones (tighter padding + smaller text there).
             Soft tinted pair: green = status, red = the (reversible) action. --}}
             <div class="mt-3 grid grid-cols-2 gap-2">
@@ -370,7 +376,7 @@
             </div>
         @elseif ($expired)
             <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="clock" class="mr-2 h-4 w-4" /> Esse turno já passou</x-ui.button>
-        @elseif (! $shift->active)
+        @elseif (! $shift->active && ! $alreadyInterested)
             <x-ui.button size="lg" variant="secondary" class="w-full" disabled><x-ui.icon name="pause" class="mr-2 h-4 w-4" /> Vaga pausada</x-ui.button>
         @elseif ($shift->status === 'filled' || $full)
             <x-ui.button size="lg" class="w-full" disabled>{{ $shift->status === 'filled' ? 'Vaga preenchida' : 'Vagas esgotadas' }}</x-ui.button>

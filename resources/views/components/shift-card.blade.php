@@ -162,6 +162,30 @@
         @endif
     </div>
 
+    {{-- Owner's view: how many couriers showed interest + shortcut to manage them (Parcerias). A <button>, not a link: the whole card is already an <a>. --}}
+    @if ($mine && isset($shift->candidates_count))
+        @php
+            $candidates = (int) $shift->candidates_count;
+            $pending = (int) $shift->pending_count;
+        @endphp
+        <div class="mt-3 flex items-center justify-between gap-2 rounded-xl border border-primary/25 bg-primary/10 px-3 py-2">
+            <span class="flex min-w-0 items-center gap-1.5 text-xs font-semibold {{ $pending > 0 ? 'text-primary' : 'text-muted-foreground' }}">
+                <x-ui.icon name="users" class="h-3.5 w-3.5 shrink-0" />
+                <span class="truncate">
+                    @if ($candidates === 0)
+                        Sem interessados ainda
+                    @else
+                        {{ $candidates }} {{ $candidates === 1 ? 'interessado' : 'interessados' }}@if ($pending > 0) · {{ $pending }} aguardando resposta @endif
+                    @endif
+                </span>
+            </span>
+            <button type="button" x-on:click.prevent.stop="Livewire.navigate('{{ route('chats.index', ['tab' => 'publicadas', 'vagaId' => $shift->id]) }}')"
+                class="tap shrink-0 rounded-lg bg-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground transition hover:bg-primary/90">
+                Gerenciar
+            </button>
+        </div>
+    @endif
+
     @if ($accepted)
         <div class="mt-3 flex items-start gap-2 rounded-xl border border-success/40 bg-success/10 px-3 py-2.5 text-xs font-semibold text-success">
             <x-ui.icon name="check-circle" class="mt-0.5 h-4 w-4 shrink-0" :stroke="2.4" />
