@@ -122,7 +122,7 @@
     Livewire from touching this subtree on unrelated re-renders (typing in
     the search box, etc.) so the carousel instance survives untouched. --}}
     @if ($banners->isNotEmpty())
-        <div class="relative mt-6 overflow-hidden rounded-3xl" wire:ignore
+        <div class="relative mt-6 overflow-hidden rounded-3xl border border-white/20" wire:ignore
             x-data="{
                 swiper: null,
                 async init() {
