@@ -16,6 +16,7 @@ use App\Models\Review;
 use App\Models\Shift;
 use App\Models\User;
 use App\Models\UserAddress;
+use App\Models\UserSetting;
 use App\Models\VenueType;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -1048,6 +1049,55 @@ class ShiftFlowTest extends TestCase
         // The counter is for the owner only.
         $this->actingAs($c1);
         Livewire::test(Index::class)->assertDontSee('2 interessados')->assertDontSeeHtml(e(route('chats.index', ['tab' => 'publicadas', 'vagaId' => $mine->id])));
+    }
+
+    public function test_pausing_and_resuming_notifies_couriers_with_pending_interest(): void
+    {
+        $creator = $this->user('Dono');
+        $pending = $this->user('Pendente');
+        $accepted = $this->user('Aceito');
+        $muted = $this->user('Silenciado');
+        $stranger = $this->user('Estranho');
+        UserSetting::where('user_id', $muted->id)->update(['notify_shifts' => false]);
+        $shift = $this->shift($creator, ['couriers_needed' => 2]);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $pending->id, 'status' => 'interested']);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $muted->id, 'status' => 'interested']);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $accepted->id, 'status' => 'accepted']);
+
+        $this->actingAs($creator);
+        $component = Livewire::test(Show::class, ['id' => $shift->id])->call('toggleActive')
+            ->assertDispatched('toast', message: 'Vaga pausada');
+
+        $paused = Notification::where('title', 'Vaga pausada')->get();
+        $this->assertSame([$pending->id], $paused->pluck('user_id')->all());
+        $this->assertSame(route('shifts.show', $shift->id), $paused->first()->resolveUrl());
+        $this->assertSame(0, Notification::where('user_id', $accepted->id)->where('title', 'Vaga pausada')->count());
+        $this->assertSame(0, Notification::where('user_id', $stranger->id)->count());
+
+        $component->call('toggleActive')->assertDispatched('toast', message: 'Vaga reativada');
+        $this->assertSame([$pending->id], Notification::where('title', 'Vaga reativada')->pluck('user_id')->all());
+    }
+
+    public function test_interested_courier_can_still_withdraw_from_a_paused_shift(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $courier->profile->update(['vehicle' => 'moto', 'has_bag' => true]);
+        $shift = $this->shift($creator, ['active' => false]);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+
+        $this->actingAs($courier);
+        Livewire::test(Show::class, ['id' => $shift->id])
+            ->assertSee('Esta vaga foi pausada pelo estabelecimento')
+            ->assertSee('Remover interesse')
+            ->call('withdrawInterest');
+
+        $this->assertDatabaseMissing('applications', ['shift_id' => $shift->id, 'user_id' => $courier->id]);
+
+        // Active shifts don't show the pause notice.
+        $other = $this->shift($creator);
+        Application::create(['shift_id' => $other->id, 'user_id' => $courier->id, 'status' => 'interested']);
+        Livewire::test(Show::class, ['id' => $other->id])->assertDontSee('foi pausada pelo estabelecimento');
     }
 
     public function test_creator_can_edit_shift_and_marks_edited_at(): void
