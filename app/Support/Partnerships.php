@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\Chat;
 use App\Models\Notification;
 use App\Models\Shift;
+use App\Models\UserSetting;
 use Illuminate\Support\Collection;
 
 /**
@@ -61,6 +62,36 @@ class Partnerships
         ]);
 
         return Chat::findOrCreateBetween($shift->id, $shift->creator_id, $courierId);
+    }
+
+    public const PAUSED_TITLE = 'Vaga pausada';
+    public const RESUMED_TITLE = 'Vaga reativada';
+
+    /**
+     * The owner paused/resumed a shift: tell the couriers whose interest is still
+     * pending (accepted ones have a partnership in motion, which pausing doesn't touch).
+     * Honours the "new shifts" notification preference.
+     */
+    public static function notifyPauseChange(Shift $shift): void
+    {
+        $paused = ! $shift->active;
+
+        $courierIds = $shift->applications()
+            ->where('status', Application::STATUS_INTERESTED)
+            ->pluck('user_id');
+        $muted = UserSetting::whereIn('user_id', $courierIds)->where('notify_shifts', false)->pluck('user_id');
+
+        foreach ($courierIds->diff($muted) as $courierId) {
+            Notification::create([
+                'user_id' => $courierId,
+                'type' => 'turno',
+                'title' => $paused ? self::PAUSED_TITLE : self::RESUMED_TITLE,
+                'description' => $paused
+                    ? 'O estabelecimento pausou a vaga "'.$shift->venue.'". Seu interesse continua registrado.'
+                    : 'A vaga "'.$shift->venue.'" voltou a ficar disponível.',
+                'payload' => ['shift_id' => $shift->id],
+            ]);
+        }
     }
 
     /** Creator declines (removes) a courier's application. */

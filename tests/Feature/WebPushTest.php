@@ -157,6 +157,23 @@ class WebPushTest extends TestCase
         });
     }
 
+    public function test_pausing_a_shift_pushes_the_couriers_with_pending_interest(): void
+    {
+        NotificationFacade::fake();
+
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $shift = $this->shift($creator);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+        NotificationFacade::fake(); // forget the "new interest" push to the creator
+
+        $shift->update(['active' => false]);
+        Partnerships::notifyPauseChange($shift->fresh());
+
+        NotificationFacade::assertSentTo($courier, PushNotification::class, fn (PushNotification $n) => $n->toWebPush($courier, $n)->toArray()['title'] === 'Vaga pausada');
+        NotificationFacade::assertNotSentTo($creator, PushNotification::class);
+    }
+
     public function test_confirmed_partnership_sends_a_push_to_both_sides(): void
     {
         NotificationFacade::fake();

@@ -20,13 +20,14 @@
         roleOpen: false,
         menuOpen: false,
         draft: @js($filters),
-        initial: { vehicles: [], dailyMin: '', feeMin: '', startTime: '', benefits: [], ownBag: 'any', date: '', onlyInterested: false },
+        initial: { vehicles: [], dailyMin: '', feeMin: '', startTime: '', benefits: [], ownBag: 'any', date: '', onlyInterested: false, onlyMine: false },
         openFilters() { this.filtersOpen = true; },
         toggleVehicle(v) { this.draft.vehicles = this.draft.vehicles.includes(v) ? this.draft.vehicles.filter(x => x !== v) : [...this.draft.vehicles, v]; },
         toggleBenefit(b) { this.draft.benefits = this.draft.benefits.includes(b) ? this.draft.benefits.filter(x => x !== b) : [...this.draft.benefits, b]; },
         apply() { $wire.applyFilters(this.draft); this.filtersOpen = false; },
         clear() { this.draft = JSON.parse(JSON.stringify(this.initial)); $wire.clearFilters(); },
-    }" x-init="window.mrRequestGeo && window.mrRequestGeo()">
+    }" x-init="window.mrRequestGeo && window.mrRequestGeo()"
+    @filters-synced.window="draft = JSON.parse(JSON.stringify($event.detail.filters ?? $event.detail[0]?.filters ?? draft))">
     {{-- Header --}}
     <header class="flex items-center justify-between gap-2 lg:justify-end">
         {{-- lg: a sidebar já mostra a logo (ver <x-sidebar-nav />) --}}
@@ -199,8 +200,15 @@
         </button>
     </div>
 
-    {{-- Region chips --}}
+    {{-- Region chips. "Minhas vagas (n)" is the same filter as the one in the sheet, one tap away; shown only to whoever has open shifts. --}}
     <div class="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        @if ($this->myOpenCount > 0 || ! empty($filters['onlyMine']))
+            <button wire:click="toggleMine" aria-pressed="{{ ! empty($filters['onlyMine']) ? 'true' : 'false' }}"
+                class="flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition {{ ! empty($filters['onlyMine']) ? 'border-primary bg-primary text-primary-foreground' : 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/20' }}">
+                <x-ui.icon name="store" class="h-3.5 w-3.5" />
+                Minhas vagas ({{ $this->myOpenCount }})
+            </button>
+        @endif
         <button wire:click="setRegion(null)"
             class="shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition {{ $region === null ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-surface-elevated' }}">
             Todas
@@ -240,7 +248,7 @@
                 {{-- My interest --}}
                 <div>
                     <label class="text-[11px] uppercase tracking-wider text-muted-foreground">Meu interesse</label>
-                    <button type="button" @click="draft.onlyInterested = !draft.onlyInterested"
+                    <button type="button" @click="draft.onlyInterested = !draft.onlyInterested; if (draft.onlyInterested) draft.onlyMine = false"
                         class="mt-2 flex w-full items-center justify-between rounded-xl border p-3 text-sm font-semibold transition"
                         :class="draft.onlyInterested ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 bg-input text-muted-foreground'">
                         <span class="flex items-center gap-2"><x-ui.icon name="check" class="h-4 w-4" /> Apenas vagas com meu interesse</span>
@@ -250,6 +258,19 @@
                     </button>
                 </div>
 
+                {{-- Published by me --}}
+                <div>
+                    <label class="text-[11px] uppercase tracking-wider text-muted-foreground">Minhas vagas</label>
+                    <button type="button" @click="draft.onlyMine = !draft.onlyMine; if (draft.onlyMine) draft.onlyInterested = false"
+                        class="mt-2 flex w-full items-center justify-between rounded-xl border p-3 text-sm font-semibold transition"
+                        :class="draft.onlyMine ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 bg-input text-muted-foreground'">
+                        <span class="flex items-center gap-2"><x-ui.icon name="store" class="h-4 w-4" /> Vagas publicadas por mim</span>
+                        <span class="flex h-5 w-9 items-center rounded-full p-0.5 transition" :class="draft.onlyMine ? 'bg-primary' : 'bg-muted'">
+                            <span class="h-4 w-4 rounded-full bg-background transition" :class="draft.onlyMine ? 'translate-x-4' : ''"></span>
+                        </span>
+                    </button>
+                    <p class="mt-1 text-[10px] text-muted-foreground">Mostra só as suas vagas que ainda estão abertas.</p>
+                </div>
                 {{-- Date --}}
                 <div>
                     <label class="text-[11px] uppercase tracking-wider text-muted-foreground">Data específica (opcional)</label>

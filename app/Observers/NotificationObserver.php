@@ -22,7 +22,12 @@ class NotificationObserver
      * Partnerships.php) — both push, matched by title since the Notification
      * model has no subtype column.
      */
-    protected const PUSH_TITLES = [Partnerships::ACCEPTED_TITLE, 'Parceria confirmada!'];
+    protected const PUSH_TITLES = [
+        Partnerships::ACCEPTED_TITLE,
+        'Parceria confirmada!',
+        Partnerships::PAUSED_TITLE,
+        Partnerships::RESUMED_TITLE,
+    ];
 
     public function created(Notification $notification): void
     {
