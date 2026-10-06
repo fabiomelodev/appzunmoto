@@ -154,16 +154,27 @@ class ShiftsIndexTest extends TestCase
         $this->assertSame('business', $user->profile->fresh()->role);
     }
 
-    public function test_vehicle_button_hidden_for_business_shown_for_courier(): void
+    public function test_account_menu_offers_profile_actions_and_hides_vehicle_for_business(): void
     {
+        $vehicleRow = '<span class="flex-1">Trocar veículo ativo</span>';
+
         $courier = $this->creator();
         $this->actingAs($courier);
-        Livewire::test(Index::class)->assertSeeHtml('aria-label="Trocar veículo"');
+        Livewire::test(Index::class)
+            ->assertSeeHtml('aria-label="Menu da conta"')
+            ->assertSeeHtml('href="'.route('profile').'"')
+            ->assertSee('Editar perfil')
+            ->assertSee('Trocar perfil ativo')
+            ->assertSeeHtml($vehicleRow)
+            ->assertSee('Sair');
 
         $owner = $this->creator();
         $owner->profile()->update(['role' => 'business']);
         $this->actingAs($owner);
-        Livewire::test(Index::class)->assertDontSeeHtml('aria-label="Trocar veículo"');
+        Livewire::test(Index::class)
+            ->assertSee('Trocar perfil ativo')
+            ->assertSee('Estabelecimento')
+            ->assertDontSeeHtml($vehicleRow);
     }
 
     public function test_switch_role_to_courier_redirects_when_data_is_missing(): void
