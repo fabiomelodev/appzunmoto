@@ -122,7 +122,7 @@
     Livewire from touching this subtree on unrelated re-renders (typing in
     the search box, etc.) so the carousel instance survives untouched. --}}
     @if ($banners->isNotEmpty())
-        <div class="relative mt-6 overflow-hidden rounded-3xl" wire:ignore
+        <div class="relative mt-6 overflow-hidden rounded-3xl border border-white/20" wire:ignore
             x-data="{
                 swiper: null,
                 async init() {
@@ -153,12 +153,10 @@
                         <div class="swiper-slide">
                             @if ($banner->link_url)
                                 <a href="{{ $banner->link_url }}" @if ($banner->open_in_new_tab) target="_blank" rel="noopener noreferrer" @endif>
-                                    <img src="{{ $banner->image_url }}" alt="{{ $banner->title ?: 'Banner' }}"
-                                        class="h-[130px] w-full object-cover sm:h-44 lg:h-[620px]" />
+                                    <x-banner-image :banner="$banner" />
                                 </a>
                             @else
-                                <img src="{{ $banner->image_url }}" alt="{{ $banner->title ?: 'Banner' }}"
-                                    class="h-[130px] w-full object-cover sm:h-44 lg:h-[620px]" />
+                                <x-banner-image :banner="$banner" />
                             @endif
                         </div>
                     @endforeach
