@@ -30,6 +30,7 @@ class Index extends Component
         'ownBag' => 'any', // any | yes | no
         'date' => '',
         'onlyInterested' => false,
+        'onlyMine' => false,
     ];
 
     public function getListeners(): array
@@ -61,7 +62,20 @@ class Index extends Component
             'ownBag' => in_array($ownBag, ['any', 'yes', 'no'], true) ? $ownBag : 'any',
             'date' => (string) ($draft['date'] ?? ''),
             'onlyInterested' => (bool) ($draft['onlyInterested'] ?? false),
+            'onlyMine' => (bool) ($draft['onlyMine'] ?? false),
         ];
+    }
+
+    /** Header chip "Minhas vagas": same filter as the one in the sheet; they stay in sync. */
+    public function toggleMine(): void
+    {
+        $this->filters['onlyMine'] = empty($this->filters['onlyMine']);
+        if ($this->filters['onlyMine']) {
+            $this->filters['onlyInterested'] = false;
+        }
+
+        // The sheet's draft lives client-side: hand it the new state.
+        $this->dispatch('filters-synced', filters: $this->filters);
     }
 
     public function clearFilters(): void
@@ -152,7 +166,21 @@ class Index extends Component
             + (count($f['benefits']) > 0 ? 1 : 0)
             + ($f['ownBag'] !== 'any' ? 1 : 0)
             + ($f['date'] !== '' ? 1 : 0)
-            + (! empty($f['onlyInterested']) ? 1 : 0);
+            + (! empty($f['onlyInterested']) ? 1 : 0)
+            + (! empty($f['onlyMine']) ? 1 : 0);
+    }
+
+    /** How many of my shifts are still open (the number on the "Minhas vagas" chip). */
+    #[Computed]
+    public function myOpenCount(): int
+    {
+        return Shift::where('creator_id', Auth::id())
+            ->where('status', '!=', Shift::STATUS_FILLED)
+            ->whereDate('date', '>=', now('America/Sao_Paulo')->subDay()->toDateString())
+            ->whereDoesntHave('applications', fn ($q) => $q->where('status', Application::STATUS_ACCEPTED)->where('confirmed', true))
+            ->get()
+            ->filter(fn ($s) => ! $s->hasEnded())
+            ->count();
     }
 
     /** Shift ids the current user has applied to (any status). */
@@ -179,7 +207,12 @@ class Index extends Component
 
         $query = Shift::query()
             ->with('creator.profile')
-            ->withCount(['applications as accepted_count' => fn ($q) => $q->where('status', 'accepted')])
+            ->withCount([
+                'applications as accepted_count' => fn ($q) => $q->where('status', 'accepted'),
+                // For the owner's own cards: everyone who showed interest / those still awaiting an answer.
+                'applications as candidates_count',
+                'applications as pending_count' => fn ($q) => $q->where('status', Application::STATUS_INTERESTED),
+            ])
             // Filled shifts leave the marketplace, but the accepted courier keeps
             // seeing the one they're committed to (until its date passes).
             ->where(fn ($q) => $q->where('status', '!=', Shift::STATUS_FILLED)
@@ -236,10 +269,19 @@ class Index extends Component
         if (! empty($f['onlyInterested'])) {
             $query->whereIn('id', $this->myInterestIds->all());
         }
+        // "Published by me": only my still-open shifts — same notion of open as the
+        // Parcerias tab (not filled, no confirmed courier yet; the listing already drops ended ones).
+        if (! empty($f['onlyMine'])) {
+            $query->where('creator_id', Auth::id())
+                ->where('status', '!=', Shift::STATUS_FILLED)
+                ->whereDoesntHave('applications', fn ($q) => $q->where('status', Application::STATUS_ACCEPTED)->where('confirmed', true));
+        }
 
         $now = now();
 
         return $query
+            // My own shifts first, then open ones before reserved, newest first.
+            ->orderByRaw('CASE WHEN creator_id = ? THEN 0 ELSE 1 END', [Auth::id()])
             ->orderByRaw("CASE WHEN status = '".Shift::STATUS_AVAILABLE."' THEN 0 ELSE 1 END")
             ->orderByDesc('created_at')
             ->get()

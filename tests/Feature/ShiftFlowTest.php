@@ -959,6 +959,97 @@ class ShiftFlowTest extends TestCase
             ->assertDontSee('Vaga B');
     }
 
+    public function test_filter_published_by_me_shows_only_my_open_shifts(): void
+    {
+        $me = $this->user('Eu');
+        $other = $this->user('Outro');
+        $courier = $this->user('Moto');
+        $day = now('America/Sao_Paulo')->addDays(3)->toDateString();
+
+        $this->shift($me, ['venue' => 'Minha Aberta', 'date' => $day]);
+        $this->shift($me, ['venue' => 'Minha Parcial', 'date' => $day, 'couriers_needed' => 2, 'status' => 'reserved']);
+        $this->shift($me, ['venue' => 'Minha Cheia', 'date' => $day, 'status' => 'filled']);
+        $confirmed = $this->shift($me, ['venue' => 'Minha Confirmada', 'date' => $day, 'status' => 'reserved']);
+        Application::create(['shift_id' => $confirmed->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        $this->shift($me, ['venue' => 'Minha Encerrada', 'date' => now('America/Sao_Paulo')->subDays(2)->toDateString()]);
+        $this->shift($other, ['venue' => 'Vaga de Outro', 'date' => $day]);
+
+        $this->actingAs($me);
+        $component = Livewire::test(Index::class)
+            ->assertSee('Vaga de Outro')
+            ->call('applyFilters', ['onlyMine' => true])
+            ->assertSee('Minha Aberta')
+            ->assertSee('Minha Parcial')
+            ->assertDontSee('Vaga de Outro')
+            ->assertDontSee('Minha Cheia')
+            ->assertDontSee('Minha Confirmada')
+            ->assertDontSee('Minha Encerrada');
+
+        $this->assertSame(1, $component->instance()->activeFilterCount);
+
+        $component->call('clearFilters')->assertSee('Vaga de Outro');
+    }
+
+    public function test_my_shifts_chip_counts_open_shifts_and_toggles_the_filter(): void
+    {
+        $me = $this->user('Eu');
+        $other = $this->user('Outro');
+        $day = now('America/Sao_Paulo')->addDays(3)->toDateString();
+        $this->shift($other, ['venue' => 'Vaga de Outro', 'date' => $day]);
+
+        // Nothing published yet → no chip.
+        $this->actingAs($me);
+        Livewire::test(Index::class)->assertDontSee('Minhas vagas (');
+
+        $this->shift($me, ['venue' => 'Minha A', 'date' => $day]);
+        $this->shift($me, ['venue' => 'Minha B', 'date' => $day]);
+        $this->shift($me, ['venue' => 'Minha Cheia', 'date' => $day, 'status' => 'filled']);
+
+        Livewire::test(Index::class)
+            ->assertSee('Minhas vagas (2)')
+            ->call('toggleMine')
+            ->assertSet('filters.onlyMine', true)
+            ->assertDispatched('filters-synced')
+            ->assertSee('Minha A')
+            ->assertDontSee('Vaga de Outro')
+            // Switching it on drops the contradictory "only my interest" filter.
+            ->call('applyFilters', ['onlyInterested' => true])
+            ->call('toggleMine')
+            ->assertSet('filters.onlyMine', true)
+            ->assertSet('filters.onlyInterested', false)
+            ->call('toggleMine')
+            ->assertSet('filters.onlyMine', false)
+            ->assertSee('Vaga de Outro');
+    }
+
+    public function test_own_shifts_come_first_and_show_how_many_are_interested(): void
+    {
+        $me = $this->user('Eu');
+        $other = $this->user('Outro');
+        $c1 = $this->user('Moto1');
+        $c2 = $this->user('Moto2');
+        $day = now('America/Sao_Paulo')->addDays(3)->toDateString();
+
+        // The other's shift is newer, yet mine must still be listed first.
+        $mine = $this->shift($me, ['venue' => 'Minha Vaga', 'date' => $day, 'couriers_needed' => 2]);
+        $this->shift($other, ['venue' => 'Vaga de Outro', 'date' => $day]);
+        Application::create(['shift_id' => $mine->id, 'user_id' => $c1->id, 'status' => 'interested']);
+        Application::create(['shift_id' => $mine->id, 'user_id' => $c2->id, 'status' => 'accepted']);
+
+        $this->actingAs($me);
+        $component = Livewire::test(Index::class);
+
+        $this->assertSame('Minha Vaga', $component->instance()->shifts->first()->venue);
+        $component->assertSee('2 interessados')
+            ->assertSee('1 aguardando resposta')
+            ->assertSee('Gerenciar')
+            ->assertSeeHtml(e(route('chats.index', ['tab' => 'publicadas', 'vagaId' => $mine->id])));
+
+        // The counter is for the owner only.
+        $this->actingAs($c1);
+        Livewire::test(Index::class)->assertDontSee('2 interessados')->assertDontSeeHtml(e(route('chats.index', ['tab' => 'publicadas', 'vagaId' => $mine->id])));
+    }
+
     public function test_creator_can_edit_shift_and_marks_edited_at(): void
     {
         $creator = $this->user('Dono');
