@@ -30,6 +30,13 @@ class Catalog
         'bike' => 'Bike Convencional',
     ];
 
+    /** Compact labels for the header chip on narrow screens. */
+    public const VEHICLE_LABEL_TINY = [
+        'moto' => 'Moto',
+        'bike-eletrica' => 'Elétrica',
+        'bike' => 'Bike',
+    ];
+
     public const VEHICLE_HINT = [
         'moto' => 'Combustão · maior alcance',
         'bike-eletrica' => 'Bateria/Combustão · médio alcance',

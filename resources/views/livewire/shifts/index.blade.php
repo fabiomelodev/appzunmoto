@@ -3,6 +3,8 @@
     $activeVehicle = $this->activeVehicle;
     $vehicleIcon = Catalog::VEHICLE_ICON[$activeVehicle] ?? 'bike';
     $currentRole = $this->currentRole;
+    $myProfile = auth()->user()?->profile;
+    $myInitial = \Illuminate\Support\Str::upper(\Illuminate\Support\Str::substr($myProfile?->name ?: 'U', 0, 1));
     // Fetched once here (not per card) to avoid N+1 taxonomy queries in the list below.
     $venueTypeLabels = Catalog::allVenueTypeLabels();
     $expectedVolumeLabels = Catalog::allExpectedVolumeLabels();
@@ -16,6 +18,7 @@
         filtersOpen: false,
         vehicleOpen: false,
         roleOpen: false,
+        menuOpen: false,
         draft: @js($filters),
         initial: { vehicles: [], dailyMin: '', feeMin: '', startTime: '', benefits: [], ownBag: 'any', date: '', onlyInterested: false },
         openFilters() { this.filtersOpen = true; },
@@ -28,19 +31,16 @@
     <header class="flex items-center justify-between gap-2 lg:justify-end">
         {{-- lg: a sidebar já mostra a logo (ver <x-sidebar-nav />) --}}
         <x-logo class="lg:hidden" />
-        <div class="flex min-w-0 items-center gap-2">
+        <div class="relative flex items-center gap-2">
+            {{-- Active vehicle (it filters the list below); tap to change it. Couriers only. --}}
             @if ($currentRole !== 'business')
-                <button type="button" @click="vehicleOpen = true" aria-label="Trocar veículo"
-                    class="tap flex min-w-0 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-2 text-[11px] font-semibold text-primary transition hover:bg-primary/20">
+                <button type="button" @click="vehicleOpen = true" aria-label="Veículo ativo: {{ Catalog::VEHICLE_LABEL_SHORT[$activeVehicle] ?? 'Moto' }}. Trocar veículo"
+                    class="tap flex h-10 min-w-0 items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 text-[11px] font-semibold text-primary transition hover:bg-primary/20">
                     <x-ui.icon :name="$vehicleIcon" class="h-3.5 w-3.5 shrink-0" />
-                    <span class="max-w-[120px] truncate">{{ Catalog::VEHICLE_LABEL_SHORT[$activeVehicle] ?? 'Moto' }}</span>
+                    <span class="sm:hidden">{{ Catalog::VEHICLE_LABEL_TINY[$activeVehicle] ?? 'Moto' }}</span>
+                    <span class="hidden max-w-[130px] truncate sm:inline">{{ Catalog::VEHICLE_LABEL_SHORT[$activeVehicle] ?? 'Moto' }}</span>
                 </button>
             @endif
-            <button type="button" @click="roleOpen = true" aria-label="Trocar perfil"
-                class="tap flex min-w-0 shrink-0 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-muted-foreground transition hover:text-foreground">
-                <x-ui.icon :name="$currentRole === 'business' ? 'store' : 'bike'" class="h-4 w-4 shrink-0" />
-                <span class="max-w-[100px] truncate text-[11px] font-semibold">{{ $currentRole === 'business' ? 'Estabelecimento' : 'Motoboy' }}</span>
-            </button>
             <a href="{{ route('notifications') }}" wire:navigate aria-label="Notificações"
                 class="tap relative grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border bg-surface text-muted-foreground transition hover:text-foreground">
                 <x-ui.icon name="bell" class="h-4 w-4" />
@@ -48,6 +48,70 @@
                     <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary ring-2 ring-background"></span>
                 @endif
             </a>
+            {{-- Account menu: edit profile, switch active profile / vehicle, sign out. --}}
+            <button type="button" @click="menuOpen = true" aria-label="Menu da conta" aria-haspopup="dialog"
+                class="tap grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-secondary text-sm font-bold text-muted-foreground transition hover:border-primary/60">
+                @if ($myProfile?->photo_url)
+                    <img src="{{ $myProfile->photo_url }}" alt="" class="h-full w-full object-cover" />
+                @else
+                    {{ $myInitial }}
+                @endif
+            </button>
+
+            {{-- Mobile: bottom sheet. lg: small dropdown under the photo. --}}
+            <div x-show="menuOpen" x-cloak class="fixed inset-0 z-50 lg:absolute lg:inset-auto lg:right-0 lg:top-12 lg:z-40 lg:w-80"
+                @keydown.escape.window="menuOpen = false">
+                <div x-show="menuOpen" x-transition.opacity class="absolute inset-0 bg-black/60 lg:fixed lg:bg-transparent" @click="menuOpen = false"></div>
+                <div x-show="menuOpen" role="dialog" aria-label="Menu da conta"
+                    x-transition:enter="transition ease-out duration-200" x-transition:enter-start="translate-y-full opacity-0 lg:translate-y-0" x-transition:enter-end="translate-y-0 opacity-100"
+                    x-transition:leave="transition ease-in duration-150" x-transition:leave-start="translate-y-0 opacity-100" x-transition:leave-end="translate-y-full opacity-0 lg:translate-y-0"
+                    class="absolute bottom-0 left-1/2 w-full max-w-md -translate-x-1/2 rounded-t-3xl border border-border bg-surface p-4 shadow-2xl lg:static lg:left-auto lg:max-w-none lg:translate-x-0 lg:rounded-2xl">
+                    <div class="flex items-center gap-3 px-1 pb-3">
+                        <span class="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-secondary text-base font-bold text-muted-foreground">
+                            @if ($myProfile?->photo_url)
+                                <img src="{{ $myProfile->photo_url }}" alt="" class="h-full w-full object-cover" />
+                            @else
+                                {{ $myInitial }}
+                            @endif
+                        </span>
+                        <span class="min-w-0 flex-1">
+                            <span class="block truncate text-sm font-bold">{{ $myProfile?->name ?: 'Usuário' }}</span>
+                            <span class="block truncate text-[11px] text-muted-foreground">{{ auth()->user()?->email }}</span>
+                        </span>
+                    </div>
+
+                    <div class="space-y-1 border-t border-border pt-2">
+                        <a href="{{ route('profile') }}" wire:navigate @click="menuOpen = false"
+                            class="tap flex items-center gap-3 rounded-xl px-2 py-3 text-sm font-medium transition hover:bg-surface-elevated">
+                            <x-ui.icon name="user" class="h-5 w-5 shrink-0 text-muted-foreground" />
+                            <span class="flex-1">Editar perfil</span>
+                            <x-ui.icon name="chevron-right" class="h-4 w-4 text-muted-foreground" />
+                        </a>
+                        <button type="button" @click="menuOpen = false; roleOpen = true"
+                            class="tap flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left text-sm font-medium transition hover:bg-surface-elevated">
+                            <x-ui.icon :name="$currentRole === 'business' ? 'store' : 'bike'" class="h-5 w-5 shrink-0 text-muted-foreground" />
+                            <span class="flex-1">Trocar perfil ativo</span>
+                            <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">{{ $currentRole === 'business' ? 'Estabelecimento' : 'Motoboy' }}</span>
+                        </button>
+                        @if ($currentRole !== 'business')
+                            <button type="button" @click="menuOpen = false; vehicleOpen = true"
+                                class="tap flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left text-sm font-medium transition hover:bg-surface-elevated">
+                                <x-ui.icon :name="$vehicleIcon" class="h-5 w-5 shrink-0 text-muted-foreground" />
+                                <span class="flex-1">Trocar veículo ativo</span>
+                                <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">{{ Catalog::VEHICLE_LABEL_SHORT[$activeVehicle] ?? 'Moto' }}</span>
+                            </button>
+                        @endif
+                    </div>
+
+                    <div class="mt-2 border-t border-border pt-2">
+                        <button type="button" @click="window.mrLogout()"
+                            class="tap flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left text-sm font-medium text-destructive transition hover:bg-surface-elevated">
+                            <x-ui.icon name="log-out" class="h-5 w-5 shrink-0" />
+                            Sair
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </header>
 
