@@ -3,6 +3,7 @@
 namespace App\Livewire\Shifts;
 
 use App\Models\ExpectedVolume;
+use App\Models\Application;
 use App\Models\Shift;
 use App\Models\ShiftContact;
 use App\Models\UserAddress;
@@ -29,13 +30,9 @@ class Create extends Component
     /** When set, the form edits an existing shift instead of creating one. */
     public ?string $editId = null;
 
-    /** Floor for couriers_needed when editing: a shift with interested couriers
-     *  can only have its quantity increased, never reduced. */
+    /** Floor for couriers_needed when editing: the quantity can't drop below the
+     *  couriers already accepted (pending interest doesn't count — it's the owner's call). */
     public int $minCouriers = 1;
-
-    /** Whether the address can still be changed while editing — only before
-     *  any courier has shown interest (same cutoff as $minCouriers above). */
-    public bool $canChangeAddress = true;
 
     // Resolved location (from the chosen address or the existing/cloned shift).
     public string $venue = '';
@@ -96,14 +93,11 @@ class Create extends Component
 
         $this->editId = $shift->id;
         $this->as = $shift->creator_role;
-        $hasInterest = $shift->applications()->exists();
-        // Once a courier has shown interest, the quantity can only grow and
-        // the address is locked — see save()'s matching server-side guard.
-        $this->minCouriers = $hasInterest ? (int) $shift->couriers_needed : 1;
-        $this->canChangeAddress = ! $hasInterest;
+        // Can't go below the couriers already accepted — see save()'s matching server-side guard.
+        $this->minCouriers = max(1, $shift->applications()->where('status', Application::STATUS_ACCEPTED)->count());
 
         $addressId = request('address');
-        $address = ($this->canChangeAddress && $addressId)
+        $address = $addressId
             ? UserAddress::where('user_id', Auth::id())->find($addressId)
             : null;
 
@@ -225,12 +219,11 @@ class Create extends Component
         if ($window[0]->isPast()) {
             return $toast('A data/horário já passou. Ajuste para um momento futuro.');
         }
-        // A shift that already has interested couriers can only grow, and its
-        // address locks — re-checked fresh here rather than trusting the
-        // client's $canChangeAddress, in case interest arrived meanwhile.
-        $hasInterest = $existing && $existing->applications()->exists();
-        if ($hasInterest && $couriers < (int) $existing->couriers_needed) {
-            return $toast('Esta vaga já tem motoboys interessados — só é possível aumentar a quantidade.');
+        // The quantity can't drop below the couriers already accepted (re-checked fresh,
+        // in case someone was accepted while the form was open). Pending interest doesn't lock anything.
+        $accepted = $existing ? $existing->applications()->where('status', Application::STATUS_ACCEPTED)->count() : 0;
+        if ($existing && $couriers < $accepted) {
+            return $toast('Esta vaga já tem '.$accepted.' '.($accepted === 1 ? 'motoboy aceito' : 'motoboys aceitos').' — a quantidade não pode ser menor que isso.');
         }
 
         $conflict = Shift::where('creator_id', Auth::id())
@@ -267,29 +260,23 @@ class Create extends Component
         $contactPhone = trim((string) ($form['contactPhone'] ?? '')) ?: null;
 
         if ($existing) {
-            // The address can only change while no courier has shown interest
-            // yet (client-side, "Trocar endereço" is hidden the moment there's
-            // interest — see $canChangeAddress in the view).
-            if (! $hasInterest) {
-                if ((! $this->lat || ! $this->lng) && ! app()->runningUnitTests()) {
-                    $coords = Geocoder::forShift($this->addressLine, $this->region, null, $this->cep);
-                    if ($coords) {
-                        $this->lat = $coords['lat'];
-                        $this->lng = $coords['lng'];
-                    }
+            if ((! $this->lat || ! $this->lng) && ! app()->runningUnitTests()) {
+                $coords = Geocoder::forShift($this->addressLine, $this->region, null, $this->cep);
+                if ($coords) {
+                    $this->lat = $coords['lat'];
+                    $this->lng = $coords['lng'];
                 }
-
-                $data += [
-                    'venue' => $this->venue,
-                    'region' => $this->region,
-                    'address' => $this->addressLine,
-                    'postal_code' => $this->cep,
-                    'lat' => $this->lat,
-                    'lng' => $this->lng,
-                    'address_photo_url' => $this->addressPhotoUrl,
-                ];
             }
 
+            $data += [
+                'venue' => $this->venue,
+                'region' => $this->region,
+                'address' => $this->addressLine,
+                'postal_code' => $this->cep,
+                'lat' => $this->lat,
+                'lng' => $this->lng,
+                'address_photo_url' => $this->addressPhotoUrl,
+            ];
             $existing->update($data + ['edited_at' => now()]);
             ShiftContact::updateOrCreate(
                 ['shift_id' => $existing->id],

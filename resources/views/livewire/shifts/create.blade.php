@@ -58,15 +58,11 @@
                 <p class="truncate text-sm font-semibold">{{ $venue ?: '—' }}</p>
                 <p class="truncate text-[11px] text-muted-foreground">{{ $addressLine }}</p>
             </div>
-            {{-- Uma vez que algum motoboy demonstrou interesse, o endereço
-            trava — ver $canChangeAddress em Shifts/Create.php. --}}
-            @if (! $editing || $canChangeAddress)
                 <a href="{{ $editing ? route('addresses.choose', ['as' => $as, 'edit' => $editId]) : route('addresses.choose', ['as' => $as]) }}"
                     wire:navigate aria-label="Trocar endereço"
                     class="grid h-8 w-8 place-items-center rounded-lg bg-surface text-muted-foreground hover:text-primary">
                     <x-ui.icon name="pencil" class="h-3.5 w-3.5" />
                 </a>
-            @endif
         </div>
     </div>
 
@@ -93,7 +89,7 @@
             @if ($minCouriers > 1)
                 <p class="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-primary">
                     <x-ui.icon name="info" class="mt-0.5 h-3 w-3 shrink-0" />
-                    Esta vaga já tem motoboys interessados — só é possível aumentar a quantidade.
+                    Esta vaga já tem {{ $minCouriers }} motoboys aceitos — a quantidade não pode ser menor que isso.
                 </p>
             @endif
         </x-ui.field>
