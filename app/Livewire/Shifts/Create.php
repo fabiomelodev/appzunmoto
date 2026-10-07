@@ -89,8 +89,8 @@ class Create extends Component
         if (! $shift || $shift->creator_id !== Auth::id()) {
             return $this->redirect(route('shifts.index'), navigate: true);
         }
-        // Ended shifts are history — back to the shift page, where the actions are gone.
-        if ($shift->hasEnded()) {
+        // Ended or confirmed shifts are locked — back to the shift page, where the actions are gone.
+        if ($shift->lockReason()) {
             return $this->redirect(route('shifts.show', $shift->id), navigate: true);
         }
 
@@ -171,8 +171,10 @@ class Create extends Component
         if ($this->editId && (! $existing || $existing->creator_id !== Auth::id())) {
             return null;
         }
-        if ($existing && $existing->hasEnded()) {
-            return $this->dispatch('toast', message: 'Esta vaga já terminou e não pode mais ser editada.', type: 'error');
+        if ($existing && ($reason = $existing->lockReason())) {
+            return $this->dispatch('toast', message: $reason === 'ended'
+                ? 'Esta vaga já terminou e não pode mais ser editada.'
+                : 'Esta vaga tem parceria confirmada e não pode mais ser editada.', type: 'error');
         }
 
         $toast = fn (string $m) => $this->dispatch('toast', message: $m);

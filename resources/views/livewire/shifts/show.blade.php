@@ -152,10 +152,14 @@
     @endif
 
     {{-- Creator: manage shift --}}
-    @if ($isCreator && $expired)
+    @if ($isCreator && $lockReason)
         <div class="mt-4 flex items-start gap-2 rounded-2xl border border-border bg-card p-3 text-[11px] font-medium text-muted-foreground">
-            <x-ui.icon name="clock" class="mt-0.5 h-4 w-4 shrink-0" />
-            <p>Esta vaga já terminou. Vagas encerradas ficam no histórico e não podem ser editadas, pausadas ou excluídas.</p>
+            <x-ui.icon :name="$lockReason === 'ended' ? 'clock' : 'lock'" class="mt-0.5 h-4 w-4 shrink-0" />
+            @if ($lockReason === 'ended')
+                <p>Esta vaga já terminou. Vagas encerradas ficam no histórico e não podem ser editadas, pausadas ou excluídas.</p>
+            @else
+                <p>Esta vaga tem parceria confirmada e não pode mais ser editada, pausada ou excluída. Use a conversa com o motoboy para combinar qualquer mudança.</p>
+            @endif
         </div>
     @elseif ($isCreator)
         <div class="mt-4 rounded-2xl border border-border bg-card p-3">

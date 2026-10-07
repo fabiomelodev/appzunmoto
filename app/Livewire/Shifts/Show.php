@@ -210,9 +210,11 @@ class Show extends Component
             return;
         }
 
-        // A shift that already ended is history: no pausing it any more.
-        if ($this->expired($shift)) {
-            $this->dispatch('toast', message: 'Esta vaga já terminou e não pode mais ser alterada.', type: 'error');
+        // Ended shifts are history and confirmed ones are a deal already made: no pausing either.
+        if ($reason = $shift->lockReason()) {
+            $this->dispatch('toast', message: $reason === 'ended'
+                ? 'Esta vaga já terminou e não pode mais ser alterada.'
+                : 'Esta vaga tem parceria confirmada e não pode mais ser alterada.', type: 'error');
 
             return;
         }
@@ -230,9 +232,11 @@ class Show extends Component
             return null;
         }
 
-        if ($this->expired($shift)) {
+        if ($reason = $shift->lockReason()) {
             $this->confirmDeleteOpen = false;
-            $this->dispatch('toast', message: 'Esta vaga já terminou e não pode mais ser excluída.', type: 'error');
+            $this->dispatch('toast', message: $reason === 'ended'
+                ? 'Esta vaga já terminou e não pode mais ser excluída.'
+                : 'Esta vaga tem parceria confirmada e não pode mais ser excluída.', type: 'error');
 
             return null;
         }
@@ -372,6 +376,7 @@ class Show extends Component
             'requiresBag' => (bool) $shift->requires_own_bag,
             'blockedByBag' => $this->blockedByBag($shift),
             'expired' => $this->expired($shift),
+            'lockReason' => $shift->creator_id === $userId ? $shift->lockReason() : null,
             'userVehicle' => $me->profile?->vehicle,
             'interested' => $interested,
             'contact' => in_array($userId, $acceptedIds, true) ? $shift->contact : null,

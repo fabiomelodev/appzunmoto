@@ -156,15 +156,8 @@ class Index extends Component
             ->latest()
             ->get()
             ->reject(fn ($s) => $this->expired($s)
-                || $this->hasConfirmedPartnership($s))
+                || $s->hasConfirmedPartnership())
             ->values();
-    }
-
-    /** True when the shift already has a confirmed partnership (the creator and a courier both said yes). */
-    protected function hasConfirmedPartnership(Shift $s): bool
-    {
-        return $s->status === Shift::STATUS_FILLED
-            || $s->applications->contains(fn ($a) => $a->status === Application::STATUS_ACCEPTED && $a->confirmed);
     }
 
     /** "Em andamento" tab, creator side: my shifts with a confirmed partnership that haven't happened yet. */
@@ -176,7 +169,7 @@ class Index extends Component
             ->orderBy('date')->orderBy('start_time')
             ->get()
             ->reject(fn ($s) => $this->expired($s))
-            ->filter(fn ($s) => $this->hasConfirmedPartnership($s))
+            ->filter(fn ($s) => $s->hasConfirmedPartnership())
             ->values();
     }
 

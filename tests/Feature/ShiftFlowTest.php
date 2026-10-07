@@ -1137,6 +1137,41 @@ class ShiftFlowTest extends TestCase
         $this->assertNull(Shift::find($open->id));
     }
 
+    public function test_shift_with_a_confirmed_partnership_cannot_be_edited_paused_or_deleted(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $other = $this->user('Outro');
+
+        $confirmed = $this->shift($creator, ['venue' => 'Confirmada', 'couriers_needed' => 2, 'status' => 'reserved']);
+        Application::create(['shift_id' => $confirmed->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        // Accepted but not confirmed by the courier yet: still the owner's to change.
+        $waiting = $this->shift($creator, ['venue' => 'Aguardando', 'status' => 'reserved']);
+        Application::create(['shift_id' => $waiting->id, 'user_id' => $other->id, 'status' => 'accepted', 'confirmed' => false]);
+
+        $this->actingAs($creator);
+        Livewire::test(Show::class, ['id' => $confirmed->id])
+            ->assertSee('Esta vaga tem parceria confirmada')
+            ->assertDontSee('Gerenciar vaga')
+            ->assertDontSeeHtml(route('shifts.edit', $confirmed->id))
+            ->call('toggleActive')
+            ->assertDispatched('toast', message: 'Esta vaga tem parceria confirmada e não pode mais ser alterada.', type: 'error')
+            ->call('deleteShift')
+            ->assertDispatched('toast', message: 'Esta vaga tem parceria confirmada e não pode mais ser excluída.', type: 'error')
+            ->assertNoRedirect();
+        $this->assertTrue($confirmed->fresh()->active);
+        $this->assertNotNull(Shift::find($confirmed->id));
+
+        Livewire::test(Create::class, ['id' => $confirmed->id])
+            ->assertRedirect(route('shifts.show', $confirmed->id));
+
+        Livewire::test(Show::class, ['id' => $waiting->id])
+            ->assertSee('Gerenciar vaga')
+            ->assertSeeHtml(route('shifts.edit', $waiting->id))
+            ->assertDontSee('parceria confirmada e não pode');
+        Livewire::test(Create::class, ['id' => $waiting->id])->assertNoRedirect();
+    }
+
     public function test_saving_an_edit_of_an_ended_shift_is_refused(): void
     {
         $creator = $this->user('Dono');
