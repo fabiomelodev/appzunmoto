@@ -210,6 +210,13 @@ class Show extends Component
             return;
         }
 
+        // A shift that already ended is history: no pausing it any more.
+        if ($this->expired($shift)) {
+            $this->dispatch('toast', message: 'Esta vaga já terminou e não pode mais ser alterada.', type: 'error');
+
+            return;
+        }
+
         $shift->update(['active' => ! $shift->active]);
         Partnerships::notifyPauseChange($shift);
         unset($this->shift);
@@ -220,6 +227,13 @@ class Show extends Component
     {
         $shift = $this->shift();
         if ($shift->creator_id !== Auth::id()) {
+            return null;
+        }
+
+        if ($this->expired($shift)) {
+            $this->confirmDeleteOpen = false;
+            $this->dispatch('toast', message: 'Esta vaga já terminou e não pode mais ser excluída.', type: 'error');
+
             return null;
         }
 

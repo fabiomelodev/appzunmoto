@@ -1100,6 +1100,66 @@ class ShiftFlowTest extends TestCase
         Livewire::test(Show::class, ['id' => $other->id])->assertDontSee('foi pausada pelo estabelecimento');
     }
 
+    public function test_ended_shift_cannot_be_edited_paused_or_deleted(): void
+    {
+        $creator = $this->user('Dono');
+        $past = $this->shift($creator, ['venue' => 'Ja Terminou', 'date' => now('America/Sao_Paulo')->subDays(2)->toDateString()]);
+        $open = $this->shift($creator, ['venue' => 'Ainda Aberta']);
+
+        $this->actingAs($creator);
+
+        // The page offers no management actions for an ended shift...
+        Livewire::test(Show::class, ['id' => $past->id])
+            ->assertSee('Esta vaga já terminou')
+            ->assertDontSee('Gerenciar vaga')
+            ->assertDontSeeHtml(route('shifts.edit', $past->id))
+            // ...and the server refuses them even when called directly.
+            ->call('toggleActive')
+            ->assertDispatched('toast', message: 'Esta vaga já terminou e não pode mais ser alterada.', type: 'error')
+            ->call('deleteShift')
+            ->assertDispatched('toast', message: 'Esta vaga já terminou e não pode mais ser excluída.', type: 'error')
+            ->assertNoRedirect();
+        $this->assertTrue($past->fresh()->active);
+        $this->assertNotNull(Shift::find($past->id));
+
+        // Editing is closed too: the form bounces back to the shift page.
+        Livewire::test(Create::class, ['id' => $past->id])
+            ->assertRedirect(route('shifts.show', $past->id));
+
+        // Open shifts keep all three actions.
+        Livewire::test(Show::class, ['id' => $open->id])
+            ->assertSee('Gerenciar vaga')
+            ->assertSeeHtml(route('shifts.edit', $open->id))
+            ->assertDontSee('Esta vaga já terminou')
+            ->call('toggleActive')
+            ->assertDispatched('toast', message: 'Vaga pausada')
+            ->call('deleteShift');
+        $this->assertNull(Shift::find($open->id));
+    }
+
+    public function test_saving_an_edit_of_an_ended_shift_is_refused(): void
+    {
+        $creator = $this->user('Dono');
+        $shift = $this->shift($creator, ['daily_rate' => 150, 'date' => now('America/Sao_Paulo')->addDay()->toDateString()]);
+
+        $this->actingAs($creator);
+        $component = Livewire::test(Create::class, ['id' => $shift->id]);
+
+        // The shift ends while the form is open.
+        $shift->update(['date' => now('America/Sao_Paulo')->subDays(2)->toDateString()]);
+
+        $component->call('save', [
+            'date' => $shift->date->toDateString(),
+            'startTime' => '18:00', 'endTime' => '23:00',
+            'dailyRate' => '999', 'feeMin' => '8', 'feeMax' => '12',
+            'contactName' => '', 'contactPhone' => '',
+            'notes' => '', 'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
+            'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
+        ])->assertDispatched('toast', message: 'Esta vaga já terminou e não pode mais ser editada.', type: 'error');
+
+        $this->assertEquals(150, $shift->fresh()->daily_rate);
+    }
+
     public function test_creator_can_edit_shift_and_marks_edited_at(): void
     {
         $creator = $this->user('Dono');

@@ -152,7 +152,12 @@
     @endif
 
     {{-- Creator: manage shift --}}
-    @if ($isCreator)
+    @if ($isCreator && $expired)
+        <div class="mt-4 flex items-start gap-2 rounded-2xl border border-border bg-card p-3 text-[11px] font-medium text-muted-foreground">
+            <x-ui.icon name="clock" class="mt-0.5 h-4 w-4 shrink-0" />
+            <p>Esta vaga já terminou. Vagas encerradas ficam no histórico e não podem ser editadas, pausadas ou excluídas.</p>
+        </div>
+    @elseif ($isCreator)
         <div class="mt-4 rounded-2xl border border-border bg-card p-3">
             <h3 class="mb-2 text-sm font-semibold">Gerenciar vaga</h3>
             <div class="grid grid-cols-3 gap-2">

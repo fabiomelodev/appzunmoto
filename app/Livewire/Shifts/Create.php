@@ -89,6 +89,10 @@ class Create extends Component
         if (! $shift || $shift->creator_id !== Auth::id()) {
             return $this->redirect(route('shifts.index'), navigate: true);
         }
+        // Ended shifts are history — back to the shift page, where the actions are gone.
+        if ($shift->hasEnded()) {
+            return $this->redirect(route('shifts.show', $shift->id), navigate: true);
+        }
 
         $this->editId = $shift->id;
         $this->as = $shift->creator_role;
@@ -166,6 +170,9 @@ class Create extends Component
         $existing = $this->editId ? Shift::find($this->editId) : null;
         if ($this->editId && (! $existing || $existing->creator_id !== Auth::id())) {
             return null;
+        }
+        if ($existing && $existing->hasEnded()) {
+            return $this->dispatch('toast', message: 'Esta vaga já terminou e não pode mais ser editada.', type: 'error');
         }
 
         $toast = fn (string $m) => $this->dispatch('toast', message: $m);
