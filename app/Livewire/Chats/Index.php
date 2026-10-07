@@ -17,9 +17,9 @@ use Livewire\Component;
 #[Title('Parcerias — ZunMoto')]
 class Index extends Component
 {
-    protected const TABS = ['publicadas', 'historico', 'interessadas'];
+    protected const TABS = ['publicadas', 'interessadas', 'andamento', 'historico'];
 
-    /** 'publicadas' | 'historico' | 'interessadas' */
+    /** 'publicadas' | 'interessadas' | 'andamento' | 'historico' */
     public string $tab = 'publicadas';
 
     /** Sub-tab inside "Histórico de turnos": 'published' (Publiquei) | 'worked' (Trabalhei) — same split the old standalone History page used. */
@@ -53,7 +53,7 @@ class Index extends Component
     /** New message/application → recompute the lists (order depends on latest activity). */
     public function onSignal(): void
     {
-        unset($this->myShifts, $this->interestedShifts, $this->historyShifts, $this->interestedChats, $this->publishedUnread);
+        unset($this->myShifts, $this->inProgressPublished, $this->inProgressWorked, $this->interestedShifts, $this->interestedSections, $this->historyShifts, $this->interestedChats, $this->publishedUnread);
     }
 
     public function setTab(string $tab): void
@@ -142,42 +142,91 @@ class Index extends Component
     }
 
     /**
-     * "Vagas publicadas" tab: shifts this account created, split into
-     * open (nobody confirmed yet), in progress (at least one courier confirmed the
-     * partnership and the shift hasn't happened yet — for multi-courier shifts the
-     * row still lets the creator accept the remaining slots) and closed (already over).
+     * "Vagas publicadas" tab: only the shifts this account created that are still open —
+     * not over yet and with no confirmed partnership (once a courier confirms, the shift
+     * is no longer "open"; it reappears in the Histórico de turnos when it ends).
+     *
+     * @return \Illuminate\Support\Collection<int, Shift>
      */
     #[Computed]
-    public function myShifts(): array
+    public function myShifts()
     {
-        $shifts = Shift::where('creator_id', Auth::id())
+        return Shift::where('creator_id', Auth::id())
             ->with('applications.user.profile')
             ->latest()
-            ->get();
-
-        [$ended, $upcoming] = $shifts->partition(fn ($s) => $this->expired($s));
-        [$inProgress, $open] = $upcoming->partition(fn ($s) => $s->status === Shift::STATUS_FILLED
-            || $s->applications->contains(fn ($a) => $a->status === Application::STATUS_ACCEPTED && $a->confirmed));
-
-        return [
-            'active' => $open->values(),
-            'inProgress' => $inProgress->values(),
-            'expired' => $ended->values(),
-        ];
+            ->get()
+            ->reject(fn ($s) => $this->expired($s)
+                || $this->hasConfirmedPartnership($s))
+            ->values();
     }
 
-    /** "Vagas interessadas" tab: every shift this courier applied to — pending, accepted or already confirmed — so it can be followed to the end (the row shows which step it is at). */
+    /** True when the shift already has a confirmed partnership (the creator and a courier both said yes). */
+    protected function hasConfirmedPartnership(Shift $s): bool
+    {
+        return $s->status === Shift::STATUS_FILLED
+            || $s->applications->contains(fn ($a) => $a->status === Application::STATUS_ACCEPTED && $a->confirmed);
+    }
+
+    /** "Em andamento" tab, creator side: my shifts with a confirmed partnership that haven't happened yet. */
     #[Computed]
-    public function interestedShifts()
+    public function inProgressPublished()
+    {
+        return Shift::where('creator_id', Auth::id())
+            ->with('applications.user.profile')
+            ->orderBy('date')->orderBy('start_time')
+            ->get()
+            ->reject(fn ($s) => $this->expired($s))
+            ->filter(fn ($s) => $this->hasConfirmedPartnership($s))
+            ->values();
+    }
+
+    /** "Em andamento" tab, courier side: shifts I confirmed that haven't happened yet. */
+    #[Computed]
+    public function inProgressWorked()
     {
         $id = Auth::id();
 
-        return Shift::whereHas('applications', fn ($q) => $q->where('user_id', $id)->whereIn('status', [Application::STATUS_INTERESTED, Application::STATUS_ACCEPTED]))
+        return Shift::whereHas('applications', fn ($q) => $q->where('user_id', $id)->where('status', Application::STATUS_ACCEPTED)->where('confirmed', true))
             ->where('creator_id', '!=', $id)
-            ->orderByDesc('date')
-            ->get();
+            ->orderBy('date')->orderBy('start_time')
+            ->get()
+            ->reject(fn ($s) => $this->expired($s))
+            ->values();
     }
 
+    /**
+     * "Vagas interessadas" tab: the courier's applications that still need something —
+     * 'confirm' (accepted by the creator, waiting for the courier's confirmation, most
+     * urgent first) and 'analysis' (interest sent, creator hasn't answered). Confirmed
+     * partnerships and shifts already over are not listed here (the latter move to
+     * the Histórico de turnos).
+     *
+     * @return array{confirm: \Illuminate\Support\Collection, analysis: \Illuminate\Support\Collection}
+     */
+    #[Computed]
+    public function interestedSections(): array
+    {
+        $id = Auth::id();
+        $apps = $this->myApplicationsByShift;
+
+        $shifts = Shift::whereHas('applications', fn ($q) => $q->where('user_id', $id)->whereIn('status', [Application::STATUS_INTERESTED, Application::STATUS_ACCEPTED]))
+            ->where('creator_id', '!=', $id)
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->get()
+            ->reject(fn ($s) => $this->expired($s) || (bool) ($apps[$s->id]->confirmed ?? false));
+
+        [$confirm, $analysis] = $shifts->partition(fn ($s) => ($apps[$s->id]->status ?? null) === Application::STATUS_ACCEPTED);
+
+        return ['confirm' => $confirm->values(), 'analysis' => $analysis->values()];
+    }
+
+    /** Both sections in display order (waiting-for-confirmation first). */
+    #[Computed]
+    public function interestedShifts()
+    {
+        return $this->interestedSections['confirm']->concat($this->interestedSections['analysis'])->values();
+    }
 
     /**
      * Chats the creator already opened with this courier, per interested shift (reply-only: the
@@ -189,7 +238,7 @@ class Index extends Component
     public function interestedChats()
     {
         $me = Auth::id();
-        $chats = Chat::whereIn('shift_id', $this->interestedShifts->pluck('id'))
+        $chats = Chat::whereIn('shift_id', $this->interestedShifts->pluck('id')->merge($this->inProgressWorked->pluck('id')))
             ->where(fn ($q) => $q->where('user_a', $me)->orWhere('user_b', $me))
             ->get();
         $unread = Chat::unreadCountsFor($me, $chats->pluck('id')->all());
@@ -207,7 +256,7 @@ class Index extends Component
     public function publishedUnread(): array
     {
         $me = Auth::id();
-        $shiftIds = $this->myShifts['active']->merge($this->myShifts['inProgress'])->merge($this->myShifts['expired'])->pluck('id');
+        $shiftIds = $this->myShifts->pluck('id')->merge($this->inProgressPublished->pluck('id'));
         $chats = Chat::whereIn('shift_id', $shiftIds)
             ->where(fn ($q) => $q->where('user_a', $me)->orWhere('user_b', $me))
             ->get();
@@ -224,18 +273,25 @@ class Index extends Component
         return compact('byShift', 'byCandidate');
     }
 
-    /** "Histórico de turnos" tab — ported as-is from the old standalone History page. */
+    /**
+     * "Histórico de turnos" tab: only shifts that are over. They end up "Concluída"
+     * (a partnership was confirmed) or "Expirada" (the time passed without one) — the
+     * row works out which; anything still upcoming lives under Vagas publicadas /
+     * Vagas interessadas instead.
+     */
     #[Computed]
     public function historyShifts()
     {
         $id = Auth::id();
 
-        return $this->historyTab === 'published'
-            ? Shift::where('creator_id', $id)->orderByDesc('date')->get()
+        $shifts = $this->historyTab === 'published'
+            ? Shift::where('creator_id', $id)->with('applications')->orderByDesc('date')->get()
             : Shift::whereHas('applications', fn ($q) => $q->where('user_id', $id)->where('status', Application::STATUS_ACCEPTED))
                 ->where('creator_id', '!=', $id)
                 ->orderByDesc('date')
                 ->get();
+
+        return $shifts->filter(fn ($s) => $this->expired($s))->values();
     }
 
     /** Keyed by shift_id, used by the "Histórico" / "Trabalhei" row to tell confirmed (concluded) apart from merely accepted. */
