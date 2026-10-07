@@ -28,7 +28,9 @@
     {{-- Courier's own application progress — same visual language as the
     onboarding step indicator, scaled down to fit 5 steps on mobile. --}}
     @if ($applicationStep)
-        <div class="mt-4 flex items-start justify-center rounded-2xl border border-border bg-card px-1.5 py-4">
+        {{-- Pinned to the top while the page scrolls (the bg-background wrapper masks what slides under it). --}}
+        <div class="sticky top-0 z-20 -mx-4 mt-2 bg-background/95 px-4 py-2 backdrop-blur">
+        <div class="flex items-start justify-center rounded-2xl border border-border bg-card px-1.5 py-4">
             @foreach ($applicationStepLabels as $num => $label)
                 @if (! $loop->first)
                     <div class="mt-3 h-0.5 w-2 shrink-0 {{ $applicationStep > $num - 1 ? 'bg-primary' : 'bg-border' }}"></div>
@@ -40,6 +42,7 @@
                     <span class="text-[9px] font-semibold leading-tight {{ $applicationStep === $num ? 'text-foreground' : 'text-muted-foreground' }}">{{ $label }}</span>
                 </div>
             @endforeach
+        </div>
         </div>
 
         {{-- Same conditions as the sticky bar's "already interested" branch (see below):
@@ -358,11 +361,11 @@
         </div>
     @endif
 
-    {{-- Sticky bottom action. lg: no bottom-nav to clear anymore (sidebar
+    {{-- Sticky bottom action. bottom-28 on mobile clears the bottom-nav and its floating "+" (which sticks out above it). lg: no bottom-nav to clear anymore (sidebar
     instead), and the anchor shifts right by half the sidebar's width (8rem)
     to stay centered in the remaining space — see the toast container in
     layouts/app.blade.php for the same adjustment. --}}
-    <div class="app-shell fixed bottom-20 left-1/2 z-30 -translate-x-1/2 px-4 lg:bottom-6 lg:left-[calc(50%+8rem)]">
+    <div class="app-shell fixed bottom-28 left-1/2 z-30 -translate-x-1/2 px-4 lg:bottom-6 lg:left-[calc(50%+8rem)]">
         @if ($isCreator)
             <a href="{{ route('chats.index', ['tab' => 'publicadas', 'vagaId' => $shift->id]) }}" wire:navigate>
                 <x-ui.button variant="outline" size="lg" class="w-full"><x-ui.icon name="message-circle" class="mr-2 h-4 w-4" /> Ver conversas</x-ui.button>
@@ -413,7 +416,7 @@
         @endif
     </div>
     {{-- The accepted-courier and schedule-clash bars (banner + button) are taller than the others. --}}
-    <div class="{{ ($wasAccepted && ! $isCreator) || $registerConflict ? 'h-32' : 'h-16' }}"></div>
+    <div class="{{ ($wasAccepted && ! $isCreator) || $registerConflict ? 'h-40 lg:h-32' : 'h-24 lg:h-16' }}"></div>
 
     {{-- Confirm dialog --}}
     @if ($confirmOpen)
