@@ -1,12 +1,15 @@
 @php
-    // $mode: 'published' | 'worked' (Histórico de turnos) | 'interested' (Vagas interessadas).
+    // $mode: 'published' | 'worked' (Histórico de turnos) | 'interested' (Vagas interessadas) | 'confirmed' (Em andamento).
     // $chat (interested only): ['id' => ..., 'unread' => int] when the creator already wrote to this courier.
     $myApp = ($myApplications ?? collect())[$v->id] ?? null;
     $expired = $v->hasEnded();
     $chat = $chat ?? null;
     $unread = $chat['unread'] ?? 0;
 
-    if ($mode === 'interested') {
+    if ($mode === 'confirmed') {
+        // Em andamento: partnership confirmed, the shift hasn't happened yet.
+        [$statusLabel, $statusClass] = ['Confirmada', 'text-success'];
+    } elseif ($mode === 'interested') {
         // Same stages as the stepper on the shift page.
         if ($myApp?->status === 'accepted' && $myApp->confirmed) {
             [$statusLabel, $statusClass] = ['Concluída', 'text-sky-400'];
@@ -18,9 +21,12 @@
             [$statusLabel, $statusClass] = ['Em análise', 'text-primary'];
         }
     } else {
-        $completed = $mode === 'worked' ? (bool) $myApp?->confirmed : $v->status === 'filled';
-        $statusLabel = $completed ? 'Concluída' : ($expired ? 'Expirada' : 'Ativa');
-        $statusClass = $completed ? 'text-sky-400' : ($expired ? 'text-muted-foreground' : 'text-success');
+        // History only holds shifts that already ended: confirmed partnership = done, otherwise it just lapsed.
+        $completed = $mode === 'worked'
+            ? (bool) $myApp?->confirmed
+            : ($v->status === 'filled' || $v->applications->contains(fn ($a) => $a->status === 'accepted' && $a->confirmed));
+        $statusLabel = $completed ? 'Concluída' : 'Expirada';
+        $statusClass = $completed ? 'text-sky-400' : 'text-muted-foreground';
     }
 @endphp
 {{-- Two sibling links (not nested): the row opens the shift, the side button opens the chat. --}}

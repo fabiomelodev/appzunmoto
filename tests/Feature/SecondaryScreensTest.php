@@ -47,27 +47,48 @@ class SecondaryScreensTest extends TestCase
         ], $overrides));
     }
 
-    public function test_history_published_and_worked_tabs(): void
+    public function test_history_only_lists_ended_shifts_as_concluded_or_expired(): void
     {
         $owner = $this->user('Dono');
         $other = $this->user('Outro');
         $courier = $this->user('Moto');
+        $past = now('America/Sao_Paulo')->subDays(2)->toDateString();
+        $future = now('America/Sao_Paulo')->addDays(5)->toDateString();
 
-        $this->shift($owner, ['venue' => 'Publicada']);
-        $worked = $this->shift($other, ['venue' => 'Trabalhada']);
-        Application::create(['shift_id' => $worked->id, 'user_id' => $courier->id, 'status' => 'accepted']);
+        // Published by the owner.
+        $done = $this->shift($owner, ['venue' => 'Publicada Concluida', 'date' => $past, 'status' => 'filled']);
+        Application::create(['shift_id' => $done->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        $this->shift($owner, ['venue' => 'Publicada Expirada', 'date' => $past]);
+        $this->shift($owner, ['venue' => 'Publicada Aberta', 'date' => $future]);
+        $this->shift($owner, ['venue' => 'Publicada Andamento', 'date' => $future, 'status' => 'filled']);
+
+        // Worked by the courier.
+        $worked = $this->shift($other, ['venue' => 'Trabalhada Concluida', 'date' => $past]);
+        Application::create(['shift_id' => $worked->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        $lapsed = $this->shift($other, ['venue' => 'Trabalhada Expirada', 'date' => $past]);
+        Application::create(['shift_id' => $lapsed->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => false]);
+        $coming = $this->shift($other, ['venue' => 'Trabalhada Futura', 'date' => $future]);
+        Application::create(['shift_id' => $coming->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
 
         $this->actingAs($owner);
-        Livewire::test(ChatsIndex::class)
-            ->call('setTab', 'historico')
-            ->assertSee('Publicada');
+        $component = Livewire::test(ChatsIndex::class)->call('setTab', 'historico');
+        $component->assertSee('Publicada Concluida')
+            ->assertSee('Publicada Expirada')
+            ->assertDontSee('Publicada Aberta')
+            ->assertDontSee('Publicada Andamento')
+            ->assertSee('Concluída')
+            ->assertSee('Expirada')
+            ->assertDontSee('Ativa');
 
         $this->actingAs($courier);
         Livewire::test(ChatsIndex::class)
             ->call('setTab', 'historico')
-            ->assertDontSee('Publicada')
+            ->assertDontSee('Publicada Expirada')
             ->call('setHistoryTab', 'worked')
-            ->assertSee('Trabalhada');
+            ->assertSee('Trabalhada Concluida')
+            ->assertSee('Trabalhada Expirada')
+            ->assertDontSee('Trabalhada Futura')
+            ->assertDontSee('Ativa');
     }
 
     public function test_map_only_lists_geocoded_available_shifts(): void

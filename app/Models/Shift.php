@@ -102,6 +102,31 @@ class Shift extends Model
         return $this->endsAt()->isPast();
     }
 
+    /** A courier and the creator both confirmed the partnership (the shift is "filled" or at least one confirmed application exists). */
+    public function hasConfirmedPartnership(): bool
+    {
+        if ($this->status === self::STATUS_FILLED) {
+            return true;
+        }
+
+        $apps = $this->relationLoaded('applications') ? $this->applications : $this->applications()->get();
+
+        return $apps->contains(fn ($a) => $a->status === Application::STATUS_ACCEPTED && $a->confirmed);
+    }
+
+    /**
+     * Why the owner can no longer edit / pause / delete this shift, or null when they still can:
+     * 'ended' (it's history) or 'confirmed' (a partnership is already agreed — the courier is counting on it).
+     */
+    public function lockReason(): ?string
+    {
+        if ($this->hasEnded()) {
+            return 'ended';
+        }
+
+        return $this->hasConfirmedPartnership() ? 'confirmed' : null;
+    }
+
     public function crossesMidnight(): bool
     {
         [$start, $end] = $this->timeWindow();

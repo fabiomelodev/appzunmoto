@@ -20,7 +20,7 @@
         roleOpen: false,
         menuOpen: false,
         draft: @js($filters),
-        initial: { vehicles: [], dailyMin: '', feeMin: '', startTime: '', benefits: [], ownBag: 'any', date: '', onlyInterested: false, onlyMine: false },
+        initial: { vehicles: [], dailyMin: '', feeMin: '', startTime: '', benefits: [], ownBag: 'any', date: '', onlyInterested: false, onlyMine: false, allRegions: false },
         openFilters() { this.filtersOpen = true; },
         toggleVehicle(v) { this.draft.vehicles = this.draft.vehicles.includes(v) ? this.draft.vehicles.filter(x => x !== v) : [...this.draft.vehicles, v]; },
         toggleBenefit(b) { this.draft.benefits = this.draft.benefits.includes(b) ? this.draft.benefits.filter(x => x !== b) : [...this.draft.benefits, b]; },
@@ -219,6 +219,32 @@
         @endforeach
     </div>
 
+    {{-- Courier's search radius (from the base location chosen at sign-up / in Configurações). --}}
+    @if ($this->radiusProfile)
+        <div class="mt-3 flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-surface px-3 py-2 text-[11px] text-muted-foreground">
+            <span class="flex min-w-0 items-center gap-1.5">
+                <x-ui.icon name="map-pin" class="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span class="truncate">
+                    @if (! empty($filters['allRegions']))
+                        Mostrando vagas de <strong class="font-semibold text-foreground">todas as regiões</strong>
+                    @else
+                        Vagas até <strong class="font-semibold text-foreground">{{ $this->radiusProfile->radius_km }} km</strong> de {{ $this->radiusProfile->district ?: $this->radiusProfile->city }}
+                    @endif
+                </span>
+            </span>
+            <button type="button" wire:click="toggleAllRegions" class="shrink-0 font-semibold text-primary">
+                {{ ! empty($filters['allRegions']) ? 'Só perto de mim' : 'Ver todas' }}
+            </button>
+        </div>
+    @endif
+
+    @if (! $this->radiusProfile && auth()->user()->profile?->radiusInactive())
+        <a href="{{ route('profile') }}" wire:navigate class="mt-3 flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] font-medium text-foreground/90">
+            <x-ui.icon name="alert-triangle" class="h-3.5 w-3.5 shrink-0 text-amber-400" />
+            <span>Seu raio de busca está desligado: não encontramos o seu bairro. <strong class="font-semibold text-primary">Conferir em Meu perfil</strong></span>
+        </a>
+    @endif
+
     {{-- List --}}
     <div class="mt-4 space-y-3">
         @forelse ($this->shifts as $shift)
@@ -269,7 +295,22 @@
                     </button>
                     <p class="mt-1 text-[10px] text-muted-foreground">Mostra só as suas vagas que ainda estão abertas.</p>
                 </div>
-                {{-- Date --}}
+                {{-- Regions: only couriers with a located base have a radius to lift. --}}
+                @if ($this->radiusProfile)
+                    <div>
+                        <label class="text-[11px] uppercase tracking-wider text-muted-foreground">Região</label>
+                        <button type="button" @click="draft.allRegions = !draft.allRegions"
+                            class="mt-2 flex w-full items-center justify-between rounded-xl border p-3 text-sm font-semibold transition"
+                            :class="draft.allRegions ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 bg-input text-muted-foreground'">
+                            <span class="flex items-center gap-2"><x-ui.icon name="map-pin" class="h-4 w-4" /> Ver vagas de todas as regiões</span>
+                            <span class="flex h-5 w-9 items-center rounded-full p-0.5 transition" :class="draft.allRegions ? 'bg-primary' : 'bg-muted'">
+                                <span class="h-4 w-4 rounded-full bg-background transition" :class="draft.allRegions ? 'translate-x-4' : ''"></span>
+                            </span>
+                        </button>
+                        <p class="mt-1 text-[10px] text-muted-foreground">Por padrão você vê só as vagas até {{ $this->radiusProfile->radius_km }} km do seu bairro.</p>
+                    </div>
+
+                @endif                {{-- Date --}}
                 <div>
                     <label class="text-[11px] uppercase tracking-wider text-muted-foreground">Data específica (opcional)</label>
                     <div class="mt-2 flex gap-2">

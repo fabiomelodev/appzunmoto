@@ -103,7 +103,7 @@ class ShiftFlowTest extends TestCase
         $this->actingAs($other);
         Livewire::test(Show::class, ['id' => $shift->id])
             ->assertSee('Disponível apenas para motoboys')
-            ->assertDontSee('Aceitar Vaga')
+            ->assertDontSee('Tenho interesse')
             ->call('registerInterest');
 
         $this->assertDatabaseMissing('applications', ['shift_id' => $shift->id, 'user_id' => $other->id]);
@@ -111,7 +111,7 @@ class ShiftFlowTest extends TestCase
         // Switching back to courier makes the same shift available again.
         $other->profile->update(['role' => 'courier']);
         Livewire::test(Show::class, ['id' => $shift->id])
-            ->assertSee('Aceitar Vaga')
+            ->assertSee('Tenho interesse')
             ->call('registerInterest');
 
         $this->assertDatabaseHas('applications', ['shift_id' => $shift->id, 'user_id' => $other->id]);
@@ -343,7 +343,7 @@ class ShiftFlowTest extends TestCase
             ->assertSee('Horário indisponível')
             ->assertSee('Você já tem uma parceria confirmada nesse mesmo dia e horário em')
             ->assertSee('Ja Confirmada')
-            ->assertDontSee('Aceitar Vaga')
+            ->assertDontSee('Tenho interesse')
             // A stale tab / forged call is refused on the server too.
             ->call('registerInterest')
             ->assertDispatched('toast', message: 'Você já tem uma parceria confirmada nesse horário.', type: 'error');
@@ -402,7 +402,7 @@ class ShiftFlowTest extends TestCase
             ->call('confirmHasBag')
             ->assertDispatched('toast')
             ->assertDontSee('Sim, tenho mochila térmica (bag)')
-            ->assertSee('Aceitar Vaga');
+            ->assertSee('Tenho interesse');
 
         $this->assertTrue((bool) $courier->profile->fresh()->has_bag);
     }
@@ -747,36 +747,6 @@ class ShiftFlowTest extends TestCase
         $this->assertSame($address->photo_url, $shift->address_photo_url);
     }
 
-    public function test_cannot_reduce_couriers_when_shift_has_interest(): void
-    {
-        $creator = $this->user('Dono');
-        $courier = $this->user('Moto');
-        $shift = $this->shift($creator, ['couriers_needed' => 2]);
-        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
-        $this->actingAs($creator);
-
-        $form = [
-            'date' => $shift->date->toDateString(),
-            'startTime' => '18:00', 'endTime' => '23:00',
-            'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
-            'contactName' => '', 'contactPhone' => '', 'notes' => '',
-            'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
-            'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
-        ];
-
-        // Reduzir abaixo de 2 é rejeitado — segue 2.
-        Livewire::test(Create::class, ['id' => $shift->id])
-            ->call('save', $form)
-            ->assertDispatched('toast');
-        $this->assertSame(2, $shift->fresh()->couriers_needed);
-
-        // Aumentar é permitido.
-        Livewire::test(Create::class, ['id' => $shift->id])
-            ->call('save', ['couriersNeeded' => 3] + $form)
-            ->assertRedirect();
-        $this->assertSame(3, $shift->fresh()->couriers_needed);
-    }
-
     protected function createShiftForm(array $overrides = []): array
     {
         return array_merge([
@@ -1100,6 +1070,101 @@ class ShiftFlowTest extends TestCase
         Livewire::test(Show::class, ['id' => $other->id])->assertDontSee('foi pausada pelo estabelecimento');
     }
 
+    public function test_ended_shift_cannot_be_edited_paused_or_deleted(): void
+    {
+        $creator = $this->user('Dono');
+        $past = $this->shift($creator, ['venue' => 'Ja Terminou', 'date' => now('America/Sao_Paulo')->subDays(2)->toDateString()]);
+        $open = $this->shift($creator, ['venue' => 'Ainda Aberta']);
+
+        $this->actingAs($creator);
+
+        // The page offers no management actions for an ended shift...
+        Livewire::test(Show::class, ['id' => $past->id])
+            ->assertSee('Esta vaga já terminou')
+            ->assertDontSee('Gerenciar vaga')
+            ->assertDontSeeHtml(route('shifts.edit', $past->id))
+            // ...and the server refuses them even when called directly.
+            ->call('toggleActive')
+            ->assertDispatched('toast', message: 'Esta vaga já terminou e não pode mais ser alterada.', type: 'error')
+            ->call('deleteShift')
+            ->assertDispatched('toast', message: 'Esta vaga já terminou e não pode mais ser excluída.', type: 'error')
+            ->assertNoRedirect();
+        $this->assertTrue($past->fresh()->active);
+        $this->assertNotNull(Shift::find($past->id));
+
+        // Editing is closed too: the form bounces back to the shift page.
+        Livewire::test(Create::class, ['id' => $past->id])
+            ->assertRedirect(route('shifts.show', $past->id));
+
+        // Open shifts keep all three actions.
+        Livewire::test(Show::class, ['id' => $open->id])
+            ->assertSee('Gerenciar vaga')
+            ->assertSeeHtml(route('shifts.edit', $open->id))
+            ->assertDontSee('Esta vaga já terminou')
+            ->call('toggleActive')
+            ->assertDispatched('toast', message: 'Vaga pausada')
+            ->call('deleteShift');
+        $this->assertNull(Shift::find($open->id));
+    }
+
+    public function test_shift_with_a_confirmed_partnership_cannot_be_edited_paused_or_deleted(): void
+    {
+        $creator = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $other = $this->user('Outro');
+
+        $confirmed = $this->shift($creator, ['venue' => 'Confirmada', 'couriers_needed' => 2, 'status' => 'reserved']);
+        Application::create(['shift_id' => $confirmed->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        // Accepted but not confirmed by the courier yet: still the owner's to change.
+        $waiting = $this->shift($creator, ['venue' => 'Aguardando', 'status' => 'reserved']);
+        Application::create(['shift_id' => $waiting->id, 'user_id' => $other->id, 'status' => 'accepted', 'confirmed' => false]);
+
+        $this->actingAs($creator);
+        Livewire::test(Show::class, ['id' => $confirmed->id])
+            ->assertSee('Esta vaga tem parceria confirmada')
+            ->assertDontSee('Gerenciar vaga')
+            ->assertDontSeeHtml(route('shifts.edit', $confirmed->id))
+            ->call('toggleActive')
+            ->assertDispatched('toast', message: 'Esta vaga tem parceria confirmada e não pode mais ser alterada.', type: 'error')
+            ->call('deleteShift')
+            ->assertDispatched('toast', message: 'Esta vaga tem parceria confirmada e não pode mais ser excluída.', type: 'error')
+            ->assertNoRedirect();
+        $this->assertTrue($confirmed->fresh()->active);
+        $this->assertNotNull(Shift::find($confirmed->id));
+
+        Livewire::test(Create::class, ['id' => $confirmed->id])
+            ->assertRedirect(route('shifts.show', $confirmed->id));
+
+        Livewire::test(Show::class, ['id' => $waiting->id])
+            ->assertSee('Gerenciar vaga')
+            ->assertSeeHtml(route('shifts.edit', $waiting->id))
+            ->assertDontSee('parceria confirmada e não pode');
+        Livewire::test(Create::class, ['id' => $waiting->id])->assertNoRedirect();
+    }
+
+    public function test_saving_an_edit_of_an_ended_shift_is_refused(): void
+    {
+        $creator = $this->user('Dono');
+        $shift = $this->shift($creator, ['daily_rate' => 150, 'date' => now('America/Sao_Paulo')->addDay()->toDateString()]);
+
+        $this->actingAs($creator);
+        $component = Livewire::test(Create::class, ['id' => $shift->id]);
+
+        // The shift ends while the form is open.
+        $shift->update(['date' => now('America/Sao_Paulo')->subDays(2)->toDateString()]);
+
+        $component->call('save', [
+            'date' => $shift->date->toDateString(),
+            'startTime' => '18:00', 'endTime' => '23:00',
+            'dailyRate' => '999', 'feeMin' => '8', 'feeMax' => '12',
+            'contactName' => '', 'contactPhone' => '',
+            'notes' => '', 'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
+            'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
+        ])->assertDispatched('toast', message: 'Esta vaga já terminou e não pode mais ser editada.', type: 'error');
+
+        $this->assertEquals(150, $shift->fresh()->daily_rate);
+    }
+
     public function test_creator_can_edit_shift_and_marks_edited_at(): void
     {
         $creator = $this->user('Dono');
@@ -1136,7 +1201,6 @@ class ShiftFlowTest extends TestCase
         $this->actingAs($creator);
         Livewire::withQueryParams(['address' => $newAddress->id])
             ->test(Create::class, ['id' => $shift->id])
-            ->assertSet('canChangeAddress', true)
             ->assertSet('venue', 'Endereço Novo')
             ->call('save', [
                 'date' => $shift->date->toDateString(),
@@ -1153,12 +1217,14 @@ class ShiftFlowTest extends TestCase
         $this->assertStringContainsString('Bela Vista', $fresh->address);
     }
 
-    public function test_editing_shift_with_interest_locks_the_address(): void
+    public function test_editing_shift_with_pending_interest_still_allows_changing_address_and_quantity(): void
     {
         $creator = $this->user('Dono');
-        $courier = $this->user('Moto');
-        $shift = $this->shift($creator, ['venue' => 'Endereço Antigo']);
-        Application::create(['shift_id' => $shift->id, 'user_id' => $courier->id, 'status' => 'interested']);
+        $c1 = $this->user('Moto1');
+        $c2 = $this->user('Moto2');
+        $shift = $this->shift($creator, ['venue' => 'Endereço Antigo', 'couriers_needed' => 3]);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $c1->id, 'status' => 'interested']);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $c2->id, 'status' => 'interested']);
         $newAddress = UserAddress::create([
             'user_id' => $creator->id, 'label' => 'Endereço Novo', 'postal_code' => '01310100',
             'street' => 'Av Paulista', 'number' => '1000', 'district' => 'Bela Vista', 'city' => 'São Paulo',
@@ -1167,8 +1233,8 @@ class ShiftFlowTest extends TestCase
         $this->actingAs($creator);
         Livewire::withQueryParams(['address' => $newAddress->id])
             ->test(Create::class, ['id' => $shift->id])
-            ->assertSet('canChangeAddress', false)
-            ->assertSet('venue', 'Endereço Antigo')
+            ->assertSet('minCouriers', 1)
+            ->assertSet('venue', 'Endereço Novo')
             ->call('save', [
                 'date' => $shift->date->toDateString(),
                 'startTime' => '18:00', 'endTime' => '23:00',
@@ -1179,7 +1245,41 @@ class ShiftFlowTest extends TestCase
             ])
             ->assertRedirect();
 
-        $this->assertSame('Endereço Antigo', $shift->fresh()->venue);
+        $fresh = $shift->fresh();
+        $this->assertSame('Endereço Novo', $fresh->venue);
+        $this->assertSame(1, (int) $fresh->couriers_needed);
+    }
+
+    public function test_quantity_cannot_drop_below_the_couriers_already_accepted(): void
+    {
+        $creator = $this->user('Dono');
+        $c1 = $this->user('Moto1');
+        $c2 = $this->user('Moto2');
+        $shift = $this->shift($creator, ['couriers_needed' => 3, 'status' => 'reserved']);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $c1->id, 'status' => 'accepted', 'confirmed' => false]);
+        Application::create(['shift_id' => $shift->id, 'user_id' => $c2->id, 'status' => 'accepted', 'confirmed' => false]);
+
+        $this->actingAs($creator);
+        $form = [
+            'date' => $shift->date->toDateString(),
+            'startTime' => '18:00', 'endTime' => '23:00',
+            'dailyRate' => '150', 'feeMin' => '8', 'feeMax' => '12',
+            'contactName' => '', 'contactPhone' => '',
+            'notes' => '', 'venueType' => 'pizzaria', 'expectedVolume' => 'moderado',
+            'couriersNeeded' => 1, 'benefits' => [], 'vehicles' => ['moto'], 'requiresOwnBag' => false,
+        ];
+
+        Livewire::test(Create::class, ['id' => $shift->id])
+            ->assertSet('minCouriers', 2)
+            ->call('save', $form)
+            ->assertDispatched('toast', message: 'Esta vaga já tem 2 motoboys aceitos — a quantidade não pode ser menor que isso.')
+            ->assertNoRedirect();
+        $this->assertSame(3, (int) $shift->fresh()->couriers_needed);
+
+        Livewire::test(Create::class, ['id' => $shift->id])
+            ->call('save', ['couriersNeeded' => 2] + $form)
+            ->assertRedirect();
+        $this->assertSame(2, (int) $shift->fresh()->couriers_needed);
     }
 
     public function test_deactivate_hides_shift_from_listing(): void

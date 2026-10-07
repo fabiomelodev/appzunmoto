@@ -29,6 +29,8 @@ class SwitchToCourier extends Component
 
     public string $vehicle = '';
 
+    public int $radiusKm = \App\Support\Radius::DEFAULT_KM;
+
     public function mount(): void
     {
         $profile = Auth::user()->profile;
@@ -44,6 +46,7 @@ class SwitchToCourier extends Component
         $this->district = $profile?->district ?? '';
         $this->city = $profile?->city ?? '';
         $this->vehicle = $profile?->vehicle ?? '';
+        $this->radiusKm = (int) ($profile?->radius_km ?: \App\Support\Radius::DEFAULT_KM);
     }
 
     /** Fills district / city from the CEP (ViaCEP), like the onboarding form. */
@@ -103,7 +106,9 @@ class SwitchToCourier extends Component
             'district' => trim($this->district),
             'city' => trim($this->city),
             'vehicle' => $this->vehicle,
+            'radius_km' => \App\Support\Radius::clamp($this->radiusKm),
         ]);
+        $profile->refreshBaseLocation($this->cep);
 
         $this->dispatch('toast', message: 'Perfil alterado para Motoboy.');
 

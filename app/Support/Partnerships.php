@@ -94,6 +94,40 @@ class Partnerships
         }
     }
 
+    /**
+     * Candidates waiting for the creator's answer, per shift (id => count): pending interest
+     * on shifts that haven't ended and still have a free slot. Drives the "Parcerias" badges;
+     * it clears by itself once the creator accepts / declines or the shift fills up / ends.
+     *
+     * @return \Illuminate\Support\Collection<string, int>
+     */
+    public static function pendingCandidatesByShift(string $userId): Collection
+    {
+        return Shift::where('creator_id', $userId)
+            ->whereDate('date', '>=', now('America/Sao_Paulo')->subDay()->toDateString())
+            ->withCount([
+                'applications as pending_count' => fn ($q) => $q->where('status', Application::STATUS_INTERESTED),
+                'applications as accepted_count' => fn ($q) => $q->where('status', Application::STATUS_ACCEPTED),
+            ])
+            ->get()
+            ->filter(fn ($s) => $s->pending_count > 0
+                && $s->accepted_count < ($s->couriers_needed ?? 1)
+                && ! $s->hasEnded())
+            ->mapWithKeys(fn ($s) => [$s->id => (int) $s->pending_count]);
+    }
+
+    /** Shifts where the creator already accepted this courier and the courier still has to confirm (not ended yet). */
+    public static function awaitingConfirmationCount(string $courierId): int
+    {
+        return Shift::where('creator_id', '!=', $courierId)
+            ->whereDate('date', '>=', now('America/Sao_Paulo')->subDay()->toDateString())
+            ->whereHas('applications', fn ($q) => $q->where('user_id', $courierId)
+                ->where('status', Application::STATUS_ACCEPTED)->where('confirmed', false))
+            ->get()
+            ->reject(fn ($s) => $s->hasEnded())
+            ->count();
+    }
+
     /** Creator declines (removes) a courier's application. */
     public static function decline(Shift $shift, string $courierId): void
     {

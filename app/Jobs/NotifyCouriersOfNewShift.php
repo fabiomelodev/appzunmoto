@@ -7,6 +7,7 @@ use App\Models\Profile;
 use App\Models\Shift;
 use App\Models\UserSetting;
 use App\Support\Catalog;
+use App\Support\Radius;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -36,6 +37,10 @@ class NotifyCouriersOfNewShift implements ShouldQueue
             ->chunkById(200, function ($couriers) use ($acceptedVehicles) {
                 foreach ($couriers as $courier) {
                     if (! Catalog::vehicleCompatible($acceptedVehicles, $courier->vehicle)) {
+                        continue;
+                    }
+                    // Outside the courier's search radius: no point notifying (see App\Support\Radius).
+                    if (Radius::applies($courier) && ! Radius::includes($courier, $this->shift)) {
                         continue;
                     }
 

@@ -1,6 +1,10 @@
 @php
     $myShifts = $this->myShifts;
     $interestedShifts = $this->interestedShifts;
+    $interestedSections = $this->interestedSections;
+    $inProgressPublished = $this->inProgressPublished;
+    $inProgressWorked = $this->inProgressWorked;
+    $tabCounts = $this->tabCounts;
     $historyShifts = $this->historyShifts;
     $myApplications = $this->myApplicationsByShift;
     $interestedChats = $this->interestedChats;
@@ -20,11 +24,13 @@
     </div>
 
     {{-- Tabs --}}
-    <div class="mt-5 grid h-auto w-full grid-cols-3 gap-1 rounded-xl bg-surface p-1">
+    <div class="mt-5 grid h-auto w-full grid-cols-4 gap-1 rounded-xl bg-surface p-1">
         <button wire:click="setTab('publicadas')"
-            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'publicadas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Vagas publicadas</button>
+            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'publicadas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Vagas publicadas<x-tab-badge :count="$tabCounts['publicadas']" :active="$tab === 'publicadas'" /></button>
         <button wire:click="setTab('interessadas')"
-            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'interessadas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Vagas interessadas</button>
+            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'interessadas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Vagas interessadas<x-tab-badge :count="$tabCounts['interessadas']" :active="$tab === 'interessadas'" /></button>
+        <button wire:click="setTab('andamento')"
+            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'andamento' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Em andamento<x-tab-badge :count="$tabCounts['andamento']" :active="$tab === 'andamento'" /></button>
         <button wire:click="setTab('historico')"
             class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'historico' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Histórico de turnos</button>
     </div>
@@ -32,45 +38,71 @@
     @if ($tab === 'publicadas')
         <div class="mt-4 space-y-4">
             <section>
-                <x-section-title :count="$myShifts['active']->count()">Vagas abertas</x-section-title>
+                <x-section-title :count="$myShifts->count()">Vagas abertas</x-section-title>
                 <div class="mt-2 space-y-2">
-                    @forelse ($myShifts['active'] as $shift)
+                    @forelse ($myShifts as $shift)
                         @include('livewire.chats.partials.shift-row', ['shift' => $shift, 'expired' => false, 'openShift' => $openShift, 'unread' => $publishedUnread])
                     @empty
                         <x-empty-state icon="users" text="Você ainda não publicou nenhuma vaga aberta." />
                     @endforelse
                 </div>
             </section>
-
-            @if ($myShifts['inProgress']->isNotEmpty())
+        </div>
+    @elseif ($tab === 'interessadas')
+        <div class="mt-4 space-y-4">
+            @if ($interestedSections['confirm']->isNotEmpty())
                 <section>
-                    <x-section-title :count="$myShifts['inProgress']->count()">Vagas em andamento</x-section-title>
+                    <x-section-title :count="$interestedSections['confirm']->count()">Aguardando sua confirmação</x-section-title>
                     <div class="mt-2 space-y-2">
-                        @foreach ($myShifts['inProgress'] as $shift)
+                        @foreach ($interestedSections['confirm'] as $v)
+                            @include('livewire.chats.partials.shift-status-row', ['v' => $v, 'mode' => 'interested', 'myApplications' => $myApplications, 'chat' => $interestedChats[$v->id] ?? null])
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
+            @if ($interestedSections['analysis']->isNotEmpty())
+                <section>
+                    <x-section-title :count="$interestedSections['analysis']->count()">Em análise</x-section-title>
+                    <div class="mt-2 space-y-2">
+                        @foreach ($interestedSections['analysis'] as $v)
+                            @include('livewire.chats.partials.shift-status-row', ['v' => $v, 'mode' => 'interested', 'myApplications' => $myApplications, 'chat' => $interestedChats[$v->id] ?? null])
+                        @endforeach
+                    </div>
+                </section>
+            @endif
+
+            @if ($interestedShifts->isEmpty())
+                <x-empty-state icon="bike" text="Nenhuma vaga aguardando sua confirmação ou em análise no momento." />
+            @endif
+        </div>
+    @elseif ($tab === 'andamento')
+        <div class="mt-4 space-y-4">
+            @if ($inProgressPublished->isNotEmpty())
+                <section>
+                    <x-section-title :count="$inProgressPublished->count()">Vagas que publiquei</x-section-title>
+                    <div class="mt-2 space-y-2">
+                        @foreach ($inProgressPublished as $shift)
                             @include('livewire.chats.partials.shift-row', ['shift' => $shift, 'expired' => false, 'inProgress' => true, 'openShift' => $openShift, 'unread' => $publishedUnread])
                         @endforeach
                     </div>
                 </section>
             @endif
 
-            @if ($myShifts['expired']->isNotEmpty())
+            @if ($inProgressWorked->isNotEmpty())
                 <section>
-                    <x-section-title :count="$myShifts['expired']->count()">Vagas encerradas</x-section-title>
+                    <x-section-title :count="$inProgressWorked->count()">Turnos que vou trabalhar</x-section-title>
                     <div class="mt-2 space-y-2">
-                        @foreach ($myShifts['expired'] as $shift)
-                            @include('livewire.chats.partials.shift-row', ['shift' => $shift, 'expired' => true, 'openShift' => $openShift, 'unread' => $publishedUnread])
+                        @foreach ($inProgressWorked as $v)
+                            @include('livewire.chats.partials.shift-status-row', ['v' => $v, 'mode' => 'confirmed', 'myApplications' => $myApplications, 'chat' => $interestedChats[$v->id] ?? null])
                         @endforeach
                     </div>
                 </section>
             @endif
-        </div>
-    @elseif ($tab === 'interessadas')
-        <div class="mt-4 space-y-2">
-            @forelse ($interestedShifts as $v)
-                @include('livewire.chats.partials.shift-status-row', ['v' => $v, 'mode' => 'interested', 'myApplications' => $myApplications, 'chat' => $interestedChats[$v->id] ?? null])
-            @empty
-                <x-empty-state icon="bike" text="Você ainda não demonstrou interesse em nenhuma vaga." />
-            @endforelse
+
+            @if ($inProgressPublished->isEmpty() && $inProgressWorked->isEmpty())
+                <x-empty-state icon="handshake" text="Nenhuma parceria confirmada em andamento no momento." />
+            @endif
         </div>
     @else
         <div class="mt-4">
@@ -87,7 +119,7 @@
                 @forelse ($historyShifts as $v)
                     @include('livewire.chats.partials.shift-status-row', ['v' => $v, 'mode' => $historyTab, 'myApplications' => $myApplications])
                 @empty
-                    <x-empty-state icon="calendar" :text="$historyTab === 'published' ? 'Você ainda não publicou nenhuma vaga.' : 'Você ainda não trabalhou em nenhuma vaga.'" />
+                    <x-empty-state icon="calendar" :text="$historyTab === 'published' ? 'Nenhuma vaga sua foi concluída ou expirou ainda.' : 'Você ainda não concluiu nenhum turno.'" />
                 @endforelse
             </div>
         </div>

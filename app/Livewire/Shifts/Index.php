@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\Banner;
 use App\Models\Shift;
 use App\Support\Catalog;
+use App\Support\Radius;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -31,6 +32,7 @@ class Index extends Component
         'date' => '',
         'onlyInterested' => false,
         'onlyMine' => false,
+        'allRegions' => false, // true = ignore the courier's search radius
     ];
 
     public function getListeners(): array
@@ -63,6 +65,7 @@ class Index extends Component
             'date' => (string) ($draft['date'] ?? ''),
             'onlyInterested' => (bool) ($draft['onlyInterested'] ?? false),
             'onlyMine' => (bool) ($draft['onlyMine'] ?? false),
+            'allRegions' => (bool) ($draft['allRegions'] ?? false),
         ];
     }
 
@@ -76,6 +79,23 @@ class Index extends Component
 
         // The sheet's draft lives client-side: hand it the new state.
         $this->dispatch('filters-synced', filters: $this->filters);
+    }
+
+    /** Banner button / sheet switch: show shifts from every region, or go back to the radius. */
+    public function toggleAllRegions(): void
+    {
+        $this->filters['allRegions'] = empty($this->filters['allRegions']);
+        $this->dispatch('filters-synced', filters: $this->filters);
+    }
+
+    /** The courier's profile when the search radius applies to them (courier with a located base), else null. */
+    #[Computed]
+    public function radiusProfile(): ?\App\Models\Profile
+    {
+        $profile = Auth::user()?->profile;
+        $profile?->ensureBaseLocation();
+
+        return Radius::applies($profile) ? $profile : null;
     }
 
     public function clearFilters(): void
@@ -167,7 +187,8 @@ class Index extends Component
             + ($f['ownBag'] !== 'any' ? 1 : 0)
             + ($f['date'] !== '' ? 1 : 0)
             + (! empty($f['onlyInterested']) ? 1 : 0)
-            + (! empty($f['onlyMine']) ? 1 : 0);
+            + (! empty($f['onlyMine']) ? 1 : 0)
+            + (! empty($f['allRegions']) ? 1 : 0);
     }
 
     /** How many of my shifts are still open (the number on the "Minhas vagas" chip). */
@@ -285,6 +306,7 @@ class Index extends Component
             ->orderByRaw("CASE WHEN status = '".Shift::STATUS_AVAILABLE."' THEN 0 ELSE 1 END")
             ->orderByDesc('created_at')
             ->get()
+            ->filter(fn ($s) => $this->insideRadius($s))
             ->filter(function ($s) use ($now, $acceptedIds) {
                 // A full shift is hidden — except keep it visible to the courier
                 // who was accepted on it, so they still see their confirmation.
@@ -294,6 +316,20 @@ class Index extends Component
                 return ($hasRoom || $mineAccepted) && $s->endsAt()->gte($now);
             })
             ->values();
+    }
+
+    /**
+     * "Vagas perto de mim": outside the courier's radius a shift is hidden — unless the filter
+     * is off ("Ver todas as regiões"), it's the courier's own, or they already applied to it.
+     */
+    protected function insideRadius(Shift $s): bool
+    {
+        $profile = $this->radiusProfile;
+        if (! $profile || ! empty($this->filters['allRegions']) || $s->creator_id === Auth::id()) {
+            return true;
+        }
+
+        return $this->myInterestIds->contains($s->id) || Radius::includes($profile, $s);
     }
 
     public function render()
