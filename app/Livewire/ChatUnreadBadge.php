@@ -3,14 +3,17 @@
 namespace App\Livewire;
 
 use App\Models\Chat;
+use App\Support\Partnerships;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 /**
- * Total of unread chat messages, as a count badge on the "Parcerias" entry of
- * the bottom nav / sidebar. Refreshes when a message notification arrives over
- * the user's private channel, and when a conversation gets read.
+ * Count badge on the "Parcerias" entry of the bottom nav / sidebar: unread chat
+ * messages + candidates waiting for my answer (as the shift's author) + shifts
+ * where I was accepted and still have to confirm (as the courier). Refreshes when
+ * a notification arrives over the user's private channel, when a conversation gets
+ * read and when a partnership step is taken.
  */
 class ChatUnreadBadge extends Component
 {
@@ -22,13 +25,19 @@ class ChatUnreadBadge extends Component
         return [
             'echo-private:user.'.Auth::id().',.notification.received' => '$refresh',
             'chats-read' => '$refresh',
+            // Accepted / declined / confirmed somewhere on the page: the pending counts changed.
+            'partnerships-changed' => '$refresh',
         ];
     }
 
     #[Computed]
     public function total(): int
     {
-        return (int) Chat::unreadCountsFor(Auth::id())->sum();
+        $me = Auth::id();
+
+        return (int) Chat::unreadCountsFor($me)->sum()
+            + (int) Partnerships::pendingCandidatesByShift($me)->sum()
+            + Partnerships::awaitingConfirmationCount($me);
     }
 
     public function render()

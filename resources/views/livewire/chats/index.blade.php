@@ -4,6 +4,7 @@
     $interestedSections = $this->interestedSections;
     $inProgressPublished = $this->inProgressPublished;
     $inProgressWorked = $this->inProgressWorked;
+    $tabCounts = $this->tabCounts;
     $historyShifts = $this->historyShifts;
     $myApplications = $this->myApplicationsByShift;
     $interestedChats = $this->interestedChats;
@@ -25,11 +26,11 @@
     {{-- Tabs --}}
     <div class="mt-5 grid h-auto w-full grid-cols-4 gap-1 rounded-xl bg-surface p-1">
         <button wire:click="setTab('publicadas')"
-            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'publicadas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Vagas publicadas</button>
+            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'publicadas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Vagas publicadas<x-tab-badge :count="$tabCounts['publicadas']" :active="$tab === 'publicadas'" /></button>
         <button wire:click="setTab('interessadas')"
-            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'interessadas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Vagas interessadas</button>
+            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'interessadas' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Vagas interessadas<x-tab-badge :count="$tabCounts['interessadas']" :active="$tab === 'interessadas'" /></button>
         <button wire:click="setTab('andamento')"
-            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'andamento' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Em andamento</button>
+            class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'andamento' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Em andamento<x-tab-badge :count="$tabCounts['andamento']" :active="$tab === 'andamento'" /></button>
         <button wire:click="setTab('historico')"
             class="rounded-lg px-1 py-2 text-[11px] font-semibold leading-tight transition {{ $tab === 'historico' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground' }}">Histórico de turnos</button>
     </div>

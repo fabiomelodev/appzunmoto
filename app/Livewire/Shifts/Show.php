@@ -104,6 +104,7 @@ class Show extends Component
         $application->delete();
 
         unset($this->shift);
+        $this->dispatch('partnerships-changed');
         $this->dispatch('toast', message: 'Interesse removido.');
     }
 
@@ -193,6 +194,7 @@ class Show extends Component
         }
 
         Partnerships::confirm($shift, $userId, $userId);
+        $this->dispatch('partnerships-changed');
 
         unset($this->shift);
         $this->dispatch('toast', message: 'Parceria confirmada!');

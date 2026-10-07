@@ -108,6 +108,7 @@ class Show extends Component
         $courierId = $this->courierId($chat, $shift);
         $filled = Partnerships::confirm($shift, Auth::id(), $courierId);
 
+        $this->dispatch('partnerships-changed');
         $this->dispatch('toast', message: $filled ? 'Parceria confirmada!' : 'Aguardando confirmação da outra parte');
     }
 

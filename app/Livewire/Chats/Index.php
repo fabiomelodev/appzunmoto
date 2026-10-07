@@ -53,7 +53,7 @@ class Index extends Component
     /** New message/application → recompute the lists (order depends on latest activity). */
     public function onSignal(): void
     {
-        unset($this->myShifts, $this->inProgressPublished, $this->inProgressWorked, $this->interestedShifts, $this->interestedSections, $this->historyShifts, $this->interestedChats, $this->publishedUnread);
+        unset($this->myShifts, $this->tabCounts, $this->inProgressPublished, $this->inProgressWorked, $this->interestedShifts, $this->interestedSections, $this->historyShifts, $this->interestedChats, $this->publishedUnread);
     }
 
     public function setTab(string $tab): void
@@ -95,7 +95,8 @@ class Index extends Component
             ? 'Candidato aceito e parceria confirmada!'
             : 'Candidato aceito! Aguardando confirmação do motoboy.');
 
-        unset($this->myShifts);
+        unset($this->myShifts, $this->tabCounts);
+        $this->dispatch('partnerships-changed');
     }
 
     public function requestDecline(string $shiftId, string $courierId): void
@@ -117,7 +118,8 @@ class Index extends Component
         }
 
         $this->declineTarget = null;
-        unset($this->myShifts);
+        unset($this->myShifts, $this->tabCounts);
+        $this->dispatch('partnerships-changed');
     }
 
     public function openChatWith(string $shiftId, string $courierId)
@@ -212,6 +214,25 @@ class Index extends Component
         [$confirm, $analysis] = $shifts->partition(fn ($s) => ($apps[$s->id]->status ?? null) === Application::STATUS_ACCEPTED);
 
         return ['confirm' => $confirm->values(), 'analysis' => $analysis->values()];
+    }
+
+    /**
+     * Numbers for the tab badges: candidates waiting for my answer (Vagas publicadas /
+     * Em andamento, split by where the shift is listed) and shifts where I still have
+     * to confirm (Vagas interessadas).
+     *
+     * @return array{publicadas: int, interessadas: int, andamento: int}
+     */
+    #[Computed]
+    public function tabCounts(): array
+    {
+        $pending = Partnerships::pendingCandidatesByShift(Auth::id());
+
+        return [
+            'publicadas' => (int) $pending->only($this->myShifts->pluck('id')->all())->sum(),
+            'andamento' => (int) $pending->only($this->inProgressPublished->pluck('id')->all())->sum(),
+            'interessadas' => $this->interestedSections['confirm']->count(),
+        ];
     }
 
     /** Both sections in display order (waiting-for-confirmation first). */
