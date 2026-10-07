@@ -409,7 +409,7 @@
                 </x-ui.button>
             </div>
         @else
-            <x-ui.button size="lg" class="w-full glow-orange" wire:click="$set('confirmOpen', true)">Aceitar Vaga</x-ui.button>
+            <x-ui.button size="lg" class="w-full glow-orange" wire:click="$set('confirmOpen', true)">Tenho interesse</x-ui.button>
         @endif
     </div>
     {{-- The accepted-courier and schedule-clash bars (banner + button) are taller than the others. --}}
@@ -418,7 +418,7 @@
     {{-- Confirm dialog --}}
     @if ($confirmOpen)
         <x-ui.modal wire:click.self="$set('confirmOpen', false)">
-            <h2 class="font-display text-lg font-bold">Confirmar aceitação</h2>
+            <h2 class="font-display text-lg font-bold">Confirmar interesse</h2>
             <div class="mt-3 space-y-2">
                 <p class="flex gap-2 rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs font-medium text-primary">
                     <x-ui.icon name="alert-triangle" class="mt-0.5 h-4 w-4 shrink-0" />
@@ -432,7 +432,7 @@
                 @endif
             </div>
             <div class="mt-4 flex flex-col gap-2">
-                <x-ui.button size="lg" class="w-full glow-orange" wire:click="registerInterest">Confirmar e aceitar vaga</x-ui.button>
+                <x-ui.button size="lg" class="w-full glow-orange" wire:click="registerInterest">Confirmar interesse na vaga</x-ui.button>
                 <a href="{{ route('vehicle') }}" wire:navigate class="py-2 text-center text-sm text-muted-foreground hover:text-foreground">Alterar veículo</a>
             </div>
         </x-ui.modal>

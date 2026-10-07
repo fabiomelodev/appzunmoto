@@ -103,7 +103,7 @@ class ShiftFlowTest extends TestCase
         $this->actingAs($other);
         Livewire::test(Show::class, ['id' => $shift->id])
             ->assertSee('Disponível apenas para motoboys')
-            ->assertDontSee('Aceitar Vaga')
+            ->assertDontSee('Tenho interesse')
             ->call('registerInterest');
 
         $this->assertDatabaseMissing('applications', ['shift_id' => $shift->id, 'user_id' => $other->id]);
@@ -111,7 +111,7 @@ class ShiftFlowTest extends TestCase
         // Switching back to courier makes the same shift available again.
         $other->profile->update(['role' => 'courier']);
         Livewire::test(Show::class, ['id' => $shift->id])
-            ->assertSee('Aceitar Vaga')
+            ->assertSee('Tenho interesse')
             ->call('registerInterest');
 
         $this->assertDatabaseHas('applications', ['shift_id' => $shift->id, 'user_id' => $other->id]);
@@ -343,7 +343,7 @@ class ShiftFlowTest extends TestCase
             ->assertSee('Horário indisponível')
             ->assertSee('Você já tem uma parceria confirmada nesse mesmo dia e horário em')
             ->assertSee('Ja Confirmada')
-            ->assertDontSee('Aceitar Vaga')
+            ->assertDontSee('Tenho interesse')
             // A stale tab / forged call is refused on the server too.
             ->call('registerInterest')
             ->assertDispatched('toast', message: 'Você já tem uma parceria confirmada nesse horário.', type: 'error');
@@ -402,7 +402,7 @@ class ShiftFlowTest extends TestCase
             ->call('confirmHasBag')
             ->assertDispatched('toast')
             ->assertDontSee('Sim, tenho mochila térmica (bag)')
-            ->assertSee('Aceitar Vaga');
+            ->assertSee('Tenho interesse');
 
         $this->assertTrue((bool) $courier->profile->fresh()->has_bag);
     }
