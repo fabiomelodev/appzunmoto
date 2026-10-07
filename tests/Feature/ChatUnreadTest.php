@@ -157,6 +157,92 @@ class ChatUnreadTest extends TestCase
         $this->assertMatchesRegularExpression('/Conversar com Moto(?:\s|<!--.*?-->)*<span[^>]*>\s*2\s*<\/span>/s', $expanded);
     }
 
+    public function test_nav_badge_counts_candidates_waiting_for_the_author(): void
+    {
+        $author = $this->user('Dono');
+        $c1 = $this->user('Moto1');
+        $c2 = $this->user('Moto2');
+        $c3 = $this->user('Moto3');
+        $future = now('America/Sao_Paulo')->addDays(3)->toDateString();
+        $open = $this->shift($author, ['venue' => 'Aberta', 'date' => $future, 'couriers_needed' => 3]);
+        $full = $this->shift($author, ['venue' => 'Cheia', 'date' => $future, 'status' => 'reserved']);
+        $over = $this->shift($author, ['venue' => 'Passada', 'date' => now('America/Sao_Paulo')->subDays(2)->toDateString()]);
+        Application::create(['shift_id' => $open->id, 'user_id' => $c1->id, 'status' => 'interested']);
+        Application::create(['shift_id' => $open->id, 'user_id' => $c2->id, 'status' => 'interested']);
+        Application::create(['shift_id' => $full->id, 'user_id' => $c1->id, 'status' => 'accepted', 'confirmed' => true]);
+        Application::create(['shift_id' => $full->id, 'user_id' => $c3->id, 'status' => 'interested']); // no slot left
+        Application::create(['shift_id' => $over->id, 'user_id' => $c1->id, 'status' => 'interested']);  // already over
+
+        $this->actingAs($author);
+        $this->assertSame(2, Livewire::test(ChatUnreadBadge::class)->instance()->total);
+
+        // Accepting one clears it from the count, and the page tells the badge to refresh.
+        Livewire::test(ChatsIndex::class)
+            ->call('acceptCandidate', $open->id, $c1->id)
+            ->assertDispatched('partnerships-changed');
+        $this->assertSame(1, Livewire::test(ChatUnreadBadge::class)->instance()->total);
+
+        Livewire::test(ChatsIndex::class)
+            ->call('requestDecline', $open->id, $c2->id)->call('confirmDecline')
+            ->assertDispatched('partnerships-changed');
+        $this->assertSame(0, Livewire::test(ChatUnreadBadge::class)->instance()->total);
+    }
+
+    public function test_nav_badge_counts_accepted_shifts_waiting_for_the_courier_to_confirm(): void
+    {
+        $author = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $future = now('America/Sao_Paulo')->addDays(3)->toDateString();
+        $waiting = $this->shift($author, ['venue' => 'A Confirmar', 'date' => $future, 'status' => 'reserved']);
+        $done = $this->shift($author, ['venue' => 'Ja Confirmada', 'date' => now('America/Sao_Paulo')->addDays(5)->toDateString(), 'status' => 'filled']);
+        $pending = $this->shift($author, ['venue' => 'So Interesse', 'date' => $future]);
+        $over = $this->shift($author, ['venue' => 'Ja Passou', 'date' => now('America/Sao_Paulo')->subDays(2)->toDateString()]);
+        Application::create(['shift_id' => $waiting->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => false, 'confirmations' => [$author->id]]);
+        Application::create(['shift_id' => $done->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        Application::create(['shift_id' => $pending->id, 'user_id' => $courier->id, 'status' => 'interested']);
+        Application::create(['shift_id' => $over->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => false]);
+
+        $this->actingAs($courier);
+        $this->assertSame(1, Livewire::test(ChatUnreadBadge::class)->instance()->total);
+
+        // Messages add on top.
+        $chat = Chat::findOrCreateBetween($waiting->id, $author->id, $courier->id);
+        $this->say($chat, $author);
+        $this->assertSame(2, Livewire::test(ChatUnreadBadge::class)->instance()->total);
+
+        // Confirming from the shift page clears the pending item.
+        Livewire::test(\App\Livewire\Shifts\Show::class, ['id' => $waiting->id])
+            ->call('confirmPartnership')
+            ->assertDispatched('partnerships-changed');
+        $this->assertSame(1, Livewire::test(ChatUnreadBadge::class)->instance()->total);
+    }
+
+    public function test_parcerias_tabs_show_the_pending_counts(): void
+    {
+        $author = $this->user('Dono');
+        $c1 = $this->user('Moto1');
+        $c2 = $this->user('Moto2');
+        $future = now('America/Sao_Paulo')->addDays(3)->toDateString();
+        $open = $this->shift($author, ['venue' => 'Aberta', 'date' => $future]);
+        Application::create(['shift_id' => $open->id, 'user_id' => $c1->id, 'status' => 'interested']);
+        Application::create(['shift_id' => $open->id, 'user_id' => $c2->id, 'status' => 'interested']);
+        // Multi-courier shift: one confirmed (listed under "Em andamento"), a candidate still waiting.
+        $multi = $this->shift($author, ['venue' => 'Dupla', 'date' => $future, 'couriers_needed' => 2, 'status' => 'reserved']);
+        Application::create(['shift_id' => $multi->id, 'user_id' => $c1->id, 'status' => 'accepted', 'confirmed' => true]);
+        Application::create(['shift_id' => $multi->id, 'user_id' => $c2->id, 'status' => 'interested']);
+
+        $this->actingAs($author);
+        $counts = Livewire::test(ChatsIndex::class)->instance()->tabCounts;
+        $this->assertEquals(['publicadas' => 2, 'interessadas' => 0, 'andamento' => 1], $counts);
+
+        $waiting = $this->shift($c1, ['venue' => 'Do Moto1', 'date' => $future, 'status' => 'reserved']);
+        Application::create(['shift_id' => $waiting->id, 'user_id' => $author->id, 'status' => 'accepted', 'confirmed' => false]);
+        $this->assertSame(1, Livewire::test(ChatsIndex::class)->instance()->tabCounts['interessadas']);
+
+        $html = Livewire::test(ChatsIndex::class)->html();
+        $this->assertMatchesRegularExpression('/Vagas publicadas<!--.*?-->\s*<span[^>]*>\s*2\s*<\/span>|Vagas publicadas\s*<span[^>]*>\s*2\s*<\/span>/s', $html);
+    }
+
     public function test_nav_badge_totals_every_unread_conversation_and_caps_at_99(): void
     {
         [$chatA, $creator, $courier] = $this->chat();

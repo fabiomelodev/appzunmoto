@@ -88,14 +88,26 @@
             </x-settings-row>
         </x-settings-section>
 
-        {{-- Region --}}
-        <x-settings-section icon="globe" title="Região">
-            <label class="block text-xs font-medium text-muted-foreground">Cidade base</label>
-            <input wire:model="city" x-on:blur="$wire.saveCity()" placeholder="Ex: São Paulo, SP"
-                class="mt-2 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-primary" />
-            <p class="mt-2 text-xs text-muted-foreground">Usado para filtrar vagas próximas a você.</p>
-        </x-settings-section>
-
+        {{-- Region: the radius only matters to couriers (businesses see every shift). --}}
+        @if (auth()->user()->profile?->isCourier())
+            @php $base = auth()->user()->profile; @endphp
+            <x-settings-section icon="globe" title="Região">
+                <p class="text-xs text-muted-foreground">
+                    Seu ponto de partida:
+                    <span class="font-semibold text-foreground">{{ collect([$base->district, $base->city])->filter()->join(' — ') ?: 'não informado' }}</span>
+                    · <a href="{{ route('profile') }}" wire:navigate class="font-semibold text-primary">alterar em Meu perfil</a>
+                </p>
+                @if ($base->radiusInactive())
+                    <p class="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-[11px] font-medium text-foreground/90">
+                        <x-ui.icon name="alert-triangle" class="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                        <span>Não conseguimos localizar o seu bairro, então o raio ainda não filtra as vagas. Confira o bairro e a cidade em Meu perfil.</span>
+                    </p>
+                @endif
+                <div class="mt-4">
+                    <x-radius-slider :value="$radiusKm" change="saveRadius" />
+                </div>
+            </x-settings-section>
+        @endif
         {{-- Notifications --}}
         <x-settings-section icon="bell" title="Notificações">
             <x-settings-toggle label="Novas vagas próximas" description="Avise quando surgir uma vaga compatível" model="notifyShifts" />

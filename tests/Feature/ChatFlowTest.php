@@ -128,68 +128,130 @@ class ChatFlowTest extends TestCase
         Livewire::test(ChatsIndex::class)->assertSet('tab', 'publicadas');
     }
 
-    public function test_publicadas_tab_splits_shifts_into_open_in_progress_and_closed(): void
+    public function test_publicadas_tab_lists_only_open_shifts(): void
     {
         $creator = $this->user('Dono');
-        $this->shift($creator, ['venue' => 'Vaga Aberta']);
-        // Every slot confirmed but the shift hasn't happened yet → in progress.
-        $this->shift($creator, ['venue' => 'Vaga Andamento', 'status' => 'filled']);
-        // Multi-courier shift with one courier confirmed (status not yet filled) → in progress too.
-        $partial = $this->shift($creator, ['venue' => 'Vaga Parcial', 'couriers_needed' => 2, 'status' => 'reserved']);
-        Application::create(['shift_id' => $partial->id, 'user_id' => $this->user('Moto')->id, 'status' => 'accepted', 'confirmed' => true]);
+        $day = now('America/Sao_Paulo')->addDays(3)->toDateString();
+
+        $this->shift($creator, ['venue' => 'Vaga Aberta', 'date' => $day]);
         // Accepted but not confirmed by the courier yet → still open.
-        $waiting = $this->shift($creator, ['venue' => 'Vaga Aguardando', 'status' => 'reserved']);
+        $waiting = $this->shift($creator, ['venue' => 'Vaga Aguardando', 'date' => $day, 'status' => 'reserved']);
         Application::create(['shift_id' => $waiting->id, 'user_id' => $this->user('Moto2')->id, 'status' => 'accepted', 'confirmed' => false]);
-        // Already over (even if it was filled) → closed.
-        $this->shift($creator, ['venue' => 'Vaga Encerrada', 'status' => 'filled', 'date' => now('America/Sao_Paulo')->subDays(2)->toDateString()]);
+        // Filled / partnership confirmed / already over → not open.
+        $this->shift($creator, ['venue' => 'Vaga Cheia', 'date' => $day, 'status' => 'filled']);
+        $partial = $this->shift($creator, ['venue' => 'Vaga Parcial', 'date' => $day, 'couriers_needed' => 2, 'status' => 'reserved']);
+        Application::create(['shift_id' => $partial->id, 'user_id' => $this->user('Moto')->id, 'status' => 'accepted', 'confirmed' => true]);
+        $this->shift($creator, ['venue' => 'Vaga Encerrada', 'date' => now('America/Sao_Paulo')->subDays(2)->toDateString()]);
 
         $this->actingAs($creator);
-        $shifts = Livewire::test(ChatsIndex::class)->call('setTab', 'publicadas')
+        $component = Livewire::test(ChatsIndex::class)->call('setTab', 'publicadas')
             ->assertSee('Vagas abertas')
-            ->assertSee('Vagas em andamento')
-            ->assertSee('Vagas encerradas')
-            ->assertSee('Parceria confirmada')
-            ->instance()->myShifts;
+            ->assertSee('Vaga Aberta')->assertSee('Vaga Aguardando')
+            ->assertDontSee('Vaga Cheia')->assertDontSee('Vaga Parcial')->assertDontSee('Vaga Encerrada')
+            ->assertDontSee('Vagas em andamento')->assertDontSee('Vagas encerradas');
 
-        $this->assertSame(['Vaga Aberta', 'Vaga Aguardando'], $shifts['active']->pluck('venue')->sort()->values()->all());
-        $this->assertSame(['Vaga Andamento', 'Vaga Parcial'], $shifts['inProgress']->pluck('venue')->sort()->values()->all());
-        $this->assertSame(['Vaga Encerrada'], $shifts['expired']->pluck('venue')->all());
+        $this->assertSame(['Vaga Aberta', 'Vaga Aguardando'], $component->instance()->myShifts->pluck('venue')->sort()->values()->all());
     }
 
-    public function test_publicadas_tab_hides_the_in_progress_section_when_empty(): void
+    public function test_publicadas_tab_empty_state(): void
     {
-        $creator = $this->user('Dono');
-        $this->shift($creator, ['venue' => 'Vaga Aberta']);
-
-        $this->actingAs($creator);
+        $this->actingAs($this->user('Dono'));
         Livewire::test(ChatsIndex::class)->call('setTab', 'publicadas')
             ->assertSee('Vagas abertas')
-            ->assertDontSee('Vagas em andamento')
-            ->assertDontSee('Vagas encerradas');
+            ->assertSee('Você ainda não publicou nenhuma vaga aberta.');
     }
 
-    public function test_interessadas_tab_follows_every_application_through_its_stages(): void
+    public function test_andamento_tab_shows_confirmed_upcoming_partnerships_for_both_sides(): void
+    {
+        $owner = $this->user('Dono');
+        $courier = $this->user('Moto');
+        $other = $this->user('Outro');
+        $future = now('America/Sao_Paulo')->addDays(3)->toDateString();
+        $past = now('America/Sao_Paulo')->subDays(2)->toDateString();
+
+        // Published by the owner: one confirmed (courier), one filled, one waiting, one over.
+        $conf = $this->shift($owner, ['venue' => 'Pub Confirmada', 'date' => $future, 'status' => 'filled']);
+        Application::create(['shift_id' => $conf->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        $partial = $this->shift($owner, ['venue' => 'Pub Parcial', 'date' => $future, 'couriers_needed' => 2, 'status' => 'reserved']);
+        Application::create(['shift_id' => $partial->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        $this->shift($owner, ['venue' => 'Pub Aberta', 'date' => $future]);
+        $over = $this->shift($owner, ['venue' => 'Pub Encerrada', 'date' => $past, 'status' => 'filled']);
+        Application::create(['shift_id' => $over->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+
+        // The courier also confirmed one published by somebody else, and was only accepted in another.
+        $mine = $this->shift($other, ['venue' => 'Turno Confirmado', 'date' => $future]);
+        Application::create(['shift_id' => $mine->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        $unconfirmed = $this->shift($other, ['venue' => 'Turno Sem Confirmar', 'date' => $future]);
+        Application::create(['shift_id' => $unconfirmed->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => false]);
+
+        $this->actingAs($owner);
+        Livewire::test(ChatsIndex::class)->call('setTab', 'andamento')
+            ->assertSee('Vagas que publiquei')
+            ->assertSee('Pub Confirmada')->assertSee('Pub Parcial')->assertSee('1/2 confirmados')
+            ->assertDontSee('Pub Aberta')->assertDontSee('Pub Encerrada')
+            ->assertDontSee('Turnos que vou trabalhar');
+
+        $this->actingAs($courier);
+        Livewire::test(ChatsIndex::class)->call('setTab', 'andamento')
+            ->assertSee('Turnos que vou trabalhar')
+            ->assertSee('Turno Confirmado')->assertSee('Confirmada')
+            ->assertDontSee('Turno Sem Confirmar')
+            ->assertDontSee('Pub Encerrada');
+    }
+
+    public function test_andamento_tab_empty_state_and_requestable_via_query_string(): void
+    {
+        $this->actingAs($this->user('Moto'));
+        Livewire::withQueryParams(['tab' => 'andamento'])->test(ChatsIndex::class)
+            ->assertSet('tab', 'andamento')
+            ->assertSee('Nenhuma parceria confirmada em andamento no momento.');
+    }
+
+    public function test_interessadas_tab_lists_only_confirm_and_analysis_with_confirm_first(): void
     {
         $creator = $this->user('Dono');
         $courier = $this->user('Moto');
         $other = $this->user('Outro');
-        $pending = $this->shift($creator, ['venue' => 'Aguardando Analise']);
-        $accepted = $this->shift($creator, ['venue' => 'Ja Aceita']);
-        $done = $this->shift($creator, ['venue' => 'Ja Confirmada']);
-        $notMine = $this->shift($creator, ['venue' => 'De Outro Motoboy']);
+        $past = now('America/Sao_Paulo')->subDays(2)->toDateString();
+        $soon = now('America/Sao_Paulo')->addDays(2)->toDateString();
+        $later = now('America/Sao_Paulo')->addDays(6)->toDateString();
+
+        // Analysis is the sooner shift, confirm the later one: confirm must still come first.
+        $pending = $this->shift($creator, ['venue' => 'Aguardando Analise', 'date' => $soon]);
+        $accepted = $this->shift($creator, ['venue' => 'Ja Aceita', 'date' => $later]);
+        $done = $this->shift($creator, ['venue' => 'Ja Confirmada', 'date' => $soon]);
+        $gone = $this->shift($creator, ['venue' => 'Ja Passou', 'date' => $past]);
+        $notMine = $this->shift($creator, ['venue' => 'De Outro Motoboy', 'date' => $soon]);
         Application::create(['shift_id' => $pending->id, 'user_id' => $courier->id, 'status' => 'interested']);
         Application::create(['shift_id' => $accepted->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => false]);
         Application::create(['shift_id' => $done->id, 'user_id' => $courier->id, 'status' => 'accepted', 'confirmed' => true]);
+        Application::create(['shift_id' => $gone->id, 'user_id' => $courier->id, 'status' => 'interested']);
         Application::create(['shift_id' => $notMine->id, 'user_id' => $other->id, 'status' => 'interested']);
 
         $this->actingAs($courier);
-        Livewire::test(ChatsIndex::class)
+        $component = Livewire::test(ChatsIndex::class)
             ->call('setTab', 'interessadas')
-            ->assertSee('Aguardando Analise')->assertSee('Em análise')
-            // Accepted shifts stay: the courier still has to confirm (stepper steps 3-4).
-            ->assertSee('Ja Aceita')->assertSee('Confirme')
-            ->assertSee('Ja Confirmada')->assertSee('Concluída')
+            ->assertSee('Aguardando sua confirmação')->assertSee('Ja Aceita')->assertSee('Confirme')
+            ->assertSee('Em análise')->assertSee('Aguardando Analise')
+            ->assertDontSee('Ja Confirmada')
+            ->assertDontSee('Ja Passou')
+            ->assertDontSee('Concluída')->assertDontSee('Expirada')
             ->assertDontSee('De Outro Motoboy');
+
+        $sections = $component->instance()->interestedSections;
+        $this->assertSame(['Ja Aceita'], $sections['confirm']->pluck('venue')->all());
+        $this->assertSame(['Aguardando Analise'], $sections['analysis']->pluck('venue')->all());
+        // Waiting-for-confirmation is rendered above the analysis section.
+        $html = $component->html();
+        $this->assertLessThan(strpos($html, 'Aguardando Analise'), strpos($html, 'Ja Aceita'));
+    }
+
+    public function test_interessadas_tab_empty_state(): void
+    {
+        $this->actingAs($this->user('Moto'));
+        Livewire::test(ChatsIndex::class)->call('setTab', 'interessadas')
+            ->assertSee('Nenhuma vaga aguardando sua confirmação ou em análise')
+            ->assertDontSee('Aguardando sua confirmação');
     }
 
     public function test_interested_courier_can_reply_in_an_existing_chat_but_not_start_one(): void

@@ -207,6 +207,10 @@
                 </div>
                 @error('vehicle') <p class="text-[11px] font-medium text-destructive">{{ $message }}</p> @enderror
 
+                <div class="rounded-xl border border-border/60 bg-input p-4">
+                    <x-radius-slider :value="$radiusKm" model="radiusKm" />
+                </div>
+
                 <x-ui.button type="submit" size="lg" class="w-full glow-orange" wire:loading.attr="disabled" wire:target="finish">
                     <span wire:loading.remove wire:target="finish">Concluir cadastro</span>
                     <span wire:loading wire:target="finish" class="inline-flex items-center gap-2">

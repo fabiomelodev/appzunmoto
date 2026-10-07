@@ -19,7 +19,8 @@ class Settings extends Component
 
     public bool $notifyEmail = false;
 
-    public string $city = '';
+    /** Courier's search radius in km (Região). */
+    public int $radiusKm = \App\Support\Radius::DEFAULT_KM;
 
     // Account dialogs
     public bool $emailOpen = false;
@@ -40,7 +41,9 @@ class Settings extends Component
         $this->notifyShifts = (bool) $settings->notify_shifts;
         $this->notifyChat = (bool) $settings->notify_chat;
         $this->notifyEmail = (bool) $settings->notify_email;
-        $this->city = Auth::user()->profile?->city ?? '';
+        $profile = Auth::user()->profile;
+        $profile?->ensureBaseLocation();
+        $this->radiusKm = (int) ($profile?->radius_km ?: \App\Support\Radius::DEFAULT_KM);
     }
 
     protected function settings(): UserSetting
@@ -67,12 +70,18 @@ class Settings extends Component
         $this->settings()->update(['theme' => $theme]);
     }
 
-    public function saveCity(): void
+    public function saveRadius(int $km): void
     {
-        Auth::user()->profile?->update(['city' => trim($this->city)]);
-        $this->dispatch('toast', message: 'Cidade atualizada.');
-    }
+        $profile = Auth::user()->profile;
+        if (! $profile || ! $profile->isCourier()) {
+            return;
+        }
 
+        $this->radiusKm = \App\Support\Radius::clamp($km);
+        $profile->update(['radius_km' => $this->radiusKm]);
+        $profile->ensureBaseLocation();
+        $this->dispatch('toast', message: 'Raio atualizado para '.$this->radiusKm.' km.');
+    }
     /**
      * Persists this browser's push subscription, sent by window.webPushSubscribe()
      * or, silently, by the page-load re-sync (window.webPushCurrentSubscription)

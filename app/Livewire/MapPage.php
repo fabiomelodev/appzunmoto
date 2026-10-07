@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Shift;
 use Illuminate\Support\Carbon;
+use App\Support\Radius;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -16,12 +17,20 @@ class MapPage extends Component
     #[Computed]
     public function shifts(): array
     {
+        $profile = \Illuminate\Support\Facades\Auth::user()?->profile;
+        $profile = Radius::applies($profile) ? $profile : null;
+
         return Shift::where('status', Shift::STATUS_AVAILABLE)
             ->where('active', true)
             ->whereDate('date', '>=', now('America/Sao_Paulo')->subDay()->toDateString())
             ->with('creator.profile')
             ->get()
-            ->filter(function ($s) {
+            ->filter(function ($s) use ($profile) {
+                // Couriers only see what's inside their search radius (see App\Support\Radius).
+                if ($profile && ! Radius::includes($profile, $s)) {
+                    return false;
+                }
+
                 return (float) $s->lat !== 0.0
                     && (float) $s->lng !== 0.0
                     && ! $s->hasEnded();

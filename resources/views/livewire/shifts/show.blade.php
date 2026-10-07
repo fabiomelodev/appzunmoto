@@ -28,7 +28,9 @@
     {{-- Courier's own application progress — same visual language as the
     onboarding step indicator, scaled down to fit 5 steps on mobile. --}}
     @if ($applicationStep)
-        <div class="mt-4 flex items-start justify-center rounded-2xl border border-border bg-card px-1.5 py-4">
+        {{-- Pinned to the top while the page scrolls (the bg-background wrapper masks what slides under it). --}}
+        <div class="sticky top-0 z-20 -mx-4 mt-2 bg-background/95 px-4 py-2 backdrop-blur">
+        <div class="flex items-start justify-center rounded-2xl border border-border bg-card px-1.5 py-4">
             @foreach ($applicationStepLabels as $num => $label)
                 @if (! $loop->first)
                     <div class="mt-3 h-0.5 w-2 shrink-0 {{ $applicationStep > $num - 1 ? 'bg-primary' : 'bg-border' }}"></div>
@@ -40,6 +42,7 @@
                     <span class="text-[9px] font-semibold leading-tight {{ $applicationStep === $num ? 'text-foreground' : 'text-muted-foreground' }}">{{ $label }}</span>
                 </div>
             @endforeach
+        </div>
         </div>
 
         {{-- Same conditions as the sticky bar's "already interested" branch (see below):
@@ -149,7 +152,16 @@
     @endif
 
     {{-- Creator: manage shift --}}
-    @if ($isCreator)
+    @if ($isCreator && $lockReason)
+        <div class="mt-4 flex items-start gap-2 rounded-2xl border border-border bg-card p-3 text-[11px] font-medium text-muted-foreground">
+            <x-ui.icon :name="$lockReason === 'ended' ? 'clock' : 'lock'" class="mt-0.5 h-4 w-4 shrink-0" />
+            @if ($lockReason === 'ended')
+                <p>Esta vaga já terminou. Vagas encerradas ficam no histórico e não podem ser editadas, pausadas ou excluídas.</p>
+            @else
+                <p>Esta vaga tem parceria confirmada e não pode mais ser editada, pausada ou excluída. Use a conversa com o motoboy para combinar qualquer mudança.</p>
+            @endif
+        </div>
+    @elseif ($isCreator)
         <div class="mt-4 rounded-2xl border border-border bg-card p-3">
             <h3 class="mb-2 text-sm font-semibold">Gerenciar vaga</h3>
             <div class="grid grid-cols-3 gap-2">
@@ -358,11 +370,11 @@
         </div>
     @endif
 
-    {{-- Sticky bottom action. lg: no bottom-nav to clear anymore (sidebar
+    {{-- Sticky bottom action. bottom-28 on mobile clears the bottom-nav and its floating "+" (which sticks out above it). lg: no bottom-nav to clear anymore (sidebar
     instead), and the anchor shifts right by half the sidebar's width (8rem)
     to stay centered in the remaining space — see the toast container in
     layouts/app.blade.php for the same adjustment. --}}
-    <div class="app-shell fixed bottom-20 left-1/2 z-30 -translate-x-1/2 px-4 lg:bottom-6 lg:left-[calc(50%+8rem)]">
+    <div class="app-shell fixed bottom-28 left-1/2 z-30 -translate-x-1/2 px-4 lg:bottom-6 lg:left-[calc(50%+8rem)]">
         @if ($isCreator)
             <a href="{{ route('chats.index', ['tab' => 'publicadas', 'vagaId' => $shift->id]) }}" wire:navigate>
                 <x-ui.button variant="outline" size="lg" class="w-full"><x-ui.icon name="message-circle" class="mr-2 h-4 w-4" /> Ver conversas</x-ui.button>
@@ -409,16 +421,16 @@
                 </x-ui.button>
             </div>
         @else
-            <x-ui.button size="lg" class="w-full glow-orange" wire:click="$set('confirmOpen', true)">Aceitar Vaga</x-ui.button>
+            <x-ui.button size="lg" class="w-full glow-orange" wire:click="$set('confirmOpen', true)">Tenho interesse</x-ui.button>
         @endif
     </div>
     {{-- The accepted-courier and schedule-clash bars (banner + button) are taller than the others. --}}
-    <div class="{{ ($wasAccepted && ! $isCreator) || $registerConflict ? 'h-32' : 'h-16' }}"></div>
+    <div class="{{ ($wasAccepted && ! $isCreator) || $registerConflict ? 'h-40 lg:h-32' : 'h-24 lg:h-16' }}"></div>
 
     {{-- Confirm dialog --}}
     @if ($confirmOpen)
         <x-ui.modal wire:click.self="$set('confirmOpen', false)">
-            <h2 class="font-display text-lg font-bold">Confirmar aceitação</h2>
+            <h2 class="font-display text-lg font-bold">Confirmar interesse</h2>
             <div class="mt-3 space-y-2">
                 <p class="flex gap-2 rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs font-medium text-primary">
                     <x-ui.icon name="alert-triangle" class="mt-0.5 h-4 w-4 shrink-0" />
@@ -432,7 +444,7 @@
                 @endif
             </div>
             <div class="mt-4 flex flex-col gap-2">
-                <x-ui.button size="lg" class="w-full glow-orange" wire:click="registerInterest">Confirmar e aceitar vaga</x-ui.button>
+                <x-ui.button size="lg" class="w-full glow-orange" wire:click="registerInterest">Confirmar interesse na vaga</x-ui.button>
                 <a href="{{ route('vehicle') }}" wire:navigate class="py-2 text-center text-sm text-muted-foreground hover:text-foreground">Alterar veículo</a>
             </div>
         </x-ui.modal>
