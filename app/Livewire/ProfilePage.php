@@ -105,7 +105,10 @@ class ProfilePage extends Component
             }
         }
 
-        Auth::user()->profile?->update([
+        $profile = Auth::user()->profile;
+        $locationChanged = $profile && (trim($this->district) !== (string) $profile->district || trim($this->city) !== (string) $profile->city);
+
+        $profile?->update([
             'name' => trim($this->name),
             'cpf' => $cpfDigits ?: null,
             'birth_date' => $birth,
@@ -117,6 +120,11 @@ class ProfilePage extends Component
             'bio' => trim($this->bio),
             'has_bag' => $this->hasBag,
         ]);
+
+        // The radius filter is centred on district/city: re-locate it when they change.
+        if ($locationChanged && $profile->isCourier()) {
+            $profile->refresh()->refreshBaseLocation();
+        }
 
         // Keep the auth display name in sync.
         Auth::user()->update(['name' => trim($this->name)]);

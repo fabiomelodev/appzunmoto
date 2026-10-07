@@ -48,6 +48,9 @@ class Onboarding extends Component
 
     public string $vehicle = '';
 
+    /** Courier's search radius in km (step 3). */
+    public int $radiusKm = \App\Support\Radius::DEFAULT_KM;
+
     // Business-only: creates the account's first real establishment (UserAddress).
     public string $label = '';
 
@@ -307,10 +310,13 @@ class Onboarding extends Component
             return null;
         }
 
-        Auth::user()->profile()->update([
+        $profile = Auth::user()->profile;
+        $profile->update([
             'vehicle' => $this->vehicle,
+            'radius_km' => \App\Support\Radius::clamp($this->radiusKm),
             'onboarded_at' => now(),
         ]);
+        $profile->refreshBaseLocation($this->cep);
 
         return $this->redirect(route('shifts.index'), navigate: true);
     }
