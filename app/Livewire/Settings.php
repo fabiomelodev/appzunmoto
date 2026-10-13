@@ -17,8 +17,6 @@ class Settings extends Component
 
     public bool $notifyChat = true;
 
-    public bool $notifyEmail = false;
-
     /** Courier's search radius in km (Região). */
     public int $radiusKm = \App\Support\Radius::DEFAULT_KM;
 
@@ -40,7 +38,6 @@ class Settings extends Component
         $settings = $this->settings();
         $this->notifyShifts = (bool) $settings->notify_shifts;
         $this->notifyChat = (bool) $settings->notify_chat;
-        $this->notifyEmail = (bool) $settings->notify_email;
         $profile = Auth::user()->profile;
         $profile?->ensureBaseLocation();
         $this->radiusKm = (int) ($profile?->radius_km ?: \App\Support\Radius::DEFAULT_KM);
@@ -53,11 +50,10 @@ class Settings extends Component
 
     public function updated($property): void
     {
-        if (in_array($property, ['notifyShifts', 'notifyChat', 'notifyEmail'], true)) {
+        if (in_array($property, ['notifyShifts', 'notifyChat'], true)) {
             $this->settings()->update([
                 'notify_shifts' => $this->notifyShifts,
                 'notify_chat' => $this->notifyChat,
-                'notify_email' => $this->notifyEmail,
             ]);
         }
     }

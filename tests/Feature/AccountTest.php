@@ -254,10 +254,10 @@ class AccountTest extends TestCase
 
         Livewire::test(Settings::class)
             ->set('notifyShifts', false)
-            ->set('notifyEmail', true);
+            ->set('notifyChat', false);
 
         $this->assertDatabaseHas('user_settings', [
-            'user_id' => $user->id, 'notify_shifts' => false, 'notify_email' => true,
+            'user_id' => $user->id, 'notify_shifts' => false, 'notify_chat' => false,
         ]);
     }
 

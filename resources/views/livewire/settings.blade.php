@@ -112,7 +112,6 @@
         <x-settings-section icon="bell" title="Notificações">
             <x-settings-toggle label="Novas vagas próximas" description="Avise quando surgir uma vaga compatível" model="notifyShifts" />
             <x-settings-toggle label="Mensagens do chat" description="Notificar respostas de contratantes" model="notifyChat" />
-            <x-settings-toggle label="Resumo por e-mail" description="Receber resumo semanal" model="notifyEmail" />
 
             <div class="border-b border-border/60 py-3 last:border-0"
                 x-data="{
