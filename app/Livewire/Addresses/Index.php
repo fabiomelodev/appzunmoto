@@ -17,6 +17,8 @@ use Livewire\WithFileUploads;
 #[Title('Meus Endereços — ZunMoto')]
 class Index extends Component
 {
+    use \App\Livewire\Concerns\ValidatesLocationPhoto;
+
     use WithFileUploads;
 
     public bool $open = false;
@@ -81,7 +83,7 @@ class Index extends Component
 
     public function updatedPhoto(): void
     {
-        $this->validate(['photo' => ['image', 'max:4096']]);
+        $this->validatePhotoUpload();
         $this->removePhoto = false;
     }
 
