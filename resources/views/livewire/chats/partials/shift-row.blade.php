@@ -72,9 +72,16 @@
                     @endif
 
                     @if (! $expired && $isAcc)
-                        <div class="flex items-center justify-center gap-1 rounded-lg bg-success/15 px-3 py-2 text-xs font-semibold text-success">
-                            <x-ui.icon name="check" class="h-3.5 w-3.5" /> Aceito
-                        </div>
+                        {{-- Accepted by the author: still waiting for the courier's own confirmation, or already confirmed (multi-courier shifts keep these rows listed). --}}
+                        @if ($app->confirmed)
+                            <div class="flex items-center justify-center gap-1 rounded-lg bg-success/15 px-3 py-2 text-xs font-semibold text-success">
+                                <x-ui.icon name="check" class="h-3.5 w-3.5" /> Parceria confirmada com {{ $first }}
+                            </div>
+                        @else
+                            <div class="flex items-center justify-center gap-1 rounded-lg bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
+                                <x-ui.icon name="clock" class="h-3.5 w-3.5" /> Aguardando confirmação de {{ $first }}
+                            </div>
+                        @endif
                     @elseif (! $expired && ! $full)
                         <div class="grid grid-cols-[1fr_auto] gap-2">
                             <button type="button" wire:click="acceptCandidate('{{ $shift->id }}', '{{ $app->user_id }}')"

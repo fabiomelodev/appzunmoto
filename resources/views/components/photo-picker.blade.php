@@ -5,7 +5,9 @@
     selected file, the existing saved photo, or a placeholder.
 --}}
 @php
-    $hasNew = $photo && \Illuminate\Support\Str::startsWith((string) $photo->getMimeType(), 'image/');
+    // isPreviewable(): Livewire only signs preview URLs for formats a browser can draw (jpg/png/webp…);
+    // anything else (e.g. HEIC) would throw from temporaryUrl(), so it is never rendered here.
+    $hasNew = $photo && \Illuminate\Support\Str::startsWith((string) $photo->getMimeType(), 'image/') && $photo->isPreviewable();
     $showsImage = $hasNew || ($existing && ! $removed);
 @endphp
 <x-ui.field label="Foto do local (opcional)">
@@ -21,7 +23,7 @@
         @endif
         <div class="flex flex-col items-start gap-1.5">
             <label class="tap cursor-pointer rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold transition hover:text-primary">
-                <input type="file" accept="image/*" wire:model="photo" class="hidden" />
+                <input type="file" accept="image/jpeg,image/png,image/webp" wire:model="photo" class="hidden" />
                 <span wire:loading.remove wire:target="photo">{{ $showsImage ? 'Trocar foto' : 'Escolher foto' }}</span>
                 <span wire:loading wire:target="photo">Enviando…</span>
             </label>
