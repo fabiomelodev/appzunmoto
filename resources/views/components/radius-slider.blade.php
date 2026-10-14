@@ -16,6 +16,6 @@ method called with the new km when the thumb is released (used where it saves im
         <span>{{ \App\Support\Radius::MAX_KM }} km</span>
     </div>
     <p class="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-        Você só vê vagas até essa distância do seu bairro, em linha reta (o trajeto real pode ser um pouco maior). Vagas em que você já se candidatou continuam aparecendo.
+        Você só vê vagas até essa distância do seu ponto de partida, em linha reta (o trajeto real pode ser um pouco maior). Vagas em que você já se candidatou continuam aparecendo.
     </p>
 </div>

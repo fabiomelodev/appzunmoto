@@ -120,6 +120,54 @@ class VehicleAddressTest extends TestCase
         Storage::disk('public')->assertExists('address-photos/'.$address->id.'.jpg');
     }
 
+    public function test_editing_an_address_previews_the_chosen_photo_client_side_not_via_the_preview_route(): void
+    {
+        Storage::fake('public');
+        $user = $this->user();
+        $address = UserAddress::create([
+            'user_id' => $user->id, 'label' => 'Loja', 'postal_code' => '01310100',
+            'street' => 'Av Paulista', 'number' => '1000', 'district' => 'Bela Vista', 'city' => 'SP',
+        ]);
+        $this->actingAs($user);
+
+        $html = Livewire::test(AddressesIndex::class)
+            ->call('openEdit', $address->id)
+            ->set('photo', UploadedFile::fake()->image('camera.jpg', 600, 400))
+            ->assertHasNoErrors()
+            ->html();
+
+        // The preview is drawn in the browser (blob URL), never from Livewire's signed preview-file route
+        // (which doesn't load on the shared-hosting setup).
+        $this->assertStringNotContainsString('preview-file/', $html);
+        $this->assertStringContainsString('URL.createObjectURL', $html);
+        $this->assertStringContainsString('Trocar foto', $html);
+    }
+
+    public function test_a_photo_the_browser_cannot_preview_is_rejected_instead_of_breaking_the_page(): void
+    {
+        Storage::fake('public');
+        $user = $this->user();
+        $this->actingAs($user);
+
+        // HEIC (iPhone) used to throw FileNotPreviewableException while rendering the picker.
+        foreach (['IMG_0001.HEIC' => 'image/heic', 'foto.avif' => 'image/avif'] as $name => $mime) {
+            Livewire::test(AddressesIndex::class)
+                ->call('openNew')
+                ->set('photo', UploadedFile::fake()->create($name, 200, $mime))
+                ->assertHasErrors(['photo'])
+                ->assertSet('photo', null)
+                ->assertSee('Formato não suportado')
+                ->assertSee('Escolher foto');
+        }
+
+        // Too big: also dropped with a clear message.
+        Livewire::test(AddressesIndex::class)
+            ->call('openNew')
+            ->set('photo', UploadedFile::fake()->image('enorme.jpg')->size(5000))
+            ->assertHasErrors(['photo'])
+            ->assertSet('photo', null)
+            ->assertSee('no máximo 4 MB');
+    }
     public function test_pages_render(): void
     {
         $this->actingAs($this->user());

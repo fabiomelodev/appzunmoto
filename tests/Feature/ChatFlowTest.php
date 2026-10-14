@@ -153,6 +153,29 @@ class ChatFlowTest extends TestCase
         $this->assertSame(['Vaga Aberta', 'Vaga Aguardando'], $component->instance()->myShifts->pluck('venue')->sort()->values()->all());
     }
 
+    public function test_accepted_candidate_row_says_it_is_waiting_for_their_confirmation(): void
+    {
+        $creator = $this->user('Dono');
+        $waiting = $this->user('Carlos Silva');
+        $confirmed = $this->user('Maria Souza');
+        $day = now('America/Sao_Paulo')->addDays(3)->toDateString();
+
+        $open = $this->shift($creator, ['venue' => 'Aberta', 'date' => $day, 'couriers_needed' => 2, 'status' => 'reserved']);
+        Application::create(['shift_id' => $open->id, 'user_id' => $waiting->id, 'status' => 'accepted', 'confirmed' => false, 'confirmations' => [$creator->id]]);
+
+        $this->actingAs($creator);
+        Livewire::test(ChatsIndex::class)->call('setTab', 'publicadas')
+            ->call('toggleShift', $open->id)
+            ->assertSee('Aguardando confirmação de Carlos')
+            ->assertDontSee('Parceria confirmada com');
+
+        // Once a courier confirms, the row (kept under "Em andamento" for multi-courier shifts) says so instead.
+        Application::create(['shift_id' => $open->id, 'user_id' => $confirmed->id, 'status' => 'accepted', 'confirmed' => true]);
+        Livewire::test(ChatsIndex::class)->call('setTab', 'andamento')
+            ->call('toggleShift', $open->id)
+            ->assertSee('Parceria confirmada com Maria')
+            ->assertSee('Aguardando confirmação de Carlos');
+    }
     public function test_publicadas_tab_empty_state(): void
     {
         $this->actingAs($this->user('Dono'));

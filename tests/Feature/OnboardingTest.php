@@ -27,6 +27,31 @@ class OnboardingTest extends TestCase
         return $user;
     }
 
+    public function test_user_can_sign_out_in_the_middle_of_the_signup_and_restarts_from_step_one(): void
+    {
+        $user = $this->pendingUser();
+        $this->actingAs($user);
+
+        // Every step offers "Sair", a plain POST to /logout (allowed for a profile that isn't onboarded yet).
+        $component = Livewire::test(Onboarding::class)
+            ->set('name', 'João Silva')->set('phone', '(11) 99999-0000')
+            ->set('birthDate', '10/05/1990')->set('cpf', '529.982.247-25')
+            ->call('submitPersonalData')
+            ->set('district', 'Centro')->set('city', 'São Paulo')
+            ->call('submitAddress')
+            ->assertSet('step', 3);
+        $this->assertStringContainsString('action="'.route('logout').'"', $component->html());
+        $component->assertSee('Sair');
+
+        $this->post(route('logout'))->assertRedirect(route('login'));
+        $this->assertGuest();
+
+        // Signing back in: still not onboarded → the gate sends them to the signup, which starts at step 1.
+        $this->actingAs($user->fresh());
+        $this->get(route('shifts.index'))->assertRedirect(route('onboarding'));
+        Livewire::test(Onboarding::class)->assertSet('step', 1)->assertSee('Complete seu cadastro');
+        $this->assertFalse($user->fresh()->profile->isOnboarded());
+    }
     public function test_pending_user_is_redirected_to_onboarding(): void
     {
         $this->actingAs($this->pendingUser());

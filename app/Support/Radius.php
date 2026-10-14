@@ -37,11 +37,11 @@ class Radius
         return 6371 * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 
-    /** Whether the radius filter applies to this profile at all (courier with a located base). */
+    /** Whether the radius filter applies to this profile at all (courier or establishment with a located base). */
     public static function applies(?Profile $profile): bool
     {
         return $profile
-            && $profile->isCourier()
+            && ($profile->isCourier() || $profile->isBusiness())
             && $profile->base_lat !== null
             && $profile->base_lng !== null
             && (float) $profile->base_lat !== 0.0;

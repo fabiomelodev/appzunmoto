@@ -21,6 +21,8 @@ use Livewire\WithFileUploads;
 #[Title('Complete seu cadastro — ZunMoto')]
 class Onboarding extends Component
 {
+    use \App\Livewire\Concerns\ValidatesLocationPhoto;
+
     use WithFileUploads;
 
     /** 1 = Dados pessoais; 2 = Perfil + Endereço; 3 = Veículo (só motoboy). */
@@ -121,7 +123,7 @@ class Onboarding extends Component
 
     public function updatedPhoto(): void
     {
-        $this->validate(['photo' => ['image', 'max:4096']]);
+        $this->validatePhotoUpload();
     }
 
     public function clearPhoto(): void
@@ -194,10 +196,10 @@ class Onboarding extends Component
             $rules['label'] = ['required', 'min:2'];
             $rules['street'] = ['required', 'min:2'];
             $rules['number'] = ['required'];
-            $rules['photo'] = ['nullable', 'image', 'max:4096'];
+            $rules['photo'] = $this->photoRules(nullable: true);
         }
 
-        $this->validate($rules, [], ['label' => 'apelido do local']);
+        $this->validate($rules, $this->photoMessages(), ['label' => 'apelido do local']);
 
         // Defesa extra: motoboy já teve os 16 anos confirmados no passo 1; estabelecimento
         // reconfirma os 18, já que é a idade que libera essa opção no seletor.

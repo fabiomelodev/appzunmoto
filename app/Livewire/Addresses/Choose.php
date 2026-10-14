@@ -17,6 +17,7 @@ use Livewire\WithFileUploads;
 #[Title('Onde será o turno? — ZunMoto')]
 class Choose extends Component
 {
+    use \App\Livewire\Concerns\ValidatesLocationPhoto;
     use WithFileUploads;
 
     /** 'business' | 'courier' — carried through the publish flow. */
@@ -49,7 +50,7 @@ class Choose extends Component
 
     public function updatedPhoto(): void
     {
-        $this->validate(['photo' => ['image', 'max:4096']]);
+        $this->validatePhotoUpload();
     }
 
     public function clearPhoto(): void

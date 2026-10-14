@@ -17,8 +17,6 @@ class Settings extends Component
 
     public bool $notifyChat = true;
 
-    public bool $notifyEmail = false;
-
     /** Courier's search radius in km (Região). */
     public int $radiusKm = \App\Support\Radius::DEFAULT_KM;
 
@@ -40,7 +38,6 @@ class Settings extends Component
         $settings = $this->settings();
         $this->notifyShifts = (bool) $settings->notify_shifts;
         $this->notifyChat = (bool) $settings->notify_chat;
-        $this->notifyEmail = (bool) $settings->notify_email;
         $profile = Auth::user()->profile;
         $profile?->ensureBaseLocation();
         $this->radiusKm = (int) ($profile?->radius_km ?: \App\Support\Radius::DEFAULT_KM);
@@ -53,11 +50,10 @@ class Settings extends Component
 
     public function updated($property): void
     {
-        if (in_array($property, ['notifyShifts', 'notifyChat', 'notifyEmail'], true)) {
+        if (in_array($property, ['notifyShifts', 'notifyChat'], true)) {
             $this->settings()->update([
                 'notify_shifts' => $this->notifyShifts,
                 'notify_chat' => $this->notifyChat,
-                'notify_email' => $this->notifyEmail,
             ]);
         }
     }
@@ -73,9 +69,34 @@ class Settings extends Component
     public function saveRadius(int $km): void
     {
         $profile = Auth::user()->profile;
-        if (! $profile || ! $profile->isCourier()) {
+        if (! $profile || ! ($profile->isCourier() || $profile->isBusiness())) {
             return;
         }
+
+        $this->radiusKm = \App\Support\Radius::clamp($km);
+        $profile->update(['radius_km' => $this->radiusKm]);
+        $profile->ensureBaseLocation();
+        $this->dispatch('toast', message: 'Raio atualizado para '.$this->radiusKm.' km.');
+    }
+
+    /** Establishment: which of its addresses the radius is measured from. */
+    public function saveBaseAddress(string $addressId): void
+    {
+        $profile = Auth::user()->profile;
+        if (! $profile || ! $profile->isBusiness()) {
+            return;
+        }
+
+        $address = \App\Models\UserAddress::where('user_id', Auth::id())->find($addressId);
+        if (! $address || ! $address->lat || ! $address->lng) {
+            $this->dispatch('toast', message: 'Esse endereço ainda não tem localização no mapa.', type: 'error');
+
+            return;
+        }
+
+        $profile->useBusinessAddress($address);
+        $this->dispatch('toast', message: 'Ponto de partida: '.$address->label.'.');
+    }
 
         $this->radiusKm = \App\Support\Radius::clamp($km);
         $profile->update(['radius_km' => $this->radiusKm]);
