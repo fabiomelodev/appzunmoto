@@ -69,7 +69,7 @@ class Settings extends Component
     public function saveRadius(int $km): void
     {
         $profile = Auth::user()->profile;
-        if (! $profile || ! $profile->isCourier()) {
+        if (! $profile || ! ($profile->isCourier() || $profile->isBusiness())) {
             return;
         }
 
@@ -78,6 +78,26 @@ class Settings extends Component
         $profile->ensureBaseLocation();
         $this->dispatch('toast', message: 'Raio atualizado para '.$this->radiusKm.' km.');
     }
+
+    /** Establishment: which of its addresses the radius is measured from. */
+    public function saveBaseAddress(string $addressId): void
+    {
+        $profile = Auth::user()->profile;
+        if (! $profile || ! $profile->isBusiness()) {
+            return;
+        }
+
+        $address = \App\Models\UserAddress::where('user_id', Auth::id())->find($addressId);
+        if (! $address || ! $address->lat || ! $address->lng) {
+            $this->dispatch('toast', message: 'Esse endereço ainda não tem localização no mapa.', type: 'error');
+
+            return;
+        }
+
+        $profile->useBusinessAddress($address);
+        $this->dispatch('toast', message: 'Ponto de partida: '.$address->label.'.');
+    }
+
     /**
      * Persists this browser's push subscription, sent by window.webPushSubscribe()
      * or, silently, by the page-load re-sync (window.webPushCurrentSubscription)

@@ -228,7 +228,7 @@
                     @if (! empty($filters['allRegions']))
                         Mostrando vagas de <strong class="font-semibold text-foreground">todas as regiões</strong>
                     @else
-                        Vagas até <strong class="font-semibold text-foreground">{{ $this->radiusProfile->radius_km }} km</strong> de {{ $this->radiusProfile->district ?: $this->radiusProfile->city }}
+                        Vagas até <strong class="font-semibold text-foreground">{{ $this->radiusProfile->radius_km }} km</strong> de {{ $this->radiusProfile->baseLabel() }}
                     @endif
                 </span>
             </span>
@@ -238,7 +238,8 @@
         </div>
     @endif
 
-    @if (! $this->radiusProfile && auth()->user()->profile?->radiusInactive())
+    {{-- Only couriers are nagged: for an establishment the radius is an optional comparison tool (set in Configurações). --}}
+    @if (! $this->radiusProfile && auth()->user()->profile?->isCourier() && auth()->user()->profile?->radiusInactive())
         <a href="{{ route('profile') }}" wire:navigate class="mt-3 flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] font-medium text-foreground/90">
             <x-ui.icon name="alert-triangle" class="h-3.5 w-3.5 shrink-0 text-amber-400" />
             <span>Seu raio de busca está desligado: não encontramos o seu bairro. <strong class="font-semibold text-primary">Conferir em Meu perfil</strong></span>
@@ -307,7 +308,7 @@
                                 <span class="h-4 w-4 rounded-full bg-background transition" :class="draft.allRegions ? 'translate-x-4' : ''"></span>
                             </span>
                         </button>
-                        <p class="mt-1 text-[10px] text-muted-foreground">Por padrão você vê só as vagas até {{ $this->radiusProfile->radius_km }} km do seu bairro.</p>
+                        <p class="mt-1 text-[10px] text-muted-foreground">Por padrão você vê só as vagas até {{ $this->radiusProfile->radius_km }} km do seu ponto de partida.</p>
                     </div>
 
                 @endif                {{-- Date --}}
