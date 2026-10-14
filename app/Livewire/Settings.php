@@ -98,11 +98,6 @@ class Settings extends Component
         $this->dispatch('toast', message: 'Ponto de partida: '.$address->label.'.');
     }
 
-        $this->radiusKm = \App\Support\Radius::clamp($km);
-        $profile->update(['radius_km' => $this->radiusKm]);
-        $profile->ensureBaseLocation();
-        $this->dispatch('toast', message: 'Raio atualizado para '.$this->radiusKm.' km.');
-    }
     /**
      * Persists this browser's push subscription, sent by window.webPushSubscribe()
      * or, silently, by the page-load re-sync (window.webPushCurrentSubscription)
