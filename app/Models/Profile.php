@@ -116,7 +116,18 @@ class Profile extends Model
      */
     public function ensureBaseLocation(): void
     {
-        if (! $this->isCourier() || $this->base_lat !== null || blank($this->city)) {
+        if ($this->base_lat !== null) {
+            return;
+        }
+
+        // An establishment's centre is one of its own (already geocoded) addresses.
+        if ($this->isBusiness()) {
+            $this->useBusinessAddress($this->located_addresses->first());
+
+            return;
+        }
+
+        if (! $this->isCourier() || blank($this->city)) {
             return;
         }
 
@@ -125,12 +136,43 @@ class Profile extends Model
         }
     }
 
-    /** True for a courier whose radius can't work yet (no located base): drives the "fix your neighbourhood" notices. */
-    public function radiusInactive(): bool
+    /** The profile owner's addresses that have usable coordinates (an establishment's possible centres), oldest first. */
+    public function getLocatedAddressesAttribute()
     {
-        return $this->isCourier() && $this->onboarded_at !== null && ($this->base_lat === null || (float) $this->base_lat === 0.0);
+        return UserAddress::where('user_id', $this->id)
+            ->whereNotNull('lat')->whereNotNull('lng')->where('lat', '!=', 0)
+            ->orderBy('created_at')->get();
     }
 
+    /** Centre the establishment's radius on this address (no-op when it has no coordinates). */
+    public function useBusinessAddress(?UserAddress $address): void
+    {
+        if (! $address || ! $address->lat || ! $address->lng) {
+            return;
+        }
+
+        $this->forceFill(['base_lat' => $address->lat, 'base_lng' => $address->lng])->save();
+    }
+
+    /** Human label of the radius centre: neighbourhood/city for a courier, the chosen address's name for an establishment. */
+    public function baseLabel(): string
+    {
+        if ($this->isBusiness()) {
+            $match = $this->located_addresses->first(fn ($a) => abs($a->lat - (float) $this->base_lat) < 0.00001 && abs($a->lng - (float) $this->base_lng) < 0.00001);
+
+            return (string) ($match?->label ?? '');
+        }
+
+        return (string) ($this->district ?: $this->city);
+    }
+
+    /** True when the radius can't work yet (no located base): drives the "fix your location" notices. */
+    public function radiusInactive(): bool
+    {
+        return ($this->isCourier() || $this->isBusiness())
+            && $this->onboarded_at !== null
+            && ($this->base_lat === null || (float) $this->base_lat === 0.0);
+    }
     /** Data still needed to act as courier: "cidade base" (district/city) and a vehicle. */
     public function missingCourierFields(): bool
     {

@@ -88,16 +88,38 @@
             </x-settings-row>
         </x-settings-section>
 
-        {{-- Region: the radius only matters to couriers (businesses see every shift). --}}
-        @if (auth()->user()->profile?->isCourier())
-            @php $base = auth()->user()->profile; @endphp
+        {{-- Region: the search radius, for couriers (from their neighbourhood) and establishments (from one of their addresses). --}}
+        @php $base = auth()->user()->profile; @endphp
+        @if ($base?->isCourier() || $base?->isBusiness())
+            @php $located = $base->isBusiness() ? $base->located_addresses : collect(); @endphp
             <x-settings-section icon="globe" title="Região">
-                <p class="text-xs text-muted-foreground">
-                    Seu ponto de partida:
-                    <span class="font-semibold text-foreground">{{ collect([$base->district, $base->city])->filter()->join(' — ') ?: 'não informado' }}</span>
-                    · <a href="{{ route('profile') }}" wire:navigate class="font-semibold text-primary">alterar em Meu perfil</a>
-                </p>
-                @if ($base->radiusInactive())
+                @if ($base->isBusiness())
+                    @if ($located->isEmpty())
+                        <p class="text-xs text-muted-foreground">
+                            Cadastre um endereço com localização para usar o raio de busca.
+                            <a href="{{ route('addresses') }}" wire:navigate class="font-semibold text-primary">Meus endereços</a>
+                        </p>
+                    @else
+                        <label class="block text-xs font-medium text-muted-foreground">Medir a partir de</label>
+                        <select wire:change="saveBaseAddress($event.target.value)"
+                            class="mt-2 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-primary">
+                            @php $current = $base->baseLabel(); @endphp
+                            @foreach ($located as $addr)
+                                <option value="{{ $addr->id }}" @selected($addr->label === $current)>{{ $addr->label }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1.5 text-[11px] text-muted-foreground">
+                            Os endereços ficam em <a href="{{ route('addresses') }}" wire:navigate class="font-semibold text-primary">Meus endereços</a>.
+                        </p>
+                    @endif
+                @else
+                    <p class="text-xs text-muted-foreground">
+                        Seu ponto de partida:
+                        <span class="font-semibold text-foreground">{{ collect([$base->district, $base->city])->filter()->join(' — ') ?: 'não informado' }}</span>
+                        · <a href="{{ route('profile') }}" wire:navigate class="font-semibold text-primary">alterar em Meu perfil</a>
+                    </p>
+                @endif
+                @if ($base->radiusInactive() && ($base->isCourier() || $located->isNotEmpty()))
                     <p class="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-[11px] font-medium text-foreground/90">
                         <x-ui.icon name="alert-triangle" class="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
                         <span>Não conseguimos localizar o seu bairro, então o raio ainda não filtra as vagas. Confira o bairro e a cidade em Meu perfil.</span>
@@ -112,7 +134,6 @@
         <x-settings-section icon="bell" title="Notificações">
             <x-settings-toggle label="Novas vagas próximas" description="Avise quando surgir uma vaga compatível" model="notifyShifts" />
             <x-settings-toggle label="Mensagens do chat" description="Notificar respostas de contratantes" model="notifyChat" />
-            <x-settings-toggle label="Resumo por e-mail" description="Receber resumo semanal" model="notifyEmail" />
 
             <div class="border-b border-border/60 py-3 last:border-0"
                 x-data="{

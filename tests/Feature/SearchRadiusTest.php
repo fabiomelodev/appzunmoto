@@ -159,14 +159,10 @@ class SearchRadiusTest extends TestCase
 
         Livewire::test(Settings::class)->assertSee('Não conseguimos localizar o seu bairro');
     }
-    public function test_the_radius_never_applies_to_businesses_or_couriers_without_a_base_location(): void
+    public function test_the_radius_never_applies_to_couriers_without_a_base_location(): void
     {
         $owner = $this->user('Dono');
         $this->shift($owner, 'Vaga Rio', self::RIO);
-
-        $business = $this->courier(['role' => 'business']);
-        $this->actingAs($business);
-        Livewire::test(Index::class)->assertSee('Vaga Rio')->assertDontSee('Vagas até');
 
         $unlocated = $this->courier(['base_lat' => null, 'base_lng' => null]);
         $this->actingAs($unlocated);
@@ -192,8 +188,9 @@ class SearchRadiusTest extends TestCase
         $shifts = Livewire::test(MapPage::class)->assertSee('1 vagas no mapa')->instance()->shifts;
         $this->assertSame(['Vaga Perto'], array_column($shifts, 'venue'));
 
+        // An establishment with a located base gets the same radius.
         $this->actingAs($this->courier(['role' => 'business']));
-        Livewire::test(MapPage::class)->assertSee('2 vagas no mapa');
+        Livewire::test(MapPage::class)->assertSee('1 vagas no mapa');
     }
 
     public function test_new_shift_notifications_skip_couriers_outside_the_radius(): void
@@ -226,10 +223,82 @@ class SearchRadiusTest extends TestCase
             ->assertSet('radiusKm', 5);
         $this->assertSame(5, $courier->profile->fresh()->radius_km);
 
+        // Establishments have the section too (see the dedicated test below).
         $business = $this->courier(['role' => 'business']);
         $this->actingAs($business);
+        Livewire::test(Settings::class)->assertSee('Raio de busca')->call('saveRadius', 8)->assertSet('radiusKm', 8);
+        $this->assertSame(8, $business->profile->fresh()->radius_km);
+
+        // Anyone else (no courier/business role) can't set one.
+        $other = $this->courier(['role' => 'admin']);
+        $this->actingAs($other);
         Livewire::test(Settings::class)->assertDontSee('Raio de busca')->call('saveRadius', 8);
-        $this->assertSame(15, $business->profile->fresh()->radius_km);
+        $this->assertSame(15, $other->profile->fresh()->radius_km);
+    }
+
+    protected function business(array $profile = []): User
+    {
+        $user = $this->user('Estab');
+        $user->profile->update($profile + ['role' => 'business', 'onboarded_at' => now(), 'radius_km' => 15]);
+
+        return $user;
+    }
+
+    protected function address(User $user, string $label, ?array $at): \App\Models\UserAddress
+    {
+        return \App\Models\UserAddress::create([
+            'user_id' => $user->id, 'label' => $label, 'postal_code' => '01310100', 'street' => 'Rua A', 'number' => '1',
+            'district' => 'Centro', 'city' => 'São Paulo', 'lat' => $at[0] ?? null, 'lng' => $at[1] ?? null,
+        ]);
+    }
+
+    public function test_an_establishment_can_use_the_radius_measured_from_one_of_its_addresses(): void
+    {
+        $owner = $this->user('Dono');
+        $this->shift($owner, 'Vaga Perto', self::NEAR);
+        $this->shift($owner, 'Vaga Rio', self::RIO);
+
+        $business = $this->business();
+        $sp = $this->address($business, 'Loja Centro', self::SP);
+        $rio = $this->address($business, 'Loja Rio', self::RIO);
+        $this->address($business, 'Loja Sem Mapa', null);
+        $this->actingAs($business);
+
+        // First located address becomes the centre on first use.
+        Livewire::test(Index::class)
+            ->assertSee('Vaga Perto')->assertDontSee('Vaga Rio')
+            ->assertSee('Vagas até')->assertSee('Loja Centro')
+            ->call('toggleAllRegions')->assertSee('Vaga Rio');
+        $this->assertEqualsWithDelta(self::SP[0], (float) $business->profile->fresh()->base_lat, 0.0001);
+
+        // Settings: lists only located addresses and lets the owner pick another centre.
+        Livewire::test(Settings::class)
+            ->assertSee('Região')->assertSee('Medir a partir de')->assertSee('Raio de busca')
+            ->assertSee('Loja Centro')->assertSee('Loja Rio')->assertDontSee('Loja Sem Mapa')
+            ->call('saveBaseAddress', $rio->id)
+            ->assertDispatched('toast', message: 'Ponto de partida: Loja Rio.');
+
+        Livewire::test(Index::class)->assertSee('Vaga Rio')->assertDontSee('Vaga Perto')->assertSee('Loja Rio');
+
+        // Someone else's address, or one without coordinates, is refused.
+        $stranger = $this->address($this->user('Outro'), 'Alheio', self::NEAR);
+        $unlocated = \App\Models\UserAddress::where('label', 'Loja Sem Mapa')->first();
+        foreach ([$stranger->id, $unlocated->id] as $id) {
+            Livewire::test(Settings::class)->call('saveBaseAddress', $id)->assertDispatched('toast');
+        }
+        $this->assertEqualsWithDelta(self::RIO[0], (float) $business->profile->fresh()->base_lat, 0.0001);
+    }
+
+    public function test_an_establishment_without_a_located_address_is_not_filtered_nor_nagged(): void
+    {
+        $owner = $this->user('Dono');
+        $this->shift($owner, 'Vaga Rio', self::RIO);
+        $business = $this->business();
+        $this->address($business, 'Loja Sem Mapa', null);
+        $this->actingAs($business);
+
+        Livewire::test(Index::class)->assertSee('Vaga Rio')->assertDontSee('Vagas até')->assertDontSee('raio de busca está desligado');
+        Livewire::test(Settings::class)->assertSee('Cadastre um endereço com localização')->assertSee('Raio de busca');
     }
 
     public function test_onboarding_saves_the_chosen_radius_and_defaults_to_15(): void
