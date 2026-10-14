@@ -98,6 +98,25 @@ class Settings extends Component
         $this->dispatch('toast', message: 'Ponto de partida: '.$address->label.'.');
     }
 
+    /** Establishment: which of its addresses the radius is measured from. */
+    public function saveBaseAddress(string $addressId): void
+    {
+        $profile = Auth::user()->profile;
+        if (! $profile || ! $profile->isBusiness()) {
+            return;
+        }
+
+        $address = \App\Models\UserAddress::where('user_id', Auth::id())->find($addressId);
+        if (! $address || ! $address->lat || ! $address->lng) {
+            $this->dispatch('toast', message: 'Esse endereço ainda não tem localização no mapa.', type: 'error');
+
+            return;
+        }
+
+        $profile->useBusinessAddress($address);
+        $this->dispatch('toast', message: 'Ponto de partida: '.$address->label.'.');
+    }
+
         $this->radiusKm = \App\Support\Radius::clamp($km);
         $profile->update(['radius_km' => $this->radiusKm]);
         $profile->ensureBaseLocation();
