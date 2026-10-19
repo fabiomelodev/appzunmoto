@@ -217,13 +217,9 @@
         <div class="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground">
             <x-ui.icon name="map-pin" class="h-3.5 w-3.5 shrink-0 text-primary" />
             <label for="city-select" class="shrink-0">Bairros em</label>
-            <select id="city-select" wire:change="setCity($event.target.value)"
-                class="min-w-0 max-w-[60%] truncate rounded-lg border border-border bg-surface px-2 py-1 text-[11px] font-semibold text-foreground outline-none focus:border-primary">
-                <option value="{{ \App\Livewire\Shifts\Index::ALL_CITIES }}" @selected($this->selectedCityKey === \App\Livewire\Shifts\Index::ALL_CITIES)>Todas as cidades</option>
-                @foreach ($this->cities as $cityKey => $cityName)
-                    <option value="{{ $cityKey }}" @selected($this->selectedCityKey === $cityKey)>{{ $cityName }}</option>
-                @endforeach
-            </select>
+            <x-select-menu id="city-select" action="setCity" label="Cidade dos bairros" class="max-w-[14rem]"
+                :selected="$this->selectedCityKey"
+                :options="[\App\Livewire\Shifts\Index::ALL_CITIES => 'Todas as cidades'] + $this->cities" />
         </div>
     @endif
 

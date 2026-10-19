@@ -93,6 +93,25 @@ class CityChipsTest extends TestCase
         $this->assertSame(['Bairro Sem Cidade', 'Braz Cubas', 'Centro', 'Pinheiros'], $component->instance()->regions);
     }
 
+    public function test_the_city_picker_is_a_custom_dropdown_not_the_native_select(): void
+    {
+        $owner = $this->user('Dono');
+        $this->shift($owner, 'Loja SP', 'Pinheiros', 'São Paulo');
+        $this->shift($owner, 'Loja Mogi', 'Braz Cubas', 'Mogi das Cruzes');
+        $this->actingAs($this->courierIn('São Paulo - SP'));
+
+        $html = Livewire::test(Index::class)->html();
+
+        $this->assertStringContainsString('role="listbox"', $html);
+        $this->assertStringContainsString('aria-label="Cidade dos bairros"', $html);
+        $this->assertStringContainsString('aria-selected="true"', $html);
+        // Options: all cities + each city with open shifts, the chosen one marked.
+        $this->assertMatchesRegularExpression('/role="option"[^>]*>.*?Todas as cidades/s', $html);
+        $this->assertStringContainsString('Mogi das Cruzes', $html);
+        $this->assertStringNotContainsString('<select', $html);
+        // Choosing an option calls the Livewire action with the city key.
+        $this->assertStringContainsString('$wire.setCity(key)', $html);
+    }
     public function test_a_neighbourhood_chip_only_matches_inside_the_selected_city(): void
     {
         $owner = $this->user('Dono');
