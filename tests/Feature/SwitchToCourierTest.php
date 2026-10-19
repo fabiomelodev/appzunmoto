@@ -32,6 +32,23 @@ class SwitchToCourierTest extends TestCase
         $this->get(route('switch-to-courier'))->assertOk()->assertSee('Complete seu perfil de motoboy');
     }
 
+    public function test_user_can_back_out_and_stays_as_establishment(): void
+    {
+        $user = $this->businessUser();
+        $user->profile()->update(['onboarded_at' => now()]);
+        $this->actingAs($user);
+
+        // The form offers a way back that isn't saving anything...
+        $this->get(route('switch-to-courier'))
+            ->assertOk()
+            ->assertSee('Continuar como Estabelecimento')
+            ->assertSee('href="'.route('shifts.index').'"', false);
+
+        // ...so just opening it leaves the account as it was, and the shifts page works as an establishment.
+        $this->assertSame('business', $user->profile->fresh()->role);
+        $this->get(route('shifts.index'))->assertOk();
+        $this->assertSame('business', $user->profile->fresh()->role);
+    }
     public function test_flips_role_immediately_when_nothing_is_missing(): void
     {
         $user = $this->businessUser();
