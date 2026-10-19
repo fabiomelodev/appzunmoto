@@ -75,6 +75,13 @@
                     Aguarde…
                 </span>
             </x-ui.button>
+
+            {{-- Nothing is saved until "Concluir", so backing out leaves the account exactly as it was. --}}
+            <a href="{{ route('shifts.index') }}" wire:navigate
+                class="tap flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-surface py-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground">
+                <x-ui.icon name="arrow-left" class="h-4 w-4" />
+                {{ auth()->user()->profile?->isBusiness() ? 'Continuar como Estabelecimento' : 'Voltar para as vagas' }}
+            </a>
         </form>
     </div>
 </div>
