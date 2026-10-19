@@ -64,6 +64,9 @@ class Onboarding extends Component
 
     public $photo;
 
+    /** Optional, self-reported ("Como você conheceu o ZunMoto?") — a key of Acquisition::HEARD_FROM, or ''. */
+    public string $heardFrom = '';
+
     public function mount(): void
     {
         // Already onboarded (e.g. reached this URL directly): nothing to do here.
@@ -77,6 +80,11 @@ class Onboarding extends Component
         $this->name = $profile?->name ?: Auth::user()->name;
         $this->phone = $profile?->phone ?? '';
         $this->cpf = $profile?->cpf ?? '';
+    }
+
+    public function setHeardFrom(string $key): void
+    {
+        $this->heardFrom = array_key_exists($key, \App\Support\Acquisition::HEARD_FROM) ? $key : '';
     }
 
     public function setRole(string $role): void
@@ -240,7 +248,7 @@ class Onboarding extends Component
             throw $e;
         }
 
-        $user->update(['name' => trim($this->name)]);
+        $user->update(['name' => trim($this->name), 'heard_from' => $this->heardFrom ?: null]);
 
         // Estabelecimento não escolhe veículo: cadastro termina aqui, já com o primeiro endereço.
         if ($this->role === 'business') {

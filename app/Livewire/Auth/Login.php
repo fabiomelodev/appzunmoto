@@ -94,6 +94,7 @@ class Login extends Component
             'password' => $this->password,
         ]);
         $user->profile()->update(['onboarded_at' => null]);
+        \App\Support\Acquisition::attach($user);
 
         // Mirror the original app: do not auto-login; switch to sign-in.
         $this->mode = 'signin';

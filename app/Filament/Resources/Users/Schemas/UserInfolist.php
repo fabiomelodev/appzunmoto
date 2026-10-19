@@ -35,6 +35,15 @@ class UserInfolist
                     TextEntry::make('profile.phone')
                         ->label('Telefone')
                         ->placeholder('—'),
+                    TextEntry::make('acquisition')
+                        ->label('Canal de origem')
+                        ->state(fn ($record) => \App\Support\Acquisition::label($record->utm_source, $record->acquisitionChannel?->name))
+                        ->badge()
+                        ->color('info'),
+                    TextEntry::make('heard_from')
+                        ->label('Como conheceu')
+                        ->formatStateUsing(fn ($state) => \App\Support\Acquisition::HEARD_FROM[$state] ?? $state)
+                        ->placeholder('—'),
                     TextEntry::make('profile.birth_date')
                         ->label('Data de nascimento')
                         ->date('d/m/Y')

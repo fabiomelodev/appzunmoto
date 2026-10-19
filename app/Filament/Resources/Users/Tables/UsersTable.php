@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
+use App\Models\AcquisitionChannel;
+use App\Support\Acquisition;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -15,7 +17,7 @@ class UsersTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->withCount('addresses'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->withCount('addresses')->with('acquisitionChannel'))
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('name')
@@ -47,12 +49,35 @@ class UsersTable
                 TextColumn::make('profile.city')
                     ->label('Cidade')
                     ->placeholder('—'),
+                TextColumn::make('acquisition')
+                    ->label('Canal')
+                    ->getStateUsing(fn ($record) => Acquisition::label($record->utm_source, $record->acquisitionChannel?->name))
+                    ->badge()
+                    ->color(fn ($state) => $state === 'Direto / não informado' ? 'gray' : 'info')
+                    ->tooltip('De onde o usuário veio (link ou QR code com utm_source)'),
+                TextColumn::make('heard_from')
+                    ->label('Como conheceu')
+                    ->formatStateUsing(fn ($state) => Acquisition::HEARD_FROM[$state] ?? $state)
+                    ->placeholder('—')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('created_at')
                     ->label('Cadastrado em')
                     ->dateTime('d/m/Y')
                     ->sortable(),
             ])
             ->filters([
+                SelectFilter::make('channel')
+                    ->label('Canal')
+                    ->options(fn () => AcquisitionChannel::orderBy('name')->pluck('name', 'id')->all() + ['direct' => 'Direto / não informado'])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+
+                        return match (true) {
+                            $value === 'direct' => $query->whereNull('utm_source'),
+                            filled($value) => $query->where('acquisition_channel_id', $value),
+                            default => $query,
+                        };
+                    }),
                 SelectFilter::make('role')
                     ->label('Perfil')
                     ->options([
