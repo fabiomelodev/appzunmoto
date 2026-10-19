@@ -212,7 +212,22 @@
     </div>
 
     {{-- Region chips. "Minhas vagas (n)" is the same filter as the one in the sheet, one tap away; shown only to whoever has open shifts. --}}
-    <div class="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+    {{-- City whose neighbourhoods the chips below list (defaults to the user's own city). --}}
+    @if (count($this->cities) > 0)
+        <div class="mt-4 flex items-center gap-2 text-[11px] text-muted-foreground">
+            <x-ui.icon name="map-pin" class="h-3.5 w-3.5 shrink-0 text-primary" />
+            <label for="city-select" class="shrink-0">Bairros em</label>
+            <select id="city-select" wire:change="setCity($event.target.value)"
+                class="min-w-0 max-w-[60%] truncate rounded-lg border border-border bg-surface px-2 py-1 text-[11px] font-semibold text-foreground outline-none focus:border-primary">
+                <option value="{{ \App\Livewire\Shifts\Index::ALL_CITIES }}" @selected($this->selectedCityKey === \App\Livewire\Shifts\Index::ALL_CITIES)>Todas as cidades</option>
+                @foreach ($this->cities as $cityKey => $cityName)
+                    <option value="{{ $cityKey }}" @selected($this->selectedCityKey === $cityKey)>{{ $cityName }}</option>
+                @endforeach
+            </select>
+        </div>
+    @endif
+
+    <div class="mt-2 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         @if ($this->myOpenCount > 0 || ! empty($filters['onlyMine']))
             <button wire:click="toggleMine" aria-pressed="{{ ! empty($filters['onlyMine']) ? 'true' : 'false' }}"
                 class="flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition {{ ! empty($filters['onlyMine']) ? 'border-primary bg-primary text-primary-foreground' : 'border-primary/50 bg-primary/10 text-primary hover:bg-primary/20' }}">

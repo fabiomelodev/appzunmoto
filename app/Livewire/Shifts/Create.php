@@ -41,6 +41,8 @@ class Create extends Component
 
     public string $region = '';
 
+    public string $city = '';
+
     public ?string $cep = null;
 
     public float $lat = 0;
@@ -117,6 +119,7 @@ class Create extends Component
         $this->venue = $shift->venue;
         $this->addressLine = $shift->address;
         $this->region = $shift->region;
+        $this->city = (string) $shift->city;
         $this->cep = $shift->postal_code;
         $this->lat = (float) $shift->lat;
         $this->lng = (float) $shift->lng;
@@ -132,6 +135,7 @@ class Create extends Component
             $address->city,
         ])->filter()->join(' — ');
         $this->region = $address->district ?: $address->city ?: '';
+        $this->city = \App\Support\City::normalize($address->city);
         $this->cep = $address->postal_code;
         $this->lat = (float) ($address->lat ?? 0);
         $this->lng = (float) ($address->lng ?? 0);
@@ -271,6 +275,7 @@ class Create extends Component
             $data += [
                 'venue' => $this->venue,
                 'region' => $this->region,
+                'city' => $this->city ?: null,
                 'address' => $this->addressLine,
                 'postal_code' => $this->cep,
                 'lat' => $this->lat,
@@ -302,6 +307,7 @@ class Create extends Component
             'creator_role' => $this->as,
             'venue' => $this->venue,
             'region' => $this->region,
+            'city' => $this->city ?: null,
             'address' => $this->addressLine,
             'postal_code' => $this->cep,
             'lat' => $this->lat,

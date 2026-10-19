@@ -25,6 +25,7 @@ class Shift extends Model
         'creator_role',
         'venue',
         'region',
+        'city',
         'address',
         'address_photo_url',
         'postal_code',
