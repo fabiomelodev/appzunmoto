@@ -32,6 +32,9 @@ class User extends Authenticatable implements FilamentUser
         'password',
         'google_id',
         'is_admin',
+        'acquisition_channel_id',
+        'utm_source',
+        'heard_from',
     ];
 
     protected $hidden = [
@@ -82,6 +85,11 @@ class User extends Authenticatable implements FilamentUser
     public function addresses(): HasMany
     {
         return $this->hasMany(UserAddress::class, 'user_id');
+    }
+
+    public function acquisitionChannel(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(AcquisitionChannel::class, 'acquisition_channel_id');
     }
 
     public function notifications(): HasMany
