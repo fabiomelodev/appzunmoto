@@ -17,7 +17,6 @@
     x-data="{
         filtersOpen: false,
         vehicleOpen: false,
-        roleOpen: false,
         menuOpen: false,
         draft: @js($filters),
         initial: { vehicles: [], dailyMin: '', feeMin: '', startTime: '', benefits: [], ownBag: 'any', date: '', onlyInterested: false, onlyMine: false, allRegions: false },
@@ -88,12 +87,26 @@
                             <span class="flex-1">Editar perfil</span>
                             <x-ui.icon name="chevron-right" class="h-4 w-4 text-muted-foreground" />
                         </a>
-                        <button type="button" @click="menuOpen = false; roleOpen = true"
-                            class="tap flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left text-sm font-medium transition hover:bg-surface-elevated">
-                            <x-ui.icon :name="$currentRole === 'business' ? 'store' : 'bike'" class="h-5 w-5 shrink-0 text-muted-foreground" />
-                            <span class="flex-1">Trocar perfil ativo</span>
-                            <span class="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">{{ $currentRole === 'business' ? 'Estabelecimento' : 'Motoboy' }}</span>
-                        </button>
+                        {{-- Active profile: tap the other side to switch right away (no confirmation step). --}}
+                        <div class="px-2 py-3" wire:loading.class="opacity-60" wire:target="switchRole">
+                            <div class="flex items-center gap-3 text-sm font-medium">
+                                <x-ui.icon name="refresh-cw" class="h-5 w-5 shrink-0 text-muted-foreground" />
+                                <span class="flex-1">Perfil ativo</span>
+                                <span class="text-[10px] font-medium text-muted-foreground">Toque para alternar</span>
+                            </div>
+                            <div role="group" aria-label="Perfil ativo" class="relative mt-2 grid grid-cols-2 rounded-xl border border-border bg-input p-1">
+                                {{-- Sliding highlight: moves to the active side. --}}
+                                <span aria-hidden="true" class="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-lg bg-primary shadow transition-transform duration-200 {{ $currentRole === 'business' ? 'translate-x-full' : '' }}"></span>
+                                @foreach (['courier' => ['Motoboy', 'bike'], 'business' => ['Estabelecimento', 'store']] as $roleKey => [$roleLabel, $roleIcon])
+                                    @php $isActive = $currentRole === $roleKey; @endphp
+                                    <button type="button" wire:click="switchRole('{{ $roleKey }}')" wire:loading.attr="disabled" wire:target="switchRole"
+                                        aria-pressed="{{ $isActive ? 'true' : 'false' }}"
+                                        class="tap relative z-10 flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[11px] font-semibold transition-colors {{ $isActive ? 'cursor-default text-primary-foreground' : 'text-muted-foreground hover:text-foreground' }}">
+                                        <x-ui.icon :name="$roleIcon" class="h-4 w-4 shrink-0" /> {{ $roleLabel }}
+                                    </button>
+                                @endforeach
+                            </div>
+                        </div>
                         @if ($currentRole !== 'business')
                             <button type="button" @click="menuOpen = false; vehicleOpen = true"
                                 class="tap flex w-full items-center gap-3 rounded-xl px-2 py-3 text-left text-sm font-medium transition hover:bg-surface-elevated">
@@ -431,25 +444,4 @@
         </div>
     </div>
 
-    {{-- ── Switch profile confirm ───────────────────────────────── --}}
-    <div x-show="roleOpen" x-cloak x-transition.opacity
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" @click.self="roleOpen = false">
-        <div class="w-full max-w-sm rounded-2xl border border-border bg-card p-5">
-            <h2 class="font-display text-lg font-bold">Trocar perfil</h2>
-            <p class="mt-1.5 text-sm text-muted-foreground">
-                @if ($currentRole === 'business')
-                    Você está como Estabelecimento. Quer virar Motoboy?
-                @else
-                    Você está como Motoboy. Quer virar Estabelecimento?
-                @endif
-            </p>
-            <div class="mt-4 flex justify-end gap-2">
-                <button type="button" @click="roleOpen = false"
-                    class="rounded-xl px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground">Cancelar</button>
-                <button type="button"
-                    @click="$wire.switchRole('{{ $currentRole === 'business' ? 'courier' : 'business' }}'); roleOpen = false"
-                    class="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Confirmar</button>
-            </div>
-        </div>
-    </div>
 </div>
