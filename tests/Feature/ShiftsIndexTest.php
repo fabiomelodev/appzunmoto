@@ -164,7 +164,11 @@ class ShiftsIndexTest extends TestCase
             ->assertSeeHtml('aria-label="Menu da conta"')
             ->assertSeeHtml('href="'.route('profile').'"')
             ->assertSee('Editar perfil')
-            ->assertSee('Trocar perfil ativo')
+            ->assertSee('Perfil ativo')
+            // Two-sided switch: the active side is marked pressed, the other one switches on tap.
+            ->assertSeeHtml('aria-label="Perfil ativo"')
+            ->assertSeeHtml("wire:click=\"switchRole('business')\"")
+            ->assertSeeHtml("wire:click=\"switchRole('courier')\"")
             ->assertSeeHtml($vehicleRow)
             ->assertSee('Sair');
 
@@ -172,9 +176,31 @@ class ShiftsIndexTest extends TestCase
         $owner->profile()->update(['role' => 'business']);
         $this->actingAs($owner);
         Livewire::test(Index::class)
-            ->assertSee('Trocar perfil ativo')
+            ->assertSee('Perfil ativo')
             ->assertSee('Estabelecimento')
             ->assertDontSeeHtml($vehicleRow);
+    }
+
+    public function test_profile_toggle_in_the_menu_switches_right_away_and_updates_the_menu(): void
+    {
+        $user = $this->creator();
+        $user->profile()->update(['role' => 'courier', 'birth_date' => now()->subYears(30)->toDateString()]);
+        $this->actingAs($user);
+
+        $component = Livewire::test(Index::class);
+        $this->assertStringContainsString('aria-pressed="true"', preg_replace('/\s+/', ' ', $component->html()));
+        $this->assertStringNotContainsString('translate-x-full', $component->html());
+
+        // No confirmation dialog any more: one call flips the profile and the highlight slides over.
+        $component->call('switchRole', 'business')
+            ->assertDispatched('toast', message: 'Perfil alterado para Estabelecimento.')
+            ->assertSeeHtml('translate-x-full')
+            ->assertDontSeeHtml('<span class="flex-1">Trocar veículo ativo</span>')
+            ->assertDontSee('Quer virar');
+        $this->assertSame('business', $user->profile->fresh()->role);
+
+        // Tapping the active side again is a no-op.
+        $component->call('switchRole', 'business')->assertNotDispatched('toast');
     }
 
     public function test_switch_role_to_courier_redirects_when_data_is_missing(): void
