@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CaptureAcquisitionSource;
 use App\Http\Middleware\EnsureProfileOnboarded;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -17,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // Where the 'guest' middleware sends already-authenticated users.
         $middleware->redirectUsersTo('/shifts');
         $middleware->alias(['onboarded' => EnsureProfileOnboarded::class]);
+
+        // Remember ?utm_source=… (QR codes, ads) before a guest redirect drops the query string.
+        $middleware->prependToGroup('web', CaptureAcquisitionSource::class);
 
         // Hospedagem compartilhada termina o TLS antes do PHP (via hCDN/LiteSpeed
         // na Hostinger) — sem confiar no X-Forwarded-Proto que essa camada manda,

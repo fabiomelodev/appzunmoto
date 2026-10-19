@@ -57,6 +57,7 @@ class GoogleAuthController extends Controller
 
             // Genuinely new account: send it through onboarding (role, address...).
             $user->profile()->update(['onboarded_at' => null]);
+            \App\Support\Acquisition::attach($user);
         }
 
         // Carry the Google avatar over, but never overwrite a chosen photo.

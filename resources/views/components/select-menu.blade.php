@@ -1,4 +1,4 @@
-@props(['options' => [], 'selected' => '', 'action', 'label' => null, 'id' => null])
+@props(['options' => [], 'selected' => '', 'action', 'label' => null, 'id' => null, 'variant' => 'compact', 'placeholder' => null])
 {{--
     Custom dropdown that replaces the browser's native <select> (which can't be styled).
     `options`: key => label. `selected`: the current key. `action`: the Livewire method called with
@@ -10,9 +10,11 @@
     $selectedKey = (string) $selected;
     $selectedIndex = array_search($selectedKey, $keys, true);
     $selectedLabel = $selectedIndex !== false ? $labels[$selectedIndex] : ($labels[0] ?? '');
+    $isField = $variant === 'field'; // form-field look: full width, same height as the inputs
+    $showPlaceholder = $isField && $placeholder && $selectedKey === '';
 @endphp
 {{-- Re-created when the selection changes server-side, so the local state never drifts from it. --}}
-<div class="relative min-w-0" wire:key="select-menu-{{ $id ?? $action }}-{{ md5($selectedKey) }}"
+<div class="relative min-w-0 {{ $isField ? 'w-full' : '' }}" wire:key="select-menu-{{ $id ?? $action }}-{{ md5($selectedKey) }}"
     x-data="{
         open: false,
         active: -1,
@@ -44,9 +46,11 @@
         x-on:keydown.enter.prevent="open ? choose(active) : toggle()"
         x-on:keydown.space.prevent="open ? choose(active) : toggle()"
         x-on:keydown.tab="close()"
-        {{ $attributes->class('tap flex min-w-0 max-w-full items-center gap-1.5 rounded-lg border border-border bg-surface py-1 pl-2.5 pr-2 text-left text-[11px] font-semibold text-foreground outline-none transition hover:border-primary/50 focus-visible:border-primary') }}
+        {{ $attributes->class($isField
+            ? 'tap flex h-12 w-full items-center justify-between gap-2 rounded-xl border border-border bg-input px-3 text-left text-sm text-foreground outline-none transition hover:border-primary/50 focus-visible:border-primary'
+            : 'tap flex min-w-0 max-w-full items-center gap-1.5 rounded-lg border border-border bg-surface py-1 pl-2.5 pr-2 text-left text-[11px] font-semibold text-foreground outline-none transition hover:border-primary/50 focus-visible:border-primary') }}
         :class="open ? 'border-primary' : ''">
-        <span class="truncate">{{ $selectedLabel }}</span>
+        <span class="truncate {{ $showPlaceholder ? 'text-muted-foreground' : '' }}">{{ $showPlaceholder ? $placeholder : $selectedLabel }}</span>
         <span class="shrink-0 text-muted-foreground transition-transform duration-150" :class="open ? 'rotate-180' : ''">
             <x-ui.icon name="chevron-down" class="h-3.5 w-3.5" />
         </span>
@@ -55,7 +59,7 @@
     <ul x-show="open" x-cloak x-ref="list" role="listbox" tabindex="-1"
         x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 -translate-y-1" x-transition:enter-end="opacity-100 translate-y-0"
         x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-        class="absolute left-0 z-30 mt-1 max-h-60 w-max min-w-full max-w-[16rem] overflow-auto rounded-xl border border-border bg-surface-elevated p-1 shadow-xl">
+        class="absolute left-0 z-30 mt-1 max-h-60 min-w-full overflow-auto {{ $isField ? 'w-full' : 'w-max max-w-[16rem]' }} rounded-xl border border-border bg-surface-elevated p-1 shadow-xl">
         @foreach ($keys as $i => $key)
             @php $isSelected = $key === $selectedKey; @endphp
             <li role="option" aria-selected="{{ $isSelected ? 'true' : 'false' }}"
