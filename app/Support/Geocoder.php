@@ -64,6 +64,42 @@ class Geocoder
     }
 
     /**
+     * Reverse lookup: the city (município) a coordinate falls in, or null on any failure.
+     * Used to fill in the city of shifts created before shifts stored one.
+     */
+    public static function reverseCity(float $lat, float $lng): ?string
+    {
+        try {
+            $response = Http::withHeaders(['User-Agent' => 'ZunMoto/1.0 (contato@giromoto.com.br)'])
+                ->timeout(8)
+                ->retry(2, 1000, throw: false)
+                ->get('https://nominatim.openstreetmap.org/reverse', [
+                    'format' => 'jsonv2',
+                    'zoom' => 10, // city level
+                    'addressdetails' => 1,
+                    'lat' => $lat,
+                    'lon' => $lng,
+                    'accept-language' => 'pt-BR',
+                ]);
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            $address = (array) ($response->json('address') ?? []);
+            foreach (['city', 'town', 'village', 'municipality', 'city_district'] as $key) {
+                if (! empty($address[$key])) {
+                    return City::normalize($address[$key]);
+                }
+            }
+        } catch (\Throwable $e) {
+            // best-effort
+        }
+
+        return null;
+    }
+
+    /**
      * Resolve coordinates from structured address fields, trying progressively
      * looser queries. Returns the first match, or null if every attempt fails.
      */

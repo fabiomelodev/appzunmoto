@@ -6,8 +6,10 @@ use App\Models\Application;
 use App\Models\Banner;
 use App\Models\Shift;
 use App\Support\Catalog;
+use App\Support\City;
 use App\Support\Radius;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -20,6 +22,11 @@ class Index extends Component
     public string $q = '';
 
     public ?string $region = null;
+
+    /** City whose neighbourhoods fill the chips: null = the user's own (profile city / base address), ALL_CITIES = every city, else a City::key(). */
+    public ?string $cityKey = null;
+
+    public const ALL_CITIES = '__all';
 
     /** Applied filters (the draft lives client-side in Alpine until "Aplicar"). */
     public array $filters = [
@@ -49,6 +56,13 @@ class Index extends Component
     public function setRegion(?string $region): void
     {
         $this->region = $region;
+    }
+
+    /** Pick the city whose neighbourhoods are listed; the neighbourhood chosen before no longer applies. */
+    public function setCity(string $key): void
+    {
+        $this->cityKey = $key === '' ? null : $key;
+        $this->region = null;
     }
 
     public function applyFilters(array $draft): void
@@ -156,12 +170,90 @@ class Index extends Component
         return Auth::user()?->profile?->role ?? 'courier';
     }
 
+    /** Shifts this user can see right now (open, not over, room left, inside their radius) — the pool the city and neighbourhood chips are built from. */
+    #[Computed]
+    public function openShifts()
+    {
+        $acceptedIds = $this->myAcceptedIds;
+        $now = now();
+
+        return Shift::query()
+            ->withCount(['applications as accepted_count' => fn ($q) => $q->where('status', 'accepted')])
+            ->where(fn ($q) => $q->where('status', '!=', Shift::STATUS_FILLED)->orWhereIn('id', $acceptedIds->all()))
+            ->where(fn ($q) => $q->where('active', true)->orWhere('creator_id', Auth::id()))
+            ->whereDate('date', '>=', now('America/Sao_Paulo')->subDay()->toDateString())
+            ->get()
+            ->filter(fn ($s) => ($s->accepted_count < ($s->couriers_needed ?? 1) || $acceptedIds->contains($s->id))
+                && $s->endsAt()->gte($now)
+                && $this->insideRadius($s))
+            ->values();
+    }
+
+    /** The city selected for the neighbourhood chips: the user's own by default (courier: profile city; establishment: city of the address its radius starts from). */
+    #[Computed]
+    public function selectedCityKey(): string
+    {
+        if ($this->cityKey !== null) {
+            return $this->cityKey;
+        }
+
+        $profile = Auth::user()?->profile;
+        if ($profile?->isBusiness()) {
+            $label = $profile->baseLabel();
+            $address = $label !== '' ? $profile->located_addresses->firstWhere('label', $label) : null;
+            $key = City::key($address?->city);
+        } else {
+            $key = City::key($profile?->city);
+        }
+
+        return $key !== '' ? $key : self::ALL_CITIES;
+    }
+
+    /**
+     * Cities offered in the selector: those that have an open shift, plus the user's own (so the
+     * default is always selectable even when it has none right now). key => display name.
+     *
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function cities(): array
+    {
+        $cities = [];
+        foreach ($this->openShifts as $s) {
+            if ($s->city) {
+                $cities[City::key($s->city)] ??= City::normalize($s->city);
+            }
+        }
+
+        $profile = Auth::user()?->profile;
+        $own = $profile?->isBusiness() ? null : City::normalize($profile?->city);
+        if ($own) {
+            $cities[City::key($own)] ??= $own;
+        }
+        $selected = $this->selectedCityKey;
+        if ($selected !== self::ALL_CITIES && ! isset($cities[$selected])) {
+            $cities[$selected] = Str::title($selected);
+        }
+
+        asort($cities);
+
+        return $cities;
+    }
+
+    /**
+     * Neighbourhood chips: regions of the open shifts in the selected city. Shifts that don't have
+     * a city yet (created before shifts stored one, until `shifts:backfill-city` runs) count for
+     * every city rather than vanishing.
+     */
     #[Computed]
     public function regions(): array
     {
-        return Shift::query()->distinct()->orderBy('region')->pluck('region')->all();
-    }
+        $key = $this->selectedCityKey;
 
+        return $this->openShifts
+            ->filter(fn ($s) => $key === self::ALL_CITIES || ! $s->city || City::key($s->city) === $key)
+            ->pluck('region')->filter()->unique()->sort()->values()->all();
+    }
     #[Computed]
     public function activeVehicle(): string
     {
@@ -307,6 +399,8 @@ class Index extends Component
             ->orderByDesc('created_at')
             ->get()
             ->filter(fn ($s) => $this->insideRadius($s))
+            // A neighbourhood name repeats across cities ("Centro"): the chosen chip only matches within the selected city.
+            ->filter(fn ($s) => ! $this->region || $this->selectedCityKey === self::ALL_CITIES || ! $s->city || City::key($s->city) === $this->selectedCityKey)
             ->filter(function ($s) use ($now, $acceptedIds) {
                 // A full shift is hidden — except keep it visible to the courier
                 // who was accepted on it, so they still see their confirmation.
