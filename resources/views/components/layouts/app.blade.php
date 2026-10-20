@@ -21,6 +21,8 @@
 </head>
 
 <body class="antialiased lg:pl-64">
+    <x-impersonation-banner />
+
     <x-sidebar-nav />
 
     <div class="app-shell min-h-dvh bg-background">
