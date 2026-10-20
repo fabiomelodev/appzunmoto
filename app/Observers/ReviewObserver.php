@@ -27,7 +27,7 @@ class ReviewObserver
         $this->recalculate($review->target_id, $review->target_role);
     }
 
-    protected function recalculate(string $targetId, string $role): void
+    public function recalculate(string $targetId, string $role): void
     {
         // Private (not yet published) reviews must not move the average either,
         // or the change itself would give the reviewer away.
