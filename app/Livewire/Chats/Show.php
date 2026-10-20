@@ -8,6 +8,7 @@ use App\Models\Message;
 use App\Models\Notification;
 use App\Models\Profile;
 use App\Models\Shift;
+use App\Support\Impersonation;
 use App\Support\Partnerships;
 use App\Support\Reviews;
 use Illuminate\Support\Carbon;
@@ -37,10 +38,13 @@ class Show extends Component
 
         // Opening the conversation is reading it: moves the chat's read marker
         // (drives the unread counters) and clears its "Nova mensagem" notifications.
-        $chat->markReadBy(Auth::id());
-        Notification::where('user_id', Auth::id())->where('type', 'mensagem')->where('read', false)
-            ->get()->filter(fn ($n) => ($n->payload['chat_id'] ?? null) === $id)
-            ->each->update(['read' => true]);
+        // (An admin accessing the account only looks: it must not mark the user's messages as read.)
+        if (! Impersonation::isActive()) {
+            $chat->markReadBy(Auth::id());
+            Notification::where('user_id', Auth::id())->where('type', 'mensagem')->where('read', false)
+                ->get()->filter(fn ($n) => ($n->payload['chat_id'] ?? null) === $id)
+                ->each->update(['read' => true]);
+        }
     }
 
     /** Listen on this chat's private channel for new messages (replaces polling). */
@@ -150,7 +154,7 @@ class Show extends Component
         // Messages that arrive while the conversation is open (websocket or the 30s poll)
         // are read as they land — otherwise leaving it would show them as new.
         $readAt = $chat->{$chat->user_a === $me ? 'user_a_read_at' : 'user_b_read_at'};
-        if ($messages->contains(fn ($m) => $m->author_id !== $me && (! $readAt || $m->created_at->gt($readAt)))) {
+        if (! Impersonation::isActive() && $messages->contains(fn ($m) => $m->author_id !== $me && (! $readAt || $m->created_at->gt($readAt)))) {
             $chat->markReadBy($me);
             $this->dispatch('chats-read');
         }

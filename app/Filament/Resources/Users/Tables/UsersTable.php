@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
+use App\Filament\Resources\Users\Actions\ImpersonateAction;
 use App\Models\AcquisitionChannel;
 use App\Support\Acquisition;
 use Filament\Actions\ViewAction;
@@ -101,6 +102,8 @@ class UsersTable
                     ),
             ])
             ->recordActions([
+                ImpersonateAction::make()
+                    ->iconButton(),
                 ViewAction::make()
                     ->iconButton(),
             ]);
