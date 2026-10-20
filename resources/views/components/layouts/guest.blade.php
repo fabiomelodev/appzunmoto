@@ -20,6 +20,8 @@
 </head>
 
 <body class="antialiased">
+    <x-impersonation-banner />
+
     <div class="app-shell min-h-dvh">
         {{ $slot }}
     </div>

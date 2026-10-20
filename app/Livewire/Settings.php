@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\UserSetting;
+use App\Support\Impersonation;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Layout;
@@ -58,6 +59,18 @@ class Settings extends Component
         }
     }
 
+    /** Credentials stay out of reach while an admin is accessing the account. */
+    protected function blockedByImpersonation(): bool
+    {
+        if (! Impersonation::isActive()) {
+            return false;
+        }
+
+        $this->dispatch('toast', message: 'Indisponível ao acessar como outro usuário.', type: 'error');
+
+        return true;
+    }
+
     public function persistTheme(string $theme): void
     {
         if (! in_array($theme, ['dark', 'light', 'urbano'], true)) {
@@ -105,6 +118,11 @@ class Settings extends Component
      */
     public function subscribeToPush(array $subscription, bool $silent = false): void
     {
+        // An admin inside this account must not register their own browser as the user's push device.
+        if (Impersonation::isActive()) {
+            return;
+        }
+
         $endpoint = $subscription['endpoint'] ?? null;
         $keys = $subscription['keys'] ?? [];
         if (! $endpoint) {
@@ -121,6 +139,10 @@ class Settings extends Component
     /** Removes this browser's push subscription, sent by window.webPushUnsubscribe(). */
     public function unsubscribeFromPush(string $endpoint): void
     {
+        if (Impersonation::isActive()) {
+            return;
+        }
+
         Auth::user()->deletePushSubscription($endpoint);
         $this->dispatch('toast', message: 'Notificações do navegador desativadas.');
     }
@@ -155,6 +177,10 @@ class Settings extends Component
 
     public function updateEmail(): void
     {
+        if ($this->blockedByImpersonation()) {
+            return;
+        }
+
         $this->validate(
             ['newEmail' => ['required', 'email', 'unique:users,email,'.Auth::id()]],
             [],
@@ -172,6 +198,10 @@ class Settings extends Component
 
     public function updatePassword(): void
     {
+        if ($this->blockedByImpersonation()) {
+            return;
+        }
+
         $this->validate([
             'newPassword' => ['required', 'min:6', 'same:passwordConfirmation'],
             'passwordConfirmation' => ['required'],
@@ -196,6 +226,10 @@ class Settings extends Component
     /** Disconnect the Google account, keeping email/password as the way back in. */
     public function unlinkGoogle(): void
     {
+        if ($this->blockedByImpersonation()) {
+            return;
+        }
+
         $user = Auth::user();
         if (! $user->google_id) {
             return;

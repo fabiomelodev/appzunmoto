@@ -44,6 +44,11 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::post('/logout', function (Request $request) {
+    // "Sair" while an admin is inside a user's account only goes back to the admin's own session.
+    if (\App\Support\Impersonation::leave()) {
+        return redirect('/admin/users');
+    }
+
     // push_endpoint: sent by the desktop sidebar's logout button (window.mrLogout,
     // resources/js/app.js) after unsubscribing this browser client-side — deleted
     // here too so the next account logged in on this device doesn't silently

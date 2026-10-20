@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Notifications;
 
+use App\Support\Impersonation;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -30,7 +31,10 @@ class Page extends Component
 
     public function markAllRead(): void
     {
-        Auth::user()->notifications()->where('read', false)->update(['read' => true]);
+        // An admin accessing the account only looks: nothing is marked as read for the user.
+        if (! Impersonation::isActive()) {
+            Auth::user()->notifications()->where('read', false)->update(['read' => true]);
+        }
         unset($this->notifications);
     }
 
@@ -41,7 +45,9 @@ class Page extends Component
             return null;
         }
 
-        $notification->update(['read' => true]);
+        if (! Impersonation::isActive()) {
+            $notification->update(['read' => true]);
+        }
 
         $url = $notification->resolveUrl();
 
