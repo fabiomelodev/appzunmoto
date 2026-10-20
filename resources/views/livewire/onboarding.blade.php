@@ -1,12 +1,15 @@
 @php use App\Support\Catalog; @endphp
 <div class="relative flex min-h-dvh flex-col px-6 py-10 lg:mx-auto lg:max-w-[40rem]">
     {{-- Sign out at any step. Nothing is kept of the steps in progress: coming back starts from step 1 again. --}}
-    <form method="POST" action="{{ route('logout') }}" class="absolute right-4 top-4">
-        @csrf
-        <button type="submit" class="tap inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:text-destructive">
-            <x-ui.icon name="log-out" class="h-4 w-4" /> Sair
-        </button>
-    </form>
+    {{-- Inside an admin's "acessar como" the yellow banner already offers the way back, so no second "Sair". --}}
+    @unless (\App\Support\Impersonation::isActive())
+        <form method="POST" action="{{ route('logout') }}" class="absolute right-4 top-4">
+            @csrf
+            <button type="submit" class="tap inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold text-muted-foreground transition hover:text-destructive">
+                <x-ui.icon name="log-out" class="h-4 w-4" /> Sair
+            </button>
+        </form>
+    @endunless
 
     <div class="flex flex-1 flex-col justify-center">
         <div class="mb-14 flex flex-col items-center text-center">

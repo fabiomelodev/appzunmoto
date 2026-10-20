@@ -78,6 +78,26 @@ class ImpersonationTest extends TestCase
         Livewire::test(ListUsers::class)->callTableAction('impersonate', $target)->assertRedirect(route('onboarding'));
     }
 
+    public function test_the_banner_is_also_on_the_onboarding_screen_instead_of_a_second_sair_button(): void
+    {
+        $admin = $this->admin();
+        $target = $this->user('Novo', onboarded: false);
+
+        // A normal pending user gets the "Sair" button there (and no banner).
+        $this->actingAs($target);
+        $this->get(route('onboarding'))->assertOk()->assertSee('Sair')->assertDontSee('Acessando como');
+
+        $this->actingAs($admin);
+        Impersonation::start($admin, $target);
+        $html = $this->get(route('onboarding'))->assertOk()
+            ->assertSee('Acessando como')->assertSee('Voltar ao painel')->assertDontSee('Sair')
+            ->getContent();
+        // Exactly one way out, and it is the banner's.
+        $this->assertSame(1, substr_count($html, 'action="'.route('logout').'"'));
+
+        $this->post(route('logout'))->assertRedirect('/admin/users');
+        $this->assertSame($admin->id, auth()->id());
+    }
     public function test_only_admins_can_start_and_never_on_admins_themselves_or_nested(): void
     {
         $admin = $this->admin();
