@@ -382,7 +382,7 @@ class AccountTest extends TestCase
 
     public function test_pwa_manifest_file_has_the_required_fields(): void
     {
-        $manifest = json_decode(file_get_contents(public_path('manifest.webmanifest')), true);
+        $manifest = $this->get('/manifest.webmanifest')->assertOk()->json();
 
         $this->assertSame('ZunMoto', $manifest['name']);
         $this->assertSame('standalone', $manifest['display']);
