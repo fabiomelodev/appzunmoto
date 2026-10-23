@@ -9,6 +9,8 @@ const INSTALLED_KEY = 'mr-pwa-installed';
 const SNOOZE_KEY = 'mr-install-snooze';
 const SNOOZE_DAYS = 7; // after "Agora não" / closing the invitation
 const AUTO_OPEN_DELAY_MS = 6000; // let the page settle before inviting
+const DEVICE_KEY = 'mr-device-id'; // stable id of this browser/device, to count installs once per device
+const REPORTED_KEY = 'mr-install-reported'; // yyyy-mm-dd of the last report to the server
 
 const read = (key) => {
     try {
@@ -40,6 +42,36 @@ function detectPlatform() {
     return 'desktop';
 }
 
+function deviceId() {
+    let id = read(DEVICE_KEY);
+    if (!id) {
+        id = (window.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(36).slice(2)).replace(/[^A-Za-z0-9_-]/g, '');
+        write(DEVICE_KEY, id);
+    }
+    return id;
+}
+
+/**
+ * Tells the server this device has the app installed (at most once a day per device), for the install
+ * metrics in the admin panel. Silent: it needs a logged-in session, otherwise it just tries again later.
+ */
+async function reportInstall() {
+    const today = new Date().toISOString().slice(0, 10);
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (read(REPORTED_KEY) === today || !token) return;
+
+    try {
+        const response = await fetch('/pwa/installed', {
+            method: 'POST',
+            credentials: 'same-origin',
+            redirect: 'manual', // a logged-out request is redirected to /login: that must not count as "reported"
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': token, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ device: deviceId(), platform: detectPlatform(), standalone: isStandalone() }),
+        });
+        if (response.ok) write(REPORTED_KEY, today);
+    } catch (e) {}
+}
+
 // The browser may fire this before Alpine boots: capture it at module load and hand it to the store.
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (event) => {
@@ -64,6 +96,7 @@ window.addEventListener('appinstalled', () => {
         store.deferred = null;
         store.open = false;
     }
+    reportInstall();
 });
 
 document.addEventListener('alpine:init', () => {
@@ -78,6 +111,32 @@ document.addEventListener('alpine:init', () => {
             return !!this.deferred;
         },
 
+        init() {
+            if (this.installed) {
+                reportInstall();
+
+                return;
+            }
+            this.detectInstalledApp();
+        },
+
+        /**
+         * Chrome (Android, and desktop on recent versions) can say whether this PWA is installed even from a plain
+         * browser tab, through the manifest's `related_applications` (see PwaController::manifest). iPhone can't.
+         */
+        async detectInstalledApp() {
+            if (!navigator.getInstalledRelatedApps) return;
+            try {
+                const apps = await navigator.getInstalledRelatedApps();
+                if (apps.some((app) => app.platform === 'webapp')) {
+                    this.installed = true;
+                    this.deferred = null;
+                    this.open = false;
+                    write(INSTALLED_KEY, '1');
+                    reportInstall();
+                }
+            } catch (e) {}
+        },
         show() {
             this.tab = this.platform;
             this.open = true;
@@ -102,6 +161,7 @@ document.addEventListener('alpine:init', () => {
             if (choice && choice.outcome === 'accepted') {
                 this.installed = true;
                 write(INSTALLED_KEY, '1');
+                reportInstall();
             }
             this.open = false;
         },

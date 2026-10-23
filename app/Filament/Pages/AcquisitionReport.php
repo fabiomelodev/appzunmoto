@@ -65,6 +65,9 @@ class AcquisitionReport extends Page implements HasTable
                 TextColumn::make('signups')->label('Cadastros')->numeric(),
                 TextColumn::make('completed')->label('Cadastros completos')->numeric()
                     ->description(fn (array $record) => $record['completed_pct']),
+                TextColumn::make('installed')->label('Instalaram o app')->numeric()
+                    ->description(fn (array $record) => $record['installed_pct'])
+                    ->tooltip('Instalaram o ZunMoto (PWA) em pelo menos um aparelho'),
                 TextColumn::make('active')->label('Usaram o app')->numeric()
                     ->description(fn (array $record) => $record['active_pct'])
                     ->tooltip('Publicaram uma vaga ou se candidataram a alguma'),
@@ -85,7 +88,7 @@ class AcquisitionReport extends Page implements HasTable
     {
         $query = User::where('is_admin', false)
             ->with(['acquisitionChannel', 'profile'])
-            ->withExists(['shifts', 'applications']);
+            ->withExists(['shifts', 'applications', 'appInstalls']);
 
         if (ctype_digit($period)) {
             $query->where('created_at', '>=', now()->subDays((int) $period)->startOfDay());
@@ -101,6 +104,7 @@ class AcquisitionReport extends Page implements HasTable
             $signups = $group->count();
             $completed = $group->filter(fn (User $u) => $u->profile?->onboarded_at !== null)->count();
             $active = $group->filter(fn (User $u) => $u->shifts_exists || $u->applications_exists)->count();
+            $installed = $group->filter(fn (User $u) => $u->app_installs_exists)->count();
             $pct = fn (int $n) => $signups > 0 ? round($n / $signups * 100).'% dos cadastros' : '—';
 
             return [
@@ -110,6 +114,8 @@ class AcquisitionReport extends Page implements HasTable
                 'completed_pct' => $pct($completed),
                 'active' => $active,
                 'active_pct' => $pct($active),
+                'installed' => $installed,
+                'installed_pct' => $pct($installed),
             ];
         };
 

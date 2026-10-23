@@ -3,6 +3,7 @@
 // routes/web.php
 
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\PwaController;
 use App\Livewire\Addresses\Choose as AddressesChoose;
 use App\Livewire\Addresses\Index as AddressesIndex;
 use App\Livewire\Auth\ForgotPassword;
@@ -28,6 +29,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+
+// The PWA manifest (dynamic: it points at itself, see PwaController::manifest).
+Route::get('/manifest.webmanifest', [PwaController::class, 'manifest'])->name('pwa.manifest');
 
 // ── Public (guest) ───────────────────────────────────────────────
 Route::middleware('guest')->group(function () {
@@ -68,6 +72,8 @@ Route::post('/logout', function (Request $request) {
 // Deliberately outside the 'onboarded' gate below, to avoid a redirect loop.
 Route::middleware('auth')->group(function () {
     Route::get('/onboarding', Onboarding::class)->name('onboarding');
+    // The browser reports that the app is installed on this device (metrics in the admin panel).
+    Route::post('/pwa/installed', [PwaController::class, 'installed'])->middleware('throttle:30,1')->name('pwa.installed');
 });
 
 // ── Authenticated app ────────────────────────────────────────────

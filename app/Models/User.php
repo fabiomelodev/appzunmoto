@@ -87,6 +87,11 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(UserAddress::class, 'user_id');
     }
 
+    public function appInstalls(): HasMany
+    {
+        return $this->hasMany(AppInstall::class, 'user_id');
+    }
+
     public function acquisitionChannel(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(AcquisitionChannel::class, 'acquisition_channel_id');
