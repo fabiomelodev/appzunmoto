@@ -18,6 +18,8 @@ function applyStoredTheme() {
 }
 document.addEventListener('livewire:navigated', applyStoredTheme);
 
+import './pwa-install.js';
+
 // ── PWA installability ────────────────────────────────────────────
 // Registers the service worker on every visit, not just when push gets
 // activated — an active registration is part of what makes the browser
