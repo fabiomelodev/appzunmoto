@@ -18,7 +18,7 @@ class UsersTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn (Builder $query) => $query->withCount('addresses')->with('acquisitionChannel'))
+            ->modifyQueryUsing(fn (Builder $query) => $query->withCount('addresses')->withExists('appInstalls')->with('acquisitionChannel'))
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('name')
@@ -50,6 +50,11 @@ class UsersTable
                 TextColumn::make('profile.city')
                     ->label('Cidade')
                     ->placeholder('—'),
+                IconColumn::make('app_installs_exists')
+                    ->label('App instalado')
+                    ->boolean()
+                    ->tooltip('Instalou o app (PWA) em pelo menos um aparelho')
+                    ->toggleable(),
                 TextColumn::make('acquisition')
                     ->label('Canal')
                     ->getStateUsing(fn ($record) => Acquisition::label($record->utm_source, $record->acquisitionChannel?->name))
@@ -91,6 +96,15 @@ class UsersTable
                             fn (Builder $q, $value) => $q->whereHas('profile', fn ($p) => $p->where('role', $value)),
                         );
                     }),
+                TernaryFilter::make('app_installed')
+                    ->label('Instalou o app')
+                    ->placeholder('Todos')
+                    ->trueLabel('Sim')
+                    ->falseLabel('Não')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereHas('appInstalls'),
+                        false: fn (Builder $query) => $query->whereDoesntHave('appInstalls'),
+                    ),
                 TernaryFilter::make('has_establishment')
                     ->label('Tem estabelecimento')
                     ->placeholder('Todos')

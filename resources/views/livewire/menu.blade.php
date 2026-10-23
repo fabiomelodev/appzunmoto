@@ -59,6 +59,19 @@
             </a>
         @endforeach
 
+        {{-- Install the app: only while it isn't installed (the Alpine store hides it once it is). --}}
+        <button type="button" x-data x-cloak x-show="! $store.install.installed" x-on:click="$store.install.show()"
+            class="flex w-full items-center gap-4 rounded-2xl border border-primary/40 bg-primary/10 p-4 text-left transition hover:bg-primary/15">
+            <span class="grid h-11 w-11 place-items-center rounded-xl bg-primary text-primary-foreground">
+                <x-ui.icon name="smartphone" class="h-5 w-5" />
+            </span>
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-semibold text-foreground">Instalar o app</p>
+                <p class="truncate text-[11px] text-muted-foreground">Abre em tela cheia, direto da tela inicial</p>
+            </div>
+            <x-ui.icon name="chevron-right" class="h-4 w-4 shrink-0 text-primary" />
+        </button>
+
         {{-- Mesmo raciocínio do item Configurações acima: a sidebar desktop já
         tem um atalho fixo de "Sair". --}}
         <button type="button" x-on:click="window.webPushUnsubscribe().then((endpoint) => $wire.logout(endpoint))"

@@ -103,6 +103,8 @@
         </template>
     </div>
 
+    <x-install-app-modal />
+
     @livewireScripts
 </body>
 
